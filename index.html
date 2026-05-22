@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AQA Central</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f7fb;color:#1a2340;min-height:100vh}
+  input,select,textarea{font-family:inherit}
+  :root{
+    --bg-primary:#ffffff;
+    --bg-secondary:#f4f7fb;
+    --text-primary:#1a2340;
+    --text-secondary:#6b7a99;
+    --border:#dce6f5;
+  }
+</style>
+</head>
+<body>
+<div id="root" style="max-width:900px;margin:0 auto;padding:16px"></div>
+<script type="text/babel">
+const { useState, useMemo, useEffect } = React;
+
+// ── URLs de Google Sheets ─────────────────────────────────────────────
+const SHEET_URLS = {
+  // Cobranzas
+  cobBsAs:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=0&single=true&output=csv",
+  cobInt:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=467657686&single=true&output=csv",
+  cobHiel:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=752932186&single=true&output=csv",
+  // Score Crediticio
+  scoreBsAs: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=0&single=true&output=csv",
+  scoreInt:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=1608986858&single=true&output=csv",
+  scoreHiel: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=448772783&single=true&output=csv",
+  // Buenos Aires
+  baInstPend: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=540793092&single=true&output=csv",
+  baComodato: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1309380371&single=true&output=csv",
+  baVenta:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=7134883&single=true&output=csv",
+  baDesins:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1964598055&single=true&output=csv",
+  // Interior
+  intInstPend: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1582569282&single=true&output=csv",
+  intComodato: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1522331961&single=true&output=csv",
+  intVenta:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=2137112092&single=true&output=csv",
+  intDesins:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1030117501&single=true&output=csv",
+  // Hielogic
+  hielInstPend: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1909832169&single=true&output=csv",
+  hielComodato: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=392626389&single=true&output=csv",
+  hielDesins:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1502779041&single=true&output=csv",
+  // AQA Office
+  offInstPend: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=796818616&single=true&output=csv",
+  offComodato: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1425890095&single=true&output=csv",
+  offVenta:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1080444203&single=true&output=csv",
+  offDesins:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1428472954&single=true&output=csv",
+  // Administración
+  intimaciones: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=354176531&single=true&output=csv",
+  cartasDoc:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=0&single=true&output=csv",
+  veraz:        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=2086198383&single=true&output=csv",
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────
+const splitCSV = line => {
+  const cols = []; let cur = "", inQ = false;
+  for (let ch of line) {
+    if (ch === '"') { inQ = !inQ; continue; }
+    if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; continue; }
+    cur += ch;
+  }
+  cols.push(cur.trim());
+  return cols;
+};
+const parseGeneric = text => {
+  const lines = text.trim().split("\n");
+  if (lines.length < 2) return { headers: [], rows: [] };
+  const headers = splitCSV(lines[0]).map(h => h.replace(/"/g,"").trim());
+  const rows = lines.slice(1).map(line => {
+    const cols = splitCSV(line);
+    const row = {};
+    headers.forEach((h,i) => row[h] = cols[i]||"");
+    return row;
+  }).filter(r => Object.values(r).some(v => v));
+  return { headers, rows };
+};
+const parseNum = s => parseFloat((s||"").replace(/[^0-9,-]/g,"").replace(/\./g,"").replace(",",".")) || 0;
+const parseEstado = s => {
+  const sl = (s||"").toLowerCase();
+  if (sl.includes("inhabilitado")) return "inhabilitado";
+  if (sl.includes("pendiente") || sl.includes("facturas")) return "pendiente";
+  return "habilitado";
+};
+const parseCob = (text, cartera) => {
+  const lines = text.trim().split("\n");
+  if (lines.length < 2) return [];
+  return lines.slice(1).map(line => {
+    const c = splitCSV(line);
+    const [asesorCob,id,modelo,abono,nombre,,,deudaRaw,fcRaw,mensRaw,adicRaw] = c;
+    if (!id?.trim() || !nombre?.trim()) return null;
+    return { id:id.trim(), nombre:nombre.trim(), modelo:modelo||"", asesorCob:asesorCob||"",
+      abono:parseNum(abono), estado:parseEstado(adicRaw), deuda:parseNum(deudaRaw),
+      fc:parseInt(fcRaw)||0, mens:parseInt(mensRaw)||0, cartera };
+  }).filter(Boolean);
+};
+const safeFetch = url => fetch(url).then(r => { if(!r.ok) throw new Error(); return r.text(); });
+const fmt = n => n<=0 ? "Sin deuda" : "$"+Math.round(n).toLocaleString("es-AR");
+const PAL = [{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
+const avColor = name => PAL[(name||"").split("").reduce((a,c)=>a+c.charCodeAt(0),0)%PAL.length];
+const initials = name => (name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const BCOL = { habilitado:"#639922", inhabilitado:"#E24B4A", pendiente:"#EF9F27" };
+const numLetras = n => {
+  if(!n||n===0) return "cero";
+  const M={1:"uno",2:"dos",3:"tres",4:"cuatro",5:"cinco",6:"seis",7:"siete",8:"ocho",9:"nueve",10:"diez",11:"once",12:"doce",13:"trece",14:"catorce",15:"quince",16:"dieciséis",17:"diecisiete",18:"dieciocho",19:"diecinueve",20:"veinte",21:"veintiún",22:"veintidós",23:"veintitrés",24:"veinticuatro",25:"veinticinco",26:"veintiséis",27:"veintisiete",28:"veintiocho",29:"veintinueve",30:"treinta",40:"cuarenta",50:"cincuenta",60:"sesenta",70:"setenta",80:"ochenta",90:"noventa"};
+  if(n<=29) return M[n]||"";
+  if(n<100){const d=Math.floor(n/10)*10,u=n%10;return u===0?M[d]:M[d]+" y "+M[u];}
+  if(n===100) return "cien";
+  if(n<200) return "ciento "+numLetras(n-100);
+  const C={200:"doscientos",300:"trescientos",400:"cuatrocientos",500:"quinientos",600:"seiscientos",700:"setecientos",800:"ochocientos",900:"novecientos"};
+  const cv=Math.floor(n/100)*100,r=n%100;
+  if(n<1000) return r===0?C[cv]:C[cv]+" "+numLetras(r);
+  const m2=Math.floor(n/1000),r2=n%1000;
+  const ms=m2===1?"mil":numLetras(m2)+" mil";
+  return r2===0?ms:ms+" "+numLetras(r2);
+};
+
+// ── Constantes ────────────────────────────────────────────────────────
+const MAIN_TABS = ["Clientes","Resumen Cobranzas","Pipeline Comercial","Logística","Administración"];
+const LOG_HOJAS = ["Instalaciones Pendientes","Comodato","Desinstalaciones","Venta"];
+const ADM_TABS  = ["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio"];
+const ADM_COLORS = {"Intimaciones":"#8a3a00","Cartas Documento":"#1a3a8a","Veraz":"#5a1a8a"};
+const ASESORES  = ["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"];
+const CLASIFICACIONES = ["HoReCa","AQA Office","Residencial","Hotel","Restaurante","Café","Bar","Otro"];
+const MODELOS_ALL = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20","A Definir"];
+const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const MODELOS=["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20"];
+const USD_OPTS=[{label:"USD 6.900 (WL7 / SM)",value:"6.900",letras:"seis mil novecientos"},{label:"USD 7.400 (BM)",value:"7.400",letras:"siete mil cuatrocientos"},{label:"USD 5.900 (RBF)",value:"5.900",letras:"cinco mil novecientos"},{label:"USD 4.000 (RBL / OFF20)",value:"4.000",letras:"cuatro mil"}];
+const AJUSTES=["Trimestral","Bimestral","Cuatrimestral","Semestral"];
+const SOCIEDADES=["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributista","Asociación Civil"];
+
+// ── Componentes UI ────────────────────────────────────────────────────
+const Badge = ({estado}) => {
+  const M={habilitado:{bg:"#EAF3DE",c:"#27500A",t:"Habilitado"},inhabilitado:{bg:"#FCEBEB",c:"#791F1F",t:"Inhabilitado"},pendiente:{bg:"#FAEEDA",c:"#633806",t:"Fc. Pendientes"}};
+  const s=M[estado]||M.habilitado;
+  return React.createElement('span',{style:{background:s.bg,color:s.c,fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}},s.t);
+};
+
+const TabBar = ({tabs,active,onChange,color="#1F3864"}) =>
+  React.createElement('div',{style:{display:"flex",gap:2,borderBottom:"1px solid #dce6f5",marginBottom:12,overflowX:"auto"}},
+    tabs.map(t=>React.createElement('button',{key:t,onClick:()=>onChange(t),style:{background:"transparent",border:"none",borderBottom:active===t?`2px solid ${color}`:"2px solid transparent",padding:"7px 12px",fontSize:12,fontWeight:active===t?500:400,color:active===t?color:"#6b7a99",cursor:"pointer",marginBottom:-1,whiteSpace:"nowrap"}},t))
+  );
+
+const GenericTable = ({data,headerBg="#1F3864"}) =>
+  React.createElement('div',{style:{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}},
+    React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+      React.createElement('thead',null,React.createElement('tr',null,...data.headers.map(h=>React.createElement('th',{key:h,style:{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}},h)))),
+      React.createElement('tbody',null,...data.rows.map((row,i)=>React.createElement('tr',{key:i,style:{background:i%2===0?"#fff":"#f4f7fb"}},...data.headers.map(h=>React.createElement('td',{key:h,style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",whiteSpace:"nowrap",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis"}},row[h]||"—")))))
+    )
+  );
+
+const parseScoreNum = s => { const m=String(s||"").match(/\d+/); return m?parseInt(m[0]):0; };
+const ScoreTable = ({data}) =>
+  React.createElement('div',{style:{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}},
+    React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+      React.createElement('thead',null,React.createElement('tr',null,...data.headers.map(h=>React.createElement('th',{key:h,style:{background:"#1a5c3a",color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}},h)))),
+      React.createElement('tbody',null,...data.rows.map((row,i)=>{
+        const ok=parseScoreNum(row["SCORE"])>=600||parseScoreNum(row["FIRMANTE"])>=600;
+        return React.createElement('tr',{key:i,style:{background:ok?"#f0faf0":"#fff7ee"}},
+          React.createElement('td',{style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",fontWeight:500}},
+            React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6}},
+              React.createElement('div',{style:{width:8,height:8,borderRadius:"50%",background:ok?"#2e9e4f":"#d97706",flexShrink:0}}),
+              row["CLIENTE"]||"—"
+            )
+          ),
+          React.createElement('td',{style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:parseScoreNum(row["SCORE"])>=600?"#1a5c3a":"#c05a00"}},row["SCORE"]||"—"),
+          React.createElement('td',{style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:parseScoreNum(row["FIRMANTE"])>=600?"#1a5c3a":"#c05a00"}},row["FIRMANTE"]||"—"),
+          React.createElement('td',{style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",color:"#6b7a99",maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},row["COMENTARIOS"]||"—")
+        );
+      }))
+    )
+  );
+
+// ── Pipeline Comercial ────────────────────────────────────────────────
+const CIERRE_VACIO = {clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",fecha:""};
+
+function PipelineComercial({onNuevoCierre}) {
+  const [cierres,setCierres]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [showForm,setShowForm]=useState(false);
+  const [form,setForm]=useState(CIERRE_VACIO);
+  const [saving,setSaving]=useState(false);
+  const [expandedId,setExpandedId]=useState(null);
+  const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
+
+  useEffect(()=>{
+    const saved = localStorage.getItem("aqa_cierres");
+    if(saved) setCierres(JSON.parse(saved));
+    setLoading(false);
+  },[]);
+
+  const guardar=()=>{
+    if(!form.nombreFantasia||!form.razonSocial||!form.asesor){alert("Completá Nombre de Fantasía, Razón Social y Asesor");return;}
+    setSaving(true);
+    const nuevo={...form,id:Date.now().toString(),fecha:new Date().toLocaleDateString("es-AR"),estado:"Pendiente instalación"};
+    const nuevos=[nuevo,...cierres];
+    localStorage.setItem("aqa_cierres",JSON.stringify(nuevos));
+    setCierres(nuevos);
+    onNuevoCierre(nuevo);
+    setForm(CIERRE_VACIO);
+    setShowForm(false);
+    setSaving(false);
+  };
+
+  const eliminar=id=>{
+    const nuevos=cierres.filter(c=>c.id!==id);
+    localStorage.setItem("aqa_cierres",JSON.stringify(nuevos));
+    setCierres(nuevos);
+  };
+
+  const SS2={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+  const inp=(k,ph,type="text")=>React.createElement('input',{type,value:form[k],onChange:e=>setF(k,e.target.value),placeholder:ph,style:SS2});
+  const sel=(k,opts,ph="Seleccionar...")=>React.createElement('select',{value:form[k],onChange:e=>setF(k,e.target.value),style:{...SS2,cursor:"pointer"}},React.createElement('option',{value:""},ph),...opts.map(o=>React.createElement('option',{key:o},o)));
+  const campo=(label,children,full=false)=>React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}},React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}},label),children);
+
+  if(loading) return React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando...");
+
+  return React.createElement('div',null,
+    React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
+      React.createElement('div',null,
+        React.createElement('p',{style:{margin:0,fontSize:14,fontWeight:600}},"Pipeline Comercial"),
+        React.createElement('p',{style:{margin:0,fontSize:12,color:"#6b7a99"}},`${cierres.length} cierres cargados`)
+      ),
+      React.createElement('button',{onClick:()=>setShowForm(p=>!p),style:{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:600,cursor:"pointer"}},showForm?"✕ Cancelar":"+ Nuevo Cierre")
+    ),
+    showForm&&React.createElement('div',{style:{border:"1.5px solid #2E75B6",borderRadius:14,overflow:"hidden",marginBottom:16}},
+      React.createElement('div',{style:{background:"#1F3864",padding:"12px 16px"}},React.createElement('p',{style:{margin:0,color:"white",fontSize:14,fontWeight:600}},"Nuevo Cierre Comercial")),
+      React.createElement('div',{style:{padding:"16px",background:"#fff"}},
+        React.createElement('p',{style:{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}},"📋 Datos del Cliente"),
+        React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
+          campo("Clasificación",sel("clasificacion",CLASIFICACIONES)),
+          campo("Vendedor",inp("vendedor","Nombre del vendedor")),
+          campo("Nombre de Fantasía",inp("nombreFantasia","Ej: LOI SUITES CHAPELCO"),true),
+          campo("Razón Social",inp("razonSocial","Ej: LOITEGUI SA"),true),
+          campo("Dirección",inp("direccion","Dirección de instalación"),true),
+          campo("Correo responsable",inp("correo","email@ejemplo.com")),
+          campo("Contacto de referencia",inp("contacto","Nombre - Cargo - Teléfono"))
+        ),
+        React.createElement('p',{style:{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}},"💧 Condiciones Comerciales"),
+        React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
+          campo("Modelo AQA",sel("modelo",MODELOS_ALL)),
+          campo("Valor / Acuerdo",inp("valor","Ej: $350.000")),
+          campo("Instalación",inp("instalacion","Ej: Bonificada 100%")),
+          campo("Insumos",inp("insumos","Ej: 200 botellas bonificadas")),
+          campo("Contrato",inp("contrato","Ej: 24 meses")),
+          campo("Ajuste",sel("ajuste",AJUSTES)),
+          campo("Observaciones",React.createElement('textarea',{value:form.observaciones,onChange:e=>setF("observaciones",e.target.value),placeholder:"Notas adicionales...",rows:2,style:{...SS2,resize:"vertical"}}),true)
+        ),
+        React.createElement('p',{style:{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}},"👤 Asignación"),
+        React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}},
+          campo("Asesor asignado",sel("asesor",ASESORES,"Seleccionar asesor..."),true)
+        ),
+        React.createElement('button',{onClick:guardar,disabled:saving,style:{width:"100%",background:"#1a5c3a",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:saving?"not-allowed":"pointer"}},saving?"Guardando...":"✔ Guardar Cierre")
+      )
+    ),
+    cierres.length===0&&!showForm&&React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"2rem",textAlign:"center",border:"1px solid #dce6f5"}},
+      React.createElement('p',{style:{margin:"0 0 4px",fontSize:14,color:"#6b7a99"}},"No hay cierres cargados"),
+      React.createElement('p',{style:{margin:0,fontSize:12,color:"#6b7a99"}},'Hacé clic en "+ Nuevo Cierre" para agregar el primero')
+    ),
+    React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
+      ...cierres.map(c=>{
+        const open=expandedId===c.id;
+        return React.createElement('div',{key:c.id,style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:"3px solid #2E75B6"}},
+          React.createElement('div',{onClick:()=>setExpandedId(open?null:c.id),style:{padding:"12px 14px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}},
+            React.createElement('div',{style:{minWidth:0}},
+              React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombreFantasia),
+              React.createElement('p',{style:{margin:0,fontSize:11,color:"#6b7a99"}},`${c.razonSocial} · ${c.modelo||"Modelo a definir"} · Asesor: `,React.createElement('strong',null,c.asesor))
+            ),
+            React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+              React.createElement('span',{style:{background:"#e8f1fb",color:"#1F3864",fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}},c.fecha),
+              React.createElement('span',{style:{fontSize:11,color:"#6b7a99"}},open?"▲":"▼")
+            )
+          ),
+          open&&React.createElement('div',{style:{padding:"0 14px 14px",borderTop:"1px solid #dce6f5"}},
+            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8,marginTop:10}},
+              ...[{l:"Clasificación",v:c.clasificacion},{l:"Vendedor",v:c.vendedor},{l:"Dirección",v:c.direccion},{l:"Correo",v:c.correo},{l:"Contacto",v:c.contacto},{l:"Modelo",v:c.modelo},{l:"Valor",v:c.valor},{l:"Instalación",v:c.instalacion},{l:"Insumos",v:c.insumos},{l:"Contrato",v:c.contrato},{l:"Ajuste",v:c.ajuste}].filter(x=>x.v).map(({l,v})=>
+                React.createElement('div',{key:l,style:{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}},
+                  React.createElement('p',{style:{margin:0,fontSize:10,color:"#6b7a99"}},l),
+                  React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:500}},v)
+                )
+              ),
+              c.observaciones&&React.createElement('div',{style:{gridColumn:"1/-1",background:"#fffbe6",borderRadius:8,padding:"7px 10px",border:"1px solid #f0d060"}},
+                React.createElement('p',{style:{margin:0,fontSize:10,color:"#856404"}},"Observaciones"),
+                React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:500}},c.observaciones)
+              )
+            ),
+            React.createElement('button',{onClick:()=>eliminar(c.id),style:{marginTop:12,fontSize:11,padding:"5px 14px",borderRadius:8,border:"1px solid #FCEBEB",background:"#FCEBEB",color:"#791F1F",cursor:"pointer",fontWeight:500}},"🗑 Eliminar cierre")
+          )
+        );
+      })
+    )
+  );
+}
+
+// ── Generador de Contratos ────────────────────────────────────────────
+function GeneradorContratos() {
+  const [f,setF]=useState({dia:"",mes:"",nro:"",razonSocial:"",cuit:"",tipoSociedad:"",firmante:"",dni:"",direccion:"",modelo:"",botellas:"",valorUsd:"",mensual:"",ajuste:"",instalacion:"0"});
+  const [resultado,setResultado]=useState(null);
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const generar=()=>{
+    const vm=parseInt(f.mensual)||0,ci=parseInt(f.instalacion)||0,cb=parseInt(f.botellas)||0;
+    const usd=USD_OPTS.find(o=>o.value===f.valorUsd)||{value:"—",letras:"—"};
+    const ajAdj=f.ajuste.toLowerCase();
+    const ajPer={trimestral:"trimestre",bimestral:"bimestre",cuatrimestral:"cuatrimestre",semestral:"semestre"}[ajAdj]||ajAdj;
+    if(!vm||!cb||!f.razonSocial||!f.firmante){alert("Completá todos los campos");return;}
+    setResultado(`Ciudad Autónoma de Buenos Aires, ${f.dia} de ${f.mes} de 2026\n\nSeñores\n${f.razonSocial}\n${f.direccion}\nPresente\n\nRef: Oferta de prestación de servicios N°${f.nro}\n\nFadefil S.A. CUIT 30-71295020-6, representada por el Sr. Ignacio Musmanno, DNI N°37.988.431, en su carácter de apoderado con domicilio en Camarones N°1975, de esta Ciudad, se dirige a ${f.razonSocial} CUIT ${f.cuit} representado por el Sr. ${f.firmante}, DNI ${f.dni}, con domicilio en ${f.direccion} (el "Locatario"):\n\n    - La Oferta podrá ser aceptada dentro de los 5 días corridos de recibida.\n    - Se considerará aceptada con: "Por la presente aceptamos su oferta de fecha ${f.dia} de ${f.mes} de 2026".\n\nAtentamente,\np/Fadefil S.A. — Ignacio Musmanno DNI: 37.988.431\n\n\nANEXO I\n\nPRIMERA. OBJETO\nEntrega en comodato y mantenimiento de la máquina ${f.modelo} de marca "AQA", 2 cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de 500 ml. Instalación en: ${f.direccion}.\n\nSEGUNDA. PLAZO\nVigencia desde la instalación por 12 meses, renovable por períodos de 24 meses con preaviso de 30 días.\n\nTERCERA. PRECIO\n3.1. Suma mensual de $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.\n3.2. Ajuste ${ajAdj} por IPC. Base: $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.\n3.3. Costo de instalación: $${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA.\n3.4. Valor Reposición — ${f.modelo}: USD ${usd.value} (${usd.letras}) + IVA. CO2: USD 350 + IVA. Botellas: USD 2 c/u + IVA.\n\nCUARTA. FACTURACIÓN Y PAGO\nFacturación mensual adelantada. Pago en 5 días corridos. CBU Credicoop: 1910043855004300999628.\n\nDOMICILIOS\nFadefil: Camarones N°1975, CABA. Locatario: ${f.direccion}.\nJurisdicción: Tribunales Nacionales Ordinarios, CABA.\n\n\n════════════════════════\nCARTA DE ACEPTACIÓN\n════════════════════════\n\nRe: Aceptación Oferta N°${f.nro}/26 — ${f.dia} de ${f.mes} de 2026.\n\n_________________\nFIRMA / ACLARACIÓN / DNI`);
+  };
+  const SS2={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+  const inp=(k,ph,type="text")=>React.createElement('input',{type,value:f[k],onChange:e=>set(k,e.target.value),placeholder:ph,style:SS2});
+  const sel=(k,opts)=>React.createElement('select',{value:f[k],onChange:e=>set(k,e.target.value),style:{...SS2,cursor:"pointer"}},React.createElement('option',{value:""},"Seleccionar..."),...opts.map(o=>typeof o==="string"?React.createElement('option',{key:o},o):React.createElement('option',{key:o.value,value:o.value},o.label)));
+  const campo=(label,children,full=false)=>React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}},React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}},label),children);
+  const sec=(num,titulo,children)=>React.createElement('div',{style:{border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",marginBottom:12}},React.createElement('div',{style:{background:"#1F3864",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}},React.createElement('span',{style:{width:20,height:20,borderRadius:"50%",background:"rgba(255,255,255,.2)",color:"white",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},num),React.createElement('span',{style:{color:"white",fontSize:13,fontWeight:500}},titulo)),React.createElement('div',{style:{padding:"14px 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,background:"#fff"}},children));
+  return React.createElement('div',null,
+    sec(1,"Datos del Contrato",React.createElement('div',{style:{gridColumn:"1/-1",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},campo("Día",inp("dia","20","number")),campo("Mes",sel("mes",MESES)),campo("N° Oferta",inp("nro","142")))),
+    sec(2,"Datos del Cliente",React.createElement(React.Fragment,null,campo("Razón Social",inp("razonSocial","El Bar de Juan S.R.L."),true),campo("CUIT",inp("cuit","30-12345678-9")),campo("Tipo de Sociedad",sel("tipoSociedad",SOCIEDADES)),campo("Nombre del Firmante",inp("firmante","Juan Pérez")),campo("DNI del Firmante",inp("dni","28.456.789")),campo("Dirección",inp("direccion","Av. Corrientes 1234"),true))),
+    sec(3,"Equipo",React.createElement(React.Fragment,null,campo("Modelo",sel("modelo",MODELOS)),campo("Cant. Botellas",inp("botellas","6","number")),campo("Valor USD Reposición",sel("valorUsd",USD_OPTS),true))),
+    sec(4,"Precio",React.createElement(React.Fragment,null,campo("Valor Mensual ($ sin IVA)",inp("mensual","350000","number")),campo("Tipo de Ajuste",sel("ajuste",AJUSTES)),campo("Costo Instalación ($ sin IVA)",inp("instalacion","0","number")))),
+    React.createElement('button',{onClick:generar,style:{width:"100%",background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:4}},"⬇ Generar Contrato"),
+    resultado&&React.createElement('div',{style:{marginTop:14}},
+      React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
+        React.createElement('span',{style:{fontSize:13,fontWeight:600,color:"#1a5c3a"}},"✔ Listo"),
+        React.createElement('button',{onClick:()=>navigator.clipboard.writeText(resultado),style:{fontSize:12,padding:"5px 12px",borderRadius:8,border:"1px solid #1a5c3a",background:"#e6f7f1",color:"#1a5c3a",cursor:"pointer",fontWeight:500}},"📋 Copiar todo")
+      ),
+      React.createElement('textarea',{readOnly:true,value:resultado,style:{width:"100%",height:380,fontSize:12,fontFamily:"monospace",padding:"12px",borderRadius:10,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",resize:"vertical",lineHeight:1.6}})
+    )
+  );
+}
+
+// ── App Principal ─────────────────────────────────────────────────────
+function App() {
+  const [clientes,setClientes]=useState([]);
+  const [isDemo,setIsDemo]=useState(false);
+  const [loading,setLoading]=useState(true);
+  const [lastUpdate,setLastUpdate]=useState("");
+  const [tab,setTab]=useState("Clientes");
+  const [admTab,setAdmTab]=useState("Generador de Contratos");
+  const [scoreTab,setScoreTab]=useState("Buenos Aires");
+  const [logHoja,setLogHoja]=useState("Comodato");
+  const [logCartera,setLogCartera]=useState("Buenos Aires");
+  const [logData,setLogData]=useState({});
+  const [loadingLog,setLoadingLog]=useState(false);
+  const [admData,setAdmData]=useState({});
+  const [loadingAdm,setLoadingAdm]=useState(false);
+  const [cartera,setCartera]=useState("Todas");
+  const [q,setQ]=useState("");
+  const [fEstado,setFEstado]=useState("todos");
+  const [fCob,setFCob]=useState("Todos");
+  const [expanded,setExpanded]=useState(null);
+  const [instPendExtra,setInstPendExtra]=useState([]);
+
+  // Cargar cobranzas
+  useEffect(()=>{
+    (async()=>{
+      try {
+        const [r1,r2,r3]=await Promise.all([safeFetch(SHEET_URLS.cobBsAs),safeFetch(SHEET_URLS.cobInt),safeFetch(SHEET_URLS.cobHiel)]);
+        const all=[...parseCob(r1,"Buenos Aires"),...parseCob(r2,"Interior"),...parseCob(r3,"Hielogic")];
+        if(all.length>0){setClientes(all);setIsDemo(false);}else throw new Error();
+      } catch {setIsDemo(true);}
+      setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
+      setLoading(false);
+    })();
+  },[]);
+
+  // Cargar hoja de logística según cartera seleccionada
+  useEffect(()=>{
+    if(tab!=="Clientes") return;
+    const key=`${logCartera}_${logHoja}`;
+    if(logData[key]) return;
+    setLoadingLog(true);
+    const urlMap = {
+      "Buenos Aires_Instalaciones Pendientes": SHEET_URLS.baInstPend,
+      "Buenos Aires_Comodato":                 SHEET_URLS.baComodato,
+      "Buenos Aires_Venta":                    SHEET_URLS.baVenta,
+      "Buenos Aires_Desinstalaciones":         SHEET_URLS.baDesins,
+      "Interior_Instalaciones Pendientes":     SHEET_URLS.intInstPend,
+      "Interior_Comodato":                     SHEET_URLS.intComodato,
+      "Interior_Venta":                        SHEET_URLS.intVenta,
+      "Interior_Desinstalaciones":             SHEET_URLS.intDesins,
+      "Hielogic_Instalaciones Pendientes":     SHEET_URLS.hielInstPend,
+      "Hielogic_Comodato":                     SHEET_URLS.hielComodato,
+      "Hielogic_Desinstalaciones":             SHEET_URLS.hielDesins,
+      "AQA Office_Instalaciones Pendientes":   SHEET_URLS.offInstPend,
+      "AQA Office_Comodato":                   SHEET_URLS.offComodato,
+      "AQA Office_Venta":                      SHEET_URLS.offVenta,
+      "AQA Office_Desinstalaciones":           SHEET_URLS.offDesins,
+    };
+    const url = urlMap[key];
+    if(!url){setLoadingLog(false);return;}
+    (async()=>{
+      try {
+        const r = await safeFetch(url);
+        const data = parseGeneric(r);
+        setLogData(p=>({...p,[key]:data}));
+      } catch { setLogData(p=>({...p,[key]:{headers:["Sin datos"],rows:[]}})); }
+      setLoadingLog(false);
+    })();
+  },[tab,logCartera,logHoja]);
+
+  // Cargar administración
+  useEffect(()=>{
+    if(tab!=="Administración"||admTab==="Generador de Contratos") return;
+    if(admData[admTab]) return;
+    setLoadingAdm(true);
+    (async()=>{
+      try {
+        if(admTab==="Score Crediticio"){
+          const [r1,r2,r3]=await Promise.all([safeFetch(SHEET_URLS.scoreBsAs),safeFetch(SHEET_URLS.scoreInt),safeFetch(SHEET_URLS.scoreHiel)]);
+          setAdmData(p=>({...p,"Score Crediticio":{"Buenos Aires":parseGeneric(r1),"Interior":parseGeneric(r2),"Hielogic":parseGeneric(r3)}}));
+        } else if(admTab==="Intimaciones"){
+          const r=await safeFetch(SHEET_URLS.intimaciones);
+          setAdmData(p=>({...p,"Intimaciones":parseGeneric(r)}));
+        } else if(admTab==="Cartas Documento"){
+          const r=await safeFetch(SHEET_URLS.cartasDoc);
+          setAdmData(p=>({...p,"Cartas Documento":parseGeneric(r)}));
+        } else if(admTab==="Veraz"){
+          const r=await safeFetch(SHEET_URLS.veraz);
+          setAdmData(p=>({...p,"Veraz":parseGeneric(r)}));
+        }
+      } catch { setAdmData(p=>({...p,[admTab]:{headers:["Error al cargar"],rows:[]}})); }
+      setLoadingAdm(false);
+    })();
+  },[tab,admTab]);
+
+  const handleNuevoCierre = cierre => {
+    const instRow = {
+      Asesor:cierre.asesor, Vendedor:cierre.vendedor||"—", Modelo:cierre.modelo||"A Definir",
+      ["Nombre de Fantasía - Sucursal"]:cierre.nombreFantasia,
+      Solicitud:cierre.fecha, Documentación:"", Relevo:"", Estado:"Pendiente",
+      Instalación:"", Área:"At. Cliente", Observaciones:cierre.observaciones||""
+    };
+    setInstPendExtra(p=>[instRow,...p]);
+  };
+
+  const cobradores=useMemo(()=>["Todos",...new Set(clientes.map(c=>c.asesorCob).filter(Boolean))],[clientes]);
+  const stats=useMemo(()=>({total:clientes.length,inhab:clientes.filter(c=>c.estado==="inhabilitado").length,pend:clientes.filter(c=>c.estado==="pendiente").length,hab:clientes.filter(c=>c.estado==="habilitado").length,deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0)}),[clientes]);
+  const filtered=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))&&(fEstado==="todos"||c.estado===fEstado)&&(fCob==="Todos"||c.asesorCob===fCob)&&(cartera==="Todas"||c.cartera===cartera);}),[clientes,q,fEstado,fCob,cartera]);
+  const resumen=useMemo(()=>{const r={};clientes.forEach(c=>{const k=c.asesorCob||"Sin asignar";if(!r[k])r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};r[k].total++;r[k][c.estado]=(r[k][c.estado]||0)+1;if(c.deuda>0)r[k].deuda+=c.deuda;});return Object.values(r).sort((a,b)=>b.deuda-a.deuda);},[clientes]);
+
+  const currentLogData = useMemo(()=>{
+    const key=`${logCartera}_${logHoja}`;
+    const base = logData[key]||{headers:[],rows:[]};
+    if(logHoja==="Instalaciones Pendientes"){
+      return {...base, rows:[...instPendExtra,...base.rows]};
+    }
+    return base;
+  },[logData,logCartera,logHoja,instPendExtra]);
+
+  const SS={fontSize:13,padding:"8px 10px",borderRadius:8,border:"1px solid #dce6f5",background:"#fff",color:"#1a2340",outline:"none"};
+
+  if(loading) return React.createElement('div',{style:{padding:"3rem",textAlign:"center",color:"#6b7a99",fontSize:14}},"Cargando AQA Central...");
+
+  return React.createElement('div',{style:{color:"#1a2340"}},
+    // Header
+    React.createElement('div',{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"1rem",flexWrap:"wrap",gap:8}},
+      React.createElement('div',null,
+        React.createElement('p',{style:{fontSize:20,fontWeight:600,margin:0}},"AQA Central"),
+        React.createElement('p',{style:{fontSize:12,color:"#6b7a99",margin:"2px 0 0"}},`${stats.total} clientes · `,isDemo?React.createElement('span',{style:{color:"#EF9F27",fontWeight:500}},"datos demo"):"actualizado "+lastUpdate)
+      ),
+      React.createElement('div',{style:{display:"flex",gap:5,flexWrap:"wrap"}},
+        React.createElement('span',{style:{background:"#FCEBEB",color:"#791F1F",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}},`${stats.inhab} inhabilitados`),
+        React.createElement('span',{style:{background:"#FAEEDA",color:"#633806",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}},`${stats.pend} fc. pendientes`),
+        React.createElement('span',{style:{background:"#EAF3DE",color:"#27500A",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}},`${stats.hab} habilitados`)
+      )
+    ),
+
+    React.createElement(TabBar,{tabs:MAIN_TABS,active:tab,onChange:setTab}),
+
+    // ── Clientes ──
+    tab==="Clientes"&&React.createElement(React.Fragment,null,
+      React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr auto auto auto auto",gap:6,marginBottom:8}},
+        React.createElement('input',{placeholder:"Buscar nombre, ID, asesor...",value:q,onChange:e=>setQ(e.target.value),style:SS}),
+        React.createElement('select',{value:logHoja,onChange:e=>setLogHoja(e.target.value),style:SS},...LOG_HOJAS.map(o=>React.createElement('option',{key:o},o))),
+        React.createElement('select',{value:logCartera,onChange:e=>setLogCartera(e.target.value),style:SS},...["Buenos Aires","Interior","Hielogic","AQA Office"].map(o=>React.createElement('option',{key:o},o))),
+        React.createElement('select',{value:fEstado,onChange:e=>setFEstado(e.target.value),style:SS},React.createElement('option',{value:"todos"},"Todos"),React.createElement('option',{value:"habilitado"},"Habilitado"),React.createElement('option',{value:"pendiente"},"Fc. Pendientes"),React.createElement('option',{value:"inhabilitado"},"Inhabilitado")),
+        React.createElement('select',{value:fCob,onChange:e=>setFCob(e.target.value),style:SS},...cobradores.map(c=>React.createElement('option',{key:c},c)))
+      ),
+      logHoja!=="Comodato"&&React.createElement('div',null,
+        loadingLog
+          ?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando datos...")
+          :React.createElement(React.Fragment,null,
+            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},
+              React.createElement('span',{style:{background:"#e8f1fb",color:"#1F3864",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}},`${currentLogData.rows.length} registros · ${logCartera} · ${logHoja}`)
+            ),
+            React.createElement(GenericTable,{data:currentLogData,headerBg:"#1F3864"})
+          )
+      ),
+      logHoja==="Comodato"&&React.createElement(React.Fragment,null,
+        React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${filtered.length} de ${clientes.length}`),
+        React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5}},
+          ...filtered.map((c,i)=>{
+            const av=avColor(c.asesorCob);
+            const open=expanded?.id===c.id&&expanded?.n===c.nombre;
+            return React.createElement('div',{key:c.id+i,onClick:()=>setExpanded(open?null:{id:c.id,n:c.nombre}),style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"10px 14px",cursor:"pointer",borderLeft:`3px solid ${BCOL[c.estado]||"#ccc"}`}},
+              React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+                React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10,minWidth:0}},
+                  React.createElement('div',{style:{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}},initials(c.asesorCob)),
+                  React.createElement('div',{style:{minWidth:0}},
+                    React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
+                    React.createElement('p',{style:{margin:0,fontSize:11,color:"#6b7a99"}},`ID ${c.id} · ${c.modelo} · ${c.cartera}`)
+                  )
+                ),
+                React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+                  React.createElement(Badge,{estado:c.estado}),
+                  React.createElement('span',{style:{fontSize:11,color:c.deuda>500000?"#791F1F":c.deuda>0?"#633806":"#6b7a99",fontWeight:c.deuda>500000?600:400,whiteSpace:"nowrap"}},fmt(c.deuda))
+                )
+              ),
+              open&&React.createElement('div',{style:{marginTop:10,paddingTop:10,borderTop:"1px solid #dce6f5",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:6}},
+                ...[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor cobr.",v:c.asesorCob||"—"}].map(({l,v})=>
+                  React.createElement('div',{key:l,style:{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}},
+                    React.createElement('p',{style:{margin:0,fontSize:10,color:"#6b7a99"}},l),
+                    React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:500}},v)
+                  )
+                )
+              )
+            );
+          })
+        )
+      )
+    ),
+
+    // ── Resumen Cobranzas ──
+    tab==="Resumen Cobranzas"&&React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:10}},
+      React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}},
+        React.createElement('p',{style:{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}},"Deuda total cartera"),
+        React.createElement('p',{style:{margin:0,fontSize:24,fontWeight:600,color:"#791F1F"}},fmt(stats.deudaTotal)),
+        React.createElement('p',{style:{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}},`sobre ${stats.total} clientes`)
+      ),
+      ...resumen.map(r=>React.createElement('div',{key:r.cob,style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"12px 16px"}},
+        React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+          React.createElement('p',{style:{margin:0,fontSize:14,fontWeight:500}},r.cob),
+          React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:600,color:"#791F1F"}},fmt(r.deuda))
+        ),
+        React.createElement('div',{style:{display:"flex",gap:5,flexWrap:"wrap"}},
+          React.createElement('span',{style:{background:"#FCEBEB",color:"#791F1F",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.inhabilitado||0} inhab.`),
+          React.createElement('span',{style:{background:"#FAEEDA",color:"#633806",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.pendiente||0} pend.`),
+          React.createElement('span',{style:{background:"#EAF3DE",color:"#27500A",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.habilitado||0} hab.`),
+          React.createElement('span',{style:{background:"#f4f7fb",color:"#6b7a99",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.total} total`)
+        )
+      ))
+    ),
+
+    // ── Pipeline Comercial ──
+    tab==="Pipeline Comercial"&&React.createElement(PipelineComercial,{onNuevoCierre:handleNuevoCierre}),
+
+    // ── Logística ──
+    tab==="Logística"&&React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"1.25rem",border:"1px solid #dce6f5"}},
+      React.createElement('p',{style:{margin:"0 0 4px",fontSize:14,fontWeight:500}},"Próximamente"),
+      React.createElement('p',{style:{margin:0,fontSize:13,color:"#6b7a99"}},"Pedidos de CO2, botellas, tapas, relevos e instalaciones.")
+    ),
+
+    // ── Administración ──
+    tab==="Administración"&&React.createElement('div',null,
+      React.createElement(TabBar,{tabs:ADM_TABS,active:admTab,onChange:setAdmTab,color:"#1F3864"}),
+      admTab==="Generador de Contratos"&&React.createElement(GeneradorContratos,null),
+      ["Intimaciones","Cartas Documento","Veraz"].includes(admTab)&&(
+        loadingAdm
+          ?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando...")
+          :admData[admTab]&&React.createElement('div',null,
+            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},
+              React.createElement('span',{style:{background:ADM_COLORS[admTab]+"22",color:ADM_COLORS[admTab],borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}},`${admData[admTab].rows.length} registros · ${admTab}`),
+              React.createElement('button',{onClick:()=>setAdmData(p=>{const n={...p};delete n[admTab];return n;}),style:{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}},"↻ Actualizar")
+            ),
+            React.createElement(GenericTable,{data:admData[admTab],headerBg:ADM_COLORS[admTab]})
+          )
+      ),
+      admTab==="Score Crediticio"&&React.createElement('div',null,
+        React.createElement(TabBar,{tabs:["Buenos Aires","Interior","Hielogic"],active:scoreTab,onChange:setScoreTab,color:"#1a5c3a"}),
+        loadingAdm
+          ?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando score...")
+          :admData["Score Crediticio"]?.[scoreTab]&&React.createElement('div',null,
+            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},
+              React.createElement('span',{style:{background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}},`${admData["Score Crediticio"][scoreTab].rows.length} clientes · ${scoreTab}`),
+              React.createElement('button',{onClick:()=>setAdmData(p=>{const n={...p};delete n["Score Crediticio"];return n;}),style:{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}},"↻ Actualizar")
+            ),
+            React.createElement(ScoreTable,{data:admData["Score Crediticio"][scoreTab]})
+          )
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
