@@ -8,15 +8,17 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f7fb;color:#1a2340;min-height:100vh}
-  input,select,textarea{font-family:inherit}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f7fb;color:#1a2340;min-height:100vh}
+input,select,textarea{font-family:inherit}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-box{background:#fff;borderRadius:14px;padding:24px;width:100%;max-width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.18)}
 </style>
 </head>
 <body>
 <div id="root" style="max-width:960px;margin:0 auto;padding:16px"></div>
 <script type="text/babel">
-const { useState, useMemo, useEffect } = React;
+const { useState, useMemo, useEffect, useRef } = React;
 
 // ── URLs ──────────────────────────────────────────────────────────────
 const SHEET_URLS = {
@@ -26,175 +28,129 @@ const SHEET_URLS = {
   scoreBsAs: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=0&single=true&output=csv",
   scoreInt:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=1608986858&single=true&output=csv",
   scoreHiel: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=448772783&single=true&output=csv",
-  baInstPend: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=540793092&single=true&output=csv",
-  baComodato: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1309380371&single=true&output=csv",
-  baVenta:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=7134883&single=true&output=csv",
-  baDesins:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1964598055&single=true&output=csv",
-  intInstPend: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1582569282&single=true&output=csv",
-  intComodato: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1522331961&single=true&output=csv",
-  intVenta:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=2137112092&single=true&output=csv",
-  intDesins:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1030117501&single=true&output=csv",
-  hielInstPend: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1909832169&single=true&output=csv",
-  hielComodato: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=392626389&single=true&output=csv",
-  hielDesins:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1502779041&single=true&output=csv",
-  offInstPend: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=796818616&single=true&output=csv",
-  offComodato: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1425890095&single=true&output=csv",
-  offVenta:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1080444203&single=true&output=csv",
-  offDesins:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1428472954&single=true&output=csv",
-  intimaciones: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=354176531&single=true&output=csv",
-  cartasDoc:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=0&single=true&output=csv",
-  veraz:        "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=2086198383&single=true&output=csv",
+  baInstPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=540793092&single=true&output=csv",
+  baComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1309380371&single=true&output=csv",
+  baVenta:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=7134883&single=true&output=csv",
+  baDesins:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1964598055&single=true&output=csv",
+  intInstPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1582569282&single=true&output=csv",
+  intComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1522331961&single=true&output=csv",
+  intVenta:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=2137112092&single=true&output=csv",
+  intDesins: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1030117501&single=true&output=csv",
+  hielInstPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1909832169&single=true&output=csv",
+  hielComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=392626389&single=true&output=csv",
+  hielDesins:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1502779041&single=true&output=csv",
+  offInstPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=796818616&single=true&output=csv",
+  offComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1425890095&single=true&output=csv",
+  offVenta:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1080444203&single=true&output=csv",
+  offDesins: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1428472954&single=true&output=csv",
+  intimaciones:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=354176531&single=true&output=csv",
+  cartasDoc:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=0&single=true&output=csv",
+  veraz:      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=2086198383&single=true&output=csv",
 };
 
 const LOG_URL_MAP = {
-  "Buenos Aires_Instalaciones Pendientes": "baInstPend",
-  "Buenos Aires_Comodato":                 "baComodato",
-  "Buenos Aires_Venta":                    "baVenta",
-  "Buenos Aires_Desinstalaciones":         "baDesins",
-  "Interior_Instalaciones Pendientes":     "intInstPend",
-  "Interior_Comodato":                     "intComodato",
-  "Interior_Venta":                        "intVenta",
-  "Interior_Desinstalaciones":             "intDesins",
-  "Hielogic_Instalaciones Pendientes":     "hielInstPend",
-  "Hielogic_Comodato":                     "hielComodato",
-  "Hielogic_Desinstalaciones":             "hielDesins",
-  "AQA Office_Instalaciones Pendientes":   "offInstPend",
-  "AQA Office_Comodato":                   "offComodato",
-  "AQA Office_Venta":                      "offVenta",
-  "AQA Office_Desinstalaciones":           "offDesins",
+  "Buenos Aires_Instalaciones Pendientes":"baInstPend","Buenos Aires_Comodato":"baComodato","Buenos Aires_Venta":"baVenta","Buenos Aires_Desinstalaciones":"baDesins",
+  "Interior_Instalaciones Pendientes":"intInstPend","Interior_Comodato":"intComodato","Interior_Venta":"intVenta","Interior_Desinstalaciones":"intDesins",
+  "Hielogic_Instalaciones Pendientes":"hielInstPend","Hielogic_Comodato":"hielComodato","Hielogic_Desinstalaciones":"hielDesins",
+  "AQA Office_Instalaciones Pendientes":"offInstPend","AQA Office_Comodato":"offComodato","AQA Office_Venta":"offVenta","AQA Office_Desinstalaciones":"offDesins",
 };
+
+// ── Equipos para seguimiento ──────────────────────────────────────────
+const EQUIPOS_SEGUIMIENTO = {
+  "Comercial": ["Santiago Puigmarti","Nicolas Albino","Paloma Suarez","Vicente Biondo","Laura Pomponio","Tomas Zoff","Claudio Lozano","Ignacio Musmanno","Alejo Fernandez","Marcelo Paccapelo"],
+  "Atención al Cliente": ["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"],
+  "Logística": ["Facundo Costabel","Alex Iraldi","Antonella Legname","Brian Gonzalez","Sebastian Garcia"],
+  "Cobranzas": ["Dante Briceño","Mathias Servin","Dorotea Mazzieri","Milagros Saracco"],
+};
+
+const VENDEDORES = ["Santiago Puigmarti","Nicolas Albino","Paloma Suarez","Vicente Biondo","Laura Pomponio","Tomas Zoff","Claudio Lozano","Ignacio Musmanno","Alejo Fernandez","Marcelo Paccapelo"];
+const ASESORES_ATCLTE = ["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"];
+const CLASIFICACIONES = ["HoReCa","AQA Office","Residencial","Hotel","Restaurante","Café","Bar","Otro"];
+const MODELOS_ALL = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20","A Definir"];
+const AJUSTES = ["Trimestral","Bimestral","Cuatrimestral","Semestral"];
+const MAIN_TABS = ["Atención al Cliente","Cobranzas","Comercial","Logística","Administración"];
+const LOG_HOJAS = ["Instalaciones Pendientes","Comodato","Desinstalaciones","Venta"];
+const ADM_TABS  = ["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio"];
+const ADM_COLORS = {"Intimaciones":"#8a3a00","Cartas Documento":"#1a3a8a","Veraz":"#5a1a8a"};
+const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const MODELOS=["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20"];
+const USD_OPTS=[{label:"USD 6.900 (WL7 / SM)",value:"6.900",letras:"seis mil novecientos"},{label:"USD 7.400 (BM)",value:"7.400",letras:"siete mil cuatrocientos"},{label:"USD 5.900 (RBF)",value:"5.900",letras:"cinco mil novecientos"},{label:"USD 4.000 (RBL / OFF20)",value:"4.000",letras:"cuatro mil"}];
+const SOCIEDADES=["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributista","Asociación Civil"];
 
 // ── Helpers ───────────────────────────────────────────────────────────
 const splitCSV = line => {
-  const cols = []; let cur = "", inQ = false;
-  for (let ch of line) {
-    if (ch === '"') { inQ = !inQ; continue; }
-    if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; continue; }
-    cur += ch;
-  }
-  cols.push(cur.trim());
-  return cols;
+  const cols=[]; let cur="",inQ=false;
+  for(let ch of line){if(ch==='"'){inQ=!inQ;continue;}if(ch===','&&!inQ){cols.push(cur.trim());cur="";continue;}cur+=ch;}
+  cols.push(cur.trim()); return cols;
 };
-
 const parseGeneric = text => {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return { headers: [], rows: [] };
-  const headers = splitCSV(lines[0]).map(h => h.replace(/"/g,"").trim());
-  const rows = lines.slice(1).map(line => {
-    const cols = splitCSV(line);
-    const row = {};
-    headers.forEach((h,i) => row[h] = cols[i]||"");
-    return row;
-  }).filter(r => Object.values(r).some(v => v));
-  return { headers, rows };
+  const lines=text.trim().split("\n");
+  if(lines.length<2) return {headers:[],rows:[]};
+  const headers=splitCSV(lines[0]).map(h=>h.replace(/"/g,"").trim());
+  const rows=lines.slice(1).map(line=>{const cols=splitCSV(line);const row={};headers.forEach((h,i)=>row[h]=cols[i]||"");return row;}).filter(r=>Object.values(r).some(v=>v));
+  return {headers,rows};
 };
-
-const parseNum = s => parseFloat((s||"").replace(/[^0-9,-]/g,"").replace(/\./g,"").replace(",",".")) || 0;
-
-// Estado: lee columna F (Adicionales) — si alguna dice Inhabilitado => inhabilitado
-// si dice Facturas Pendientes => pendiente, sino habilitado
-const parseEstado = (colF, colG) => {
-  const check = s => {
-    const sl = (s||"").toLowerCase();
-    if (sl.includes("inhabilitado")) return "inhabilitado";
-    if (sl.includes("facturas") || sl.includes("pendiente")) return "pendiente";
-    return "habilitado";
-  };
-  const eF = check(colF);
-  const eG = check(colG);
-  if (eF === "inhabilitado" || eG === "inhabilitado") return "inhabilitado";
-  if (eF === "pendiente" || eG === "pendiente") return "pendiente";
-  return "habilitado";
+const parseNum = s => parseFloat((s||"").replace(/[^0-9,-]/g,"").replace(/\./g,"").replace(",","."))||0;
+const parseEstado = (f,g) => {
+  const c=s=>{const sl=(s||"").toLowerCase();if(sl.includes("inhabilitado"))return"inhabilitado";if(sl.includes("facturas")||sl.includes("pendiente"))return"pendiente";return"habilitado";};
+  const ef=c(f),eg=c(g);
+  if(ef==="inhabilitado"||eg==="inhabilitado")return"inhabilitado";
+  if(ef==="pendiente"||eg==="pendiente")return"pendiente";
+  return"habilitado";
 };
-
-// Parsea el sheet de cobranzas
-// Cols: A=Asesor(cob), B=ID Persat, C=Máquina, D=Abono, E=Cliente, F=Adicionales, G=Mantenimiento, H=Deuda, I=FC Pendientes, J=Mensualidades
-const parseCob = (text, cartera) => {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return [];
-  return lines.slice(1).map(line => {
-    const c = splitCSV(line);
-    const [asesorCob, id, modelo, abono, nombre, colF, colG, deudaRaw, fcRaw, mensRaw] = c;
-    if (!id?.trim() || !nombre?.trim()) return null;
-    return {
-      id: id.trim(), nombre: nombre.trim(), modelo: modelo||"",
-      asesorCob: asesorCob||"",
-      abono: parseNum(abono),
-      estado: parseEstado(colF, colG),
-      deuda: parseNum(deudaRaw),
-      fc: parseInt(fcRaw)||0,
-      mens: parseInt(mensRaw)||0,
-      cartera,
-      asesorAtClte: "", fechaInstalacion: "",
-    };
+const parseCob = (text,cartera) => {
+  const lines=text.trim().split("\n");
+  if(lines.length<2)return[];
+  return lines.slice(1).map(line=>{
+    const c=splitCSV(line);
+    const[asesorCob,id,modelo,abono,nombre,colF,colG,deudaRaw,fcRaw,mensRaw]=c;
+    if(!id?.trim()||!nombre?.trim())return null;
+    return{id:id.trim(),nombre:nombre.trim(),modelo:modelo||"",asesorCob:asesorCob||"",abono:parseNum(abono),estado:parseEstado(colF,colG),deuda:parseNum(deudaRaw),fc:parseInt(fcRaw)||0,mens:parseInt(mensRaw)||0,cartera,asesorAtClte:"",fechaInstalacion:""};
   }).filter(Boolean);
 };
-
-// Parsea Comodato para extraer asesor At. Cliente (col A) y fecha instalación (col I = Inicio de Servicio)
 const parseComodato = text => {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return {};
-  const map = {};
-  lines.slice(1).forEach(line => {
-    const c = splitCSV(line);
-    // A=Asesor, D=Nombre Fantasía, E=ID Persat, I=Inicio de Servicio
-    const asesor = c[0]||"";
-    const idPersat = (c[4]||"").trim();
-    const fechaIns = c[8]||""; // columna I (índice 8)
-    if (idPersat) map[idPersat] = { asesorAtClte: asesor, fechaInstalacion: fechaIns };
-  });
+  const lines=text.trim().split("\n");
+  if(lines.length<2)return{};
+  const map={};
+  lines.slice(1).forEach(line=>{const c=splitCSV(line);const asesor=c[0]||"";const idPersat=(c[4]||"").trim();const fechaIns=c[8]||"";if(idPersat)map[idPersat]={asesorAtClte:asesor,fechaInstalacion:fechaIns};});
   return map;
 };
+const safeFetch = url => fetch(url).then(r=>{if(!r.ok)throw new Error();return r.text();});
+const fmt = n => n<=0?"Sin deuda":"$"+Math.round(n).toLocaleString("es-AR");
+const PAL=[{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
+const avColor=name=>PAL[(name||"").split("").reduce((a,ch)=>a+ch.charCodeAt(0),0)%PAL.length];
+const initials=name=>(name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const BCOL={habilitado:"#639922",inhabilitado:"#E24B4A",pendiente:"#EF9F27"};
+const nowStr=()=>new Date().toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
 
-const safeFetch = url => fetch(url).then(r => { if(!r.ok) throw new Error(); return r.text(); });
-const fmt = n => n<=0 ? "Sin deuda" : "$"+Math.round(n).toLocaleString("es-AR");
-const PAL = [{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
-const avColor = name => PAL[(name||"").split("").reduce((a,ch)=>a+ch.charCodeAt(0),0)%PAL.length];
-const initials = name => (name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
-const BCOL = { habilitado:"#639922", inhabilitado:"#E24B4A", pendiente:"#EF9F27" };
-
-const numLetras = n => {
-  if(!n||n===0) return "cero";
+const numLetras=n=>{
+  if(!n||n===0)return"cero";
   const M={1:"uno",2:"dos",3:"tres",4:"cuatro",5:"cinco",6:"seis",7:"siete",8:"ocho",9:"nueve",10:"diez",11:"once",12:"doce",13:"trece",14:"catorce",15:"quince",16:"dieciséis",17:"diecisiete",18:"dieciocho",19:"diecinueve",20:"veinte",21:"veintiún",22:"veintidós",23:"veintitrés",24:"veinticuatro",25:"veinticinco",26:"veintiséis",27:"veintisiete",28:"veintiocho",29:"veintinueve",30:"treinta",40:"cuarenta",50:"cincuenta",60:"sesenta",70:"setenta",80:"ochenta",90:"noventa"};
-  if(n<=29) return M[n]||"";
+  if(n<=29)return M[n]||"";
   if(n<100){const d=Math.floor(n/10)*10,u=n%10;return u===0?M[d]:M[d]+" y "+M[u];}
-  if(n===100) return "cien";
-  if(n<200) return "ciento "+numLetras(n-100);
+  if(n===100)return"cien";
+  if(n<200)return"ciento "+numLetras(n-100);
   const C={200:"doscientos",300:"trescientos",400:"cuatrocientos",500:"quinientos",600:"seiscientos",700:"setecientos",800:"ochocientos",900:"novecientos"};
   const cv=Math.floor(n/100)*100,r=n%100;
-  if(n<1000) return r===0?C[cv]:C[cv]+" "+numLetras(r);
+  if(n<1000)return r===0?C[cv]:C[cv]+" "+numLetras(r);
   const m2=Math.floor(n/1000),r2=n%1000;
   const ms=m2===1?"mil":numLetras(m2)+" mil";
   return r2===0?ms:ms+" "+numLetras(r2);
 };
 
-// ── Constantes ────────────────────────────────────────────────────────
-const MAIN_TABS = ["Atención al Cliente","Cobranzas","Comercial","Logística","Administración"];
-const LOG_HOJAS = ["Instalaciones Pendientes","Comodato","Desinstalaciones","Venta"];
-const ADM_TABS  = ["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio"];
-const ADM_COLORS = {"Intimaciones":"#8a3a00","Cartas Documento":"#1a3a8a","Veraz":"#5a1a8a"};
-const ASESORES_ATCLTE = ["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"];
-const CLASIFICACIONES = ["HoReCa","AQA Office","Residencial","Hotel","Restaurante","Café","Bar","Otro"];
-const MODELOS_ALL = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20","A Definir"];
-const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-const MODELOS=["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20"];
-const USD_OPTS=[{label:"USD 6.900 (WL7 / SM)",value:"6.900",letras:"seis mil novecientos"},{label:"USD 7.400 (BM)",value:"7.400",letras:"siete mil cuatrocientos"},{label:"USD 5.900 (RBF)",value:"5.900",letras:"cinco mil novecientos"},{label:"USD 4.000 (RBL / OFF20)",value:"4.000",letras:"cuatro mil"}];
-const AJUSTES=["Trimestral","Bimestral","Cuatrimestral","Semestral"];
-const SOCIEDADES=["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributista","Asociación Civil"];
-
 // ── Componentes UI ────────────────────────────────────────────────────
-const Badge = ({estado}) => {
+const Badge=({estado})=>{
   const M={habilitado:{bg:"#EAF3DE",c:"#27500A",t:"Habilitado"},inhabilitado:{bg:"#FCEBEB",c:"#791F1F",t:"Inhabilitado"},pendiente:{bg:"#FAEEDA",c:"#633806",t:"Fc. Pendientes"}};
   const s=M[estado]||M.habilitado;
   return React.createElement('span',{style:{background:s.bg,color:s.c,fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}},s.t);
 };
 
-const TabBar = ({tabs,active,onChange,color="#1F3864"}) =>
+const TabBar=({tabs,active,onChange,color="#1F3864"})=>
   React.createElement('div',{style:{display:"flex",gap:2,borderBottom:"1px solid #dce6f5",marginBottom:12,overflowX:"auto"}},
     tabs.map(t=>React.createElement('button',{key:t,onClick:()=>onChange(t),style:{background:"transparent",border:"none",borderBottom:active===t?`2px solid ${color}`:"2px solid transparent",padding:"7px 12px",fontSize:12,fontWeight:active===t?500:400,color:active===t?color:"#6b7a99",cursor:"pointer",marginBottom:-1,whiteSpace:"nowrap"}},t))
   );
 
-const GenericTable = ({data,headerBg="#1F3864"}) =>
+const GenericTable=({data,headerBg="#1F3864"})=>
   React.createElement('div',{style:{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}},
     React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
       React.createElement('thead',null,React.createElement('tr',null,...(data.headers||[]).map(h=>React.createElement('th',{key:h,style:{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}},h)))),
@@ -202,8 +158,8 @@ const GenericTable = ({data,headerBg="#1F3864"}) =>
     )
   );
 
-const parseScoreNum = s => { const m=String(s||"").match(/\d+/); return m?parseInt(m[0]):0; };
-const ScoreTable = ({data}) =>
+const parseScoreNum=s=>{const m=String(s||"").match(/\d+/);return m?parseInt(m[0]):0;};
+const ScoreTable=({data})=>
   React.createElement('div',{style:{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}},
     React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
       React.createElement('thead',null,React.createElement('tr',null,...(data.headers||[]).map(h=>React.createElement('th',{key:h,style:{background:"#1a5c3a",color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}},h)))),
@@ -219,99 +175,160 @@ const ScoreTable = ({data}) =>
     )
   );
 
-// ── Generador de Contratos ────────────────────────────────────────────
-function GeneradorContratos() {
-  const [f,setF]=useState({dia:"",mes:"",nro:"",razonSocial:"",cuit:"",tipoSociedad:"",firmante:"",dni:"",direccion:"",modelo:"",botellas:"",valorUsd:"",mensual:"",ajuste:"",instalacion:"0"});
-  const [resultado,setResultado]=useState(null);
-  const set=(k,v)=>setF(p=>({...p,[k]:v}));
-  const generar=()=>{
-    const vm=parseInt(f.mensual)||0,ci=parseInt(f.instalacion)||0,cb=parseInt(f.botellas)||0;
-    const usd=USD_OPTS.find(o=>o.value===f.valorUsd)||{value:"—",letras:"—"};
-    const ajAdj=f.ajuste.toLowerCase();
-    const ajPer={trimestral:"trimestre",bimestral:"bimestre",cuatrimestral:"cuatrimestre",semestral:"semestre"}[ajAdj]||ajAdj;
-    if(!vm||!cb||!f.razonSocial||!f.firmante){alert("Completá todos los campos");return;}
-    setResultado(`Ciudad Autónoma de Buenos Aires, ${f.dia} de ${f.mes} de 2026\n\nSeñores\n${f.razonSocial}\n${f.direccion}\nPresente\n\nRef: Oferta de prestación de servicios N°${f.nro}\n\nFadefil S.A. CUIT 30-71295020-6, representada por el Sr. Ignacio Musmanno, DNI N°37.988.431, en su carácter de apoderado con domicilio en Camarones N°1975, de esta Ciudad, se dirige a ${f.razonSocial} CUIT ${f.cuit} representado por el Sr. ${f.firmante}, DNI ${f.dni}, con domicilio en ${f.direccion} (el "Locatario"):\n\n    - La Oferta podrá ser aceptada dentro de los 5 días corridos de recibida.\n    - Se considerará aceptada con: "Por la presente aceptamos su oferta de fecha ${f.dia} de ${f.mes} de 2026".\n\nAtentamente,\np/Fadefil S.A. — Ignacio Musmanno DNI: 37.988.431\n\n\nANEXO I\n\nPRIMERA. OBJETO\nEntrega en comodato y mantenimiento de la máquina ${f.modelo} de marca "AQA", 2 cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de 500 ml. Instalación en: ${f.direccion}.\n\nSEGUNDA. PLAZO\nVigencia desde la instalación por 12 meses, renovable por períodos de 24 meses con preaviso de 30 días.\n\nTERCERA. PRECIO\n3.1. Suma mensual de $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.\n3.2. Ajuste ${ajAdj} por IPC. Base: $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.\n3.3. Costo de instalación: $${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA.\n3.4. Valor Reposición — ${f.modelo}: USD ${usd.value} (${usd.letras}) + IVA. CO2: USD 350 + IVA. Botellas: USD 2 c/u + IVA.\n\nCUARTA. FACTURACIÓN Y PAGO\nFacturación mensual adelantada. Pago en 5 días corridos. CBU Credicoop: 1910043855004300999628.\n\nDOMICILIOS\nFadefil: Camarones N°1975, CABA. Locatario: ${f.direccion}.\nJurisdicción: Tribunales Nacionales Ordinarios, CABA.\n\n\n════════════════════════\nCARTA DE ACEPTACIÓN\n════════════════════════\n\nRe: Aceptación Oferta N°${f.nro}/26 — ${f.dia} de ${f.mes} de 2026.\n\n_________________\nFIRMA / ACLARACIÓN / DNI`);
+// ── Modal de Seguimiento ──────────────────────────────────────────────
+function ModalSeguimiento({onClose, onGuardar}) {
+  const [equipo, setEquipo] = useState("");
+  const [autor, setAutor] = useState("");
+  const [texto, setTexto] = useState("");
+
+  const guardar = () => {
+    if(!equipo||!autor||!texto.trim()){alert("Completá equipo, autor y el texto");return;}
+    onGuardar({equipo, autor, texto, fecha: nowStr()});
+    onClose();
   };
-  const SS2={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
-  const inp=(k,ph,type="text")=>React.createElement('input',{type,value:f[k],onChange:e=>set(k,e.target.value),placeholder:ph,style:SS2});
-  const sel=(k,opts)=>React.createElement('select',{value:f[k],onChange:e=>set(k,e.target.value),style:{...SS2,cursor:"pointer"}},React.createElement('option',{value:""},"Seleccionar..."),...opts.map(o=>typeof o==="string"?React.createElement('option',{key:o},o):React.createElement('option',{key:o.value,value:o.value},o.label)));
-  const campo=(label,children,full=false)=>React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}},React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}},label),children);
-  const sec=(num,titulo,children)=>React.createElement('div',{style:{border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",marginBottom:12}},React.createElement('div',{style:{background:"#1F3864",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}},React.createElement('span',{style:{width:20,height:20,borderRadius:"50%",background:"rgba(255,255,255,.2)",color:"white",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},num),React.createElement('span',{style:{color:"white",fontSize:13,fontWeight:500}},titulo)),React.createElement('div',{style:{padding:"14px 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,background:"#fff"}},children));
-  return React.createElement('div',null,
-    sec(1,"Datos del Contrato",React.createElement('div',{style:{gridColumn:"1/-1",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},campo("Día",inp("dia","20","number")),campo("Mes",sel("mes",MESES)),campo("N° Oferta",inp("nro","142")))),
-    sec(2,"Datos del Cliente",React.createElement(React.Fragment,null,campo("Razón Social",inp("razonSocial","El Bar de Juan S.R.L."),true),campo("CUIT",inp("cuit","30-12345678-9")),campo("Tipo de Sociedad",sel("tipoSociedad",SOCIEDADES)),campo("Nombre del Firmante",inp("firmante","Juan Pérez")),campo("DNI del Firmante",inp("dni","28.456.789")),campo("Dirección",inp("direccion","Av. Corrientes 1234"),true))),
-    sec(3,"Equipo",React.createElement(React.Fragment,null,campo("Modelo",sel("modelo",MODELOS)),campo("Cant. Botellas",inp("botellas","6","number")),campo("Valor USD Reposición",sel("valorUsd",USD_OPTS),true))),
-    sec(4,"Precio",React.createElement(React.Fragment,null,campo("Valor Mensual ($ sin IVA)",inp("mensual","350000","number")),campo("Tipo de Ajuste",sel("ajuste",AJUSTES)),campo("Costo Instalación ($ sin IVA)",inp("instalacion","0","number")))),
-    React.createElement('button',{onClick:generar,style:{width:"100%",background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:4}},"⬇ Generar Contrato"),
-    resultado&&React.createElement('div',{style:{marginTop:14}},
-      React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
-        React.createElement('span',{style:{fontSize:13,fontWeight:600,color:"#1a5c3a"}},"✔ Listo"),
-        React.createElement('button',{onClick:()=>navigator.clipboard.writeText(resultado),style:{fontSize:12,padding:"5px 12px",borderRadius:8,border:"1px solid #1a5c3a",background:"#e6f7f1",color:"#1a5c3a",cursor:"pointer",fontWeight:500}},"📋 Copiar todo")
+
+  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+
+  return React.createElement('div',{className:"modal-overlay",onClick:e=>{if(e.target.className==="modal-overlay")onClose()}},
+    React.createElement('div',{className:"modal-box"},
+      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+        React.createElement('p',{style:{fontSize:15,fontWeight:600}},"Nueva actualización"),
+        React.createElement('button',{onClick:onClose,style:{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}},"✕")
       ),
-      React.createElement('textarea',{readOnly:true,value:resultado,style:{width:"100%",height:380,fontSize:12,fontFamily:"monospace",padding:"12px",borderRadius:10,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",resize:"vertical",lineHeight:1.6}})
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:12}},
+        React.createElement('div',null,
+          React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px",display:"block",marginBottom:5}},"Equipo"),
+          React.createElement('select',{value:equipo,onChange:e=>{setEquipo(e.target.value);setAutor("");},style:SS},
+            React.createElement('option',{value:""},"Seleccionar equipo..."),
+            ...Object.keys(EQUIPOS_SEGUIMIENTO).map(k=>React.createElement('option',{key:k},k))
+          )
+        ),
+        equipo&&React.createElement('div',null,
+          React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px",display:"block",marginBottom:5}},"Quién escribe"),
+          React.createElement('select',{value:autor,onChange:e=>setAutor(e.target.value),style:SS},
+            React.createElement('option',{value:""},"Seleccionar..."),
+            ...EQUIPOS_SEGUIMIENTO[equipo].map(a=>React.createElement('option',{key:a},a))
+          )
+        ),
+        React.createElement('div',null,
+          React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px",display:"block",marginBottom:5}},"Actualización"),
+          React.createElement('textarea',{value:texto,onChange:e=>setTexto(e.target.value),placeholder:"Escribí la actualización...",rows:4,style:{...SS,resize:"vertical"}})
+        ),
+        React.createElement('button',{onClick:guardar,style:{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:"pointer"}},"✔ Guardar actualización")
+      )
     )
   );
 }
 
-// ── Pipeline Comercial ────────────────────────────────────────────────
-const CIERRE_VACIO = {clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",fecha:""};
+// ── Modal Selección Vendedor ──────────────────────────────────────────
+function ModalVendedor({onClose, onSelect}) {
+  return React.createElement('div',{className:"modal-overlay",onClick:e=>{if(e.target.className==="modal-overlay")onClose()}},
+    React.createElement('div',{className:"modal-box"},
+      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+        React.createElement('p',{style:{fontSize:15,fontWeight:600}},"Seleccionar Vendedor"),
+        React.createElement('button',{onClick:onClose,style:{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}},"✕")
+      ),
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:6}},
+        ...VENDEDORES.map(v=>React.createElement('button',{key:v,onClick:()=>{onSelect(v);onClose();},style:{background:"#f4f7fb",border:"1px solid #dce6f5",borderRadius:8,padding:"10px 14px",fontSize:13,cursor:"pointer",textAlign:"left",fontWeight:400,color:"#1a2340",transition:"background .15s"}},v))
+      )
+    )
+  );
+}
 
-function PipelineComercial({onNuevoCierre}) {
+// ── Modal Selección Asesor ────────────────────────────────────────────
+function ModalAsesor({onClose, onSelect}) {
+  return React.createElement('div',{className:"modal-overlay",onClick:e=>{if(e.target.className==="modal-overlay")onClose()}},
+    React.createElement('div',{className:"modal-box"},
+      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+        React.createElement('p',{style:{fontSize:15,fontWeight:600}},"Asignar Asesor"),
+        React.createElement('button',{onClick:onClose,style:{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}},"✕")
+      ),
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:6}},
+        ...ASESORES_ATCLTE.map(a=>React.createElement('button',{key:a,onClick:()=>{onSelect(a);onClose();},style:{background:"#f4f7fb",border:"1px solid #dce6f5",borderRadius:8,padding:"10px 14px",fontSize:13,cursor:"pointer",textAlign:"left",fontWeight:400,color:"#1a2340"}},a))
+      )
+    )
+  );
+}
+
+// ── Comercial ─────────────────────────────────────────────────────────
+const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",fecha:""};
+
+function Comercial({onNuevoCierre}) {
   const [cierres,setCierres]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showForm,setShowForm]=useState(false);
   const [form,setForm]=useState(CIERRE_VACIO);
   const [saving,setSaving]=useState(false);
   const [expandedId,setExpandedId]=useState(null);
+  const [modalVendedor,setModalVendedor]=useState(false);
+  const [modalAsesor,setModalAsesor]=useState(null); // id del cierre a asignar
+  const [modalSeg,setModalSeg]=useState(null); // id del cierre a actualizar
   const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
 
   useEffect(()=>{
     const saved=localStorage.getItem("aqa_cierres");
-    if(saved) setCierres(JSON.parse(saved));
+    if(saved)setCierres(JSON.parse(saved));
     setLoading(false);
   },[]);
 
+  const save=nuevos=>{localStorage.setItem("aqa_cierres",JSON.stringify(nuevos));setCierres(nuevos);};
+
   const guardar=()=>{
-    if(!form.nombreFantasia||!form.razonSocial||!form.asesor){alert("Completá Nombre de Fantasía, Razón Social y Asesor");return;}
+    if(!form.nombreFantasia||!form.razonSocial){alert("Completá al menos Nombre de Fantasía y Razón Social");return;}
     setSaving(true);
-    const nuevo={...form,id:Date.now().toString(),fecha:new Date().toLocaleDateString("es-AR"),estado:"Pendiente instalación"};
+    const nuevo={...form,id:Date.now().toString(),fecha:new Date().toLocaleDateString("es-AR"),historial:[]};
     const nuevos=[nuevo,...cierres];
-    localStorage.setItem("aqa_cierres",JSON.stringify(nuevos));
-    setCierres(nuevos);
+    save(nuevos);
     onNuevoCierre(nuevo);
     setForm(CIERRE_VACIO);
     setShowForm(false);
     setSaving(false);
   };
 
-  const eliminar=id=>{
-    const nuevos=cierres.filter(c=>c.id!==id);
-    localStorage.setItem("aqa_cierres",JSON.stringify(nuevos));
-    setCierres(nuevos);
+  const asignarAsesor=(id,asesor)=>{
+    const nuevos=cierres.map(c=>c.id===id?{...c,asesor}:c);
+    save(nuevos);
   };
+
+  const agregarSeguimiento=(id,entrada)=>{
+    const nuevos=cierres.map(c=>c.id===id?{...c,historial:[...(c.historial||[]),entrada]}:c);
+    save(nuevos);
+  };
+
+  const eliminar=id=>{save(cierres.filter(c=>c.id!==id));};
 
   const SS2={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
   const inp=(k,ph,type="text")=>React.createElement('input',{type,value:form[k],onChange:e=>setF(k,e.target.value),placeholder:ph,style:SS2});
   const sel=(k,opts,ph="Seleccionar...")=>React.createElement('select',{value:form[k],onChange:e=>setF(k,e.target.value),style:{...SS2,cursor:"pointer"}},React.createElement('option',{value:""},ph),...opts.map(o=>React.createElement('option',{key:o},o)));
   const campo=(label,children,full=false)=>React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}},React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}},label),children);
 
-  if(loading) return React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando...");
+  if(loading)return React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando...");
 
   return React.createElement('div',null,
+    modalVendedor&&React.createElement(ModalVendedor,{onClose:()=>setModalVendedor(false),onSelect:v=>setF("vendedor",v)}),
+    modalAsesor&&React.createElement(ModalAsesor,{onClose:()=>setModalAsesor(null),onSelect:a=>asignarAsesor(modalAsesor,a)}),
+    modalSeg&&React.createElement(ModalSeguimiento,{onClose:()=>setModalSeg(null),onGuardar:e=>agregarSeguimiento(modalSeg,e)}),
+
     React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
       React.createElement('div',null,
         React.createElement('p',{style:{margin:0,fontSize:14,fontWeight:600}},"Comercial"),
-        React.createElement('p',{style:{margin:0,fontSize:12,color:"#6b7a99"}},`${cierres.length} cierres cargados`)
+        React.createElement('p',{style:{margin:0,fontSize:12,color:"#6b7a99"}},`${cierres.length} cierres`)
       ),
       React.createElement('button',{onClick:()=>setShowForm(p=>!p),style:{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:600,cursor:"pointer"}},showForm?"✕ Cancelar":"+ Nuevo Cierre")
     ),
+
     showForm&&React.createElement('div',{style:{border:"1.5px solid #2E75B6",borderRadius:14,overflow:"hidden",marginBottom:16}},
       React.createElement('div',{style:{background:"#1F3864",padding:"12px 16px"}},React.createElement('p',{style:{margin:0,color:"white",fontSize:14,fontWeight:600}},"Nuevo Cierre Comercial")),
       React.createElement('div',{style:{padding:"16px",background:"#fff"}},
         React.createElement('p',{style:{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}},"📋 Datos del Cliente"),
         React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
           campo("Clasificación",sel("clasificacion",CLASIFICACIONES)),
-          campo("Vendedor",inp("vendedor","Nombre del vendedor")),
+          campo("Vendedor",
+            React.createElement('div',{style:{display:"flex",gap:6,alignItems:"center"}},
+              React.createElement('div',{style:{flex:1,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",fontSize:13,color:form.vendedor?"#1a2340":"#9baabf",minHeight:38}},form.vendedor||"Sin seleccionar"),
+              React.createElement('button',{onClick:()=>setModalVendedor(true),style:{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"9px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}},"Elegir")
+            )
+          ),
           campo("Nombre de Fantasía",inp("nombreFantasia","Ej: LOI SUITES CHAPELCO"),true),
           campo("Razón Social",inp("razonSocial","Ej: LOITEGUI SA"),true),
           campo("Dirección",inp("direccion","Dirección de instalación"),true),
@@ -328,49 +345,345 @@ function PipelineComercial({onNuevoCierre}) {
           campo("Ajuste",sel("ajuste",AJUSTES)),
           campo("Observaciones",React.createElement('textarea',{value:form.observaciones,onChange:e=>setF("observaciones",e.target.value),placeholder:"Notas adicionales...",rows:2,style:{...SS2,resize:"vertical"}}),true)
         ),
-        React.createElement('p',{style:{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}},"👤 Asignación"),
-        React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}},
-          campo("Asesor asignado",sel("asesor",ASESORES_ATCLTE,"Seleccionar asesor..."),true)
-        ),
-        React.createElement('button',{onClick:guardar,disabled:saving,style:{width:"100%",background:"#1a5c3a",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:saving?"not-allowed":"pointer"}},saving?"Guardando...":"✔ Guardar Cierre")
+        React.createElement('p',{style:{margin:"0 0 6px",fontSize:11,color:"#6b7a99"}},"El asesor de Atención al Cliente se puede asignar después desde cada cierre."),
+        React.createElement('button',{onClick:guardar,disabled:saving,style:{width:"100%",background:"#1a5c3a",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:saving?"not-allowed":"pointer",marginTop:8}},saving?"Guardando...":"✔ Guardar Cierre")
       )
     ),
+
     cierres.length===0&&!showForm&&React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"2rem",textAlign:"center",border:"1px solid #dce6f5"}},
       React.createElement('p',{style:{margin:"0 0 4px",fontSize:14,color:"#6b7a99"}},"No hay cierres cargados"),
-      React.createElement('p',{style:{margin:0,fontSize:12,color:"#6b7a99"}},'Hacé clic en "+ Nuevo Cierre" para agregar el primero')
+      React.createElement('p',{style:{margin:0,fontSize:12,color:"#6b7a99"}},'Hacé clic en "+ Nuevo Cierre"')
     ),
+
     React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
       ...cierres.map(c=>{
         const open=expandedId===c.id;
-        return React.createElement('div',{key:c.id,style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:"3px solid #2E75B6"}},
+        const sinAsesor=!c.asesor;
+        return React.createElement('div',{key:c.id,style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${sinAsesor?"#EF9F27":"#2E75B6"}`}},
+          // Header del cierre
           React.createElement('div',{onClick:()=>setExpandedId(open?null:c.id),style:{padding:"12px 14px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}},
             React.createElement('div',{style:{minWidth:0}},
-              React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombreFantasia),
-              React.createElement('p',{style:{margin:0,fontSize:11,color:"#6b7a99"}},`${c.razonSocial} · ${c.modelo||"Modelo a definir"} · Asesor: `,React.createElement('strong',null,c.asesor))
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8}},
+                React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombreFantasia),
+                sinAsesor&&React.createElement('span',{style:{background:"#FAEEDA",color:"#633806",fontSize:10,padding:"1px 7px",borderRadius:5,fontWeight:500,whiteSpace:"nowrap"}},"Sin asesor")
+              ),
+              React.createElement('p',{style:{margin:0,fontSize:11,color:"#6b7a99"}},`${c.razonSocial} · ${c.vendedor||"Sin vendedor"} · ${c.modelo||"Modelo a definir"}`)
             ),
             React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
               React.createElement('span',{style:{background:"#e8f1fb",color:"#1F3864",fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}},c.fecha),
               React.createElement('span',{style:{fontSize:11,color:"#6b7a99"}},open?"▲":"▼")
             )
           ),
+
+          // Detalle expandido
           open&&React.createElement('div',{style:{padding:"0 14px 14px",borderTop:"1px solid #dce6f5"}},
-            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8,marginTop:10}},
+            // Datos
+            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginTop:10}},
               ...[{l:"Clasificación",v:c.clasificacion},{l:"Vendedor",v:c.vendedor},{l:"Dirección",v:c.direccion},{l:"Correo",v:c.correo},{l:"Contacto",v:c.contacto},{l:"Modelo",v:c.modelo},{l:"Valor",v:c.valor},{l:"Instalación",v:c.instalacion},{l:"Insumos",v:c.insumos},{l:"Contrato",v:c.contrato},{l:"Ajuste",v:c.ajuste}].filter(x=>x.v).map(({l,v})=>
                 React.createElement('div',{key:l,style:{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}},
                   React.createElement('p',{style:{margin:0,fontSize:10,color:"#6b7a99"}},l),
                   React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:500}},v)
                 )
               ),
-              c.observaciones&&React.createElement('div',{style:{gridColumn:"1/-1",background:"#fffbe6",borderRadius:8,padding:"7px 10px",border:"1px solid #f0d060"}},
-                React.createElement('p',{style:{margin:0,fontSize:10,color:"#856404"}},"Observaciones"),
-                React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:500}},c.observaciones)
+              // Asesor At. Cliente
+              React.createElement('div',{style:{background:sinAsesor?"#fffbe6":"#f4f7fb",borderRadius:8,padding:"7px 10px",border:sinAsesor?"1px solid #f0d060":"none"}},
+                React.createElement('p',{style:{margin:0,fontSize:10,color:"#6b7a99"}},"Asesor At. Cliente"),
+                React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6,marginTop:2}},
+                  React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:500}},c.asesor||"Sin asignar"),
+                  React.createElement('button',{onClick:()=>setModalAsesor(c.id),style:{fontSize:10,padding:"2px 8px",borderRadius:5,border:"1px solid #1F3864",background:"transparent",color:"#1F3864",cursor:"pointer"}},c.asesor?"Cambiar":"Asignar")
+                )
               )
             ),
+            c.observaciones&&React.createElement('div',{style:{background:"#fffbe6",borderRadius:8,padding:"7px 10px",border:"1px solid #f0d060",marginTop:8}},
+              React.createElement('p',{style:{margin:0,fontSize:10,color:"#856404"}},"Observaciones iniciales"),
+              React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:500}},c.observaciones)
+            ),
+
+            // Historial de seguimiento
+            React.createElement('div',{style:{marginTop:12}},
+              React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+                React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:600,color:"#1F3864"}},"Historial de seguimiento"),
+                React.createElement('button',{onClick:()=>setModalSeg(c.id),style:{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"5px 12px",fontSize:11,cursor:"pointer",fontWeight:500}},
+                  "+ Agregar actualización"
+                )
+              ),
+              (!c.historial||c.historial.length===0)
+                ?React.createElement('p',{style:{fontSize:12,color:"#9baabf",fontStyle:"italic",margin:0}},"Sin actualizaciones aún.")
+                :React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:6}},
+                  ...[...(c.historial||[])].reverse().map((h,i)=>
+                    React.createElement('div',{key:i,style:{background:"#f4f7fb",borderRadius:8,padding:"8px 12px",borderLeft:"3px solid #2E75B6"}},
+                      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
+                        React.createElement('span',{style:{fontSize:11,fontWeight:600,color:"#1F3864"}},`${h.equipo} — ${h.autor}`),
+                        React.createElement('span',{style:{fontSize:10,color:"#9baabf"}},h.fecha)
+                      ),
+                      React.createElement('p',{style:{margin:0,fontSize:12,color:"#1a2340"}},h.texto)
+                    )
+                  )
+                )
+            ),
+
             React.createElement('button',{onClick:()=>eliminar(c.id),style:{marginTop:12,fontSize:11,padding:"5px 14px",borderRadius:8,border:"1px solid #FCEBEB",background:"#FCEBEB",color:"#791F1F",cursor:"pointer",fontWeight:500}},"🗑 Eliminar cierre")
           )
         );
       })
     )
+  );
+}
+
+// ── Generador de Contratos ────────────────────────────────────────────
+function generarDocx(f) {
+  const vm=parseInt(f.mensual)||0, ci=parseInt(f.instalacion)||0, cb=parseInt(f.botellas)||0;
+  const usd=USD_OPTS.find(o=>o.value===f.valorUsd)||{value:"—",letras:"—"};
+  const ajAdj=f.ajuste.toLowerCase();
+  const ajPer={trimestral:"trimestre",bimestral:"bimestre",cuatrimestral:"cuatrimestre",semestral:"semestre"}[ajAdj]||ajAdj;
+
+  const txt =
+`Ciudad Autónoma de Buenos Aires, ${f.dia} de ${f.mes} de 2026
+
+Señores
+${f.razonSocial}
+${f.direccion}
+Presente
+
+Ref: Oferta de prestación de servicios N°${f.nro}
+
+Fadefil S.A. CUIT 30-71295020-6, representada por el Sr. Ignacio Musmanno, DNI N°37.988.431, en su carácter de apoderado con domicilio en Camarones N°1975, de esta Ciudad, ("Fadefil" y/o el "Locador"), se dirige a ${f.razonSocial} CUIT ${f.cuit} representado en este acto por el Sr. ${f.firmante}, con DNI ${f.dni}, en su carácter de Representante con domicilio en ${f.direccion} (el "Locatario" y junto con Fadefil y/o el Proveedor las "Partes" e individualmente la "Parte") a fin de efectuar la oferta de prestación de servicio de entrega en comodato e instalación de los equipos y/o sus adicionales, en el domicilio sito en ${f.direccion} (la "Oferta"):
+
+    - La Oferta podrá ser aceptada por Uds. dentro de los 5 (cinco) días corridos de recibida.
+    - La Oferta se considerará aceptada con la fórmula: "Por la presente aceptamos su oferta de fecha ${f.dia} de ${f.mes} de 2026".
+    - Una vez aceptada, la relación comercial será regida por los términos del Anexo I.
+
+Atentamente,
+p/Fadefil S.A.
+Aclaración: Ignacio Musmanno   DNI: 37.988.431
+Carácter: apoderado
+
+
+ANEXO I
+Términos y Condiciones de la Oferta
+
+Entre, por una parte, FADEFIL S.A., CUIT 30-71295020-6, representado en este acto por el Sr. Ignacio Musmanno con DNI 37.988.431, en su carácter de apoderado, con domicilio constituido en la calle Camarones N°1975, de la Ciudad Autónoma de Buenos Aires (el "Locador" y/o Fadefil); y por la otra parte ${f.razonSocial} CUIT ${f.cuit}, representado en este acto por el Sr. ${f.firmante} DNI ${f.dni}, en su carácter de Representante (el "Locatario" y junto con Fadefil y/o el Locador las "Partes" e individualmente la "Parte"), con domicilio constituido en ${f.direccion}.
+
+CONSIDERANDO:
+
+    - Que el Locador es una sociedad anónima constituida de conformidad con las leyes de la República Argentina, que brinda servicios profesionales de instalación y mantenimiento de dispensadores y purificadores de agua potable, que se conectan a la red de agua corriente.
+    - Que el Locatario es una ${f.tipoSociedad} para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" correspondiente al equipo descripto en la presente Oferta y que incluye la provisión de 2 (dos) cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una.
+
+En consecuencia, las Partes acuerdan que, una vez aceptada la Oferta, la relación comercial resultante entre las mismas (la "Relación Comercial"), se regirá por los términos y condiciones que se indican a continuación y, en subsidio, por las disposiciones legales vigentes que le sean aplicables:
+
+PRIMERA. OBJETO
+
+    1.1. El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de dispensadores y purificadores de agua potable correspondiente a la máquina ${f.modelo} de marca "AQA" (la "Máquina") que incluye la provisión de 2 (dos) cilindros CO2 los cuales son rotativos en base al requerimiento del Locatario y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una (los "Equipos").
+
+    1.2. La Máquina es de titularidad exclusiva de Fadefil, la cual será entregada al Locatario, en comodato, e instalada en el inmueble sito en ${f.direccion} (el "Inmueble") para el uso y goce de la misma por parte del Locatario (el "Servicio" y/o los "Servicios").
+
+    1.3. El Servicio será prestado -única y exclusivamente- dentro de las instalaciones del Inmueble, mediante la instalación de la Máquina por parte del personal de Fadefil, la cual se encuentra en perfecto estado de conservación y funcionamiento.
+
+    1.4. Las Partes acuerdan que, a partir de la instalación de la Máquina, el Locador asistirá al Inmueble cada noventa (90) días a fin de efectuar la revisión, mantenimiento, cambio de filtros y/o reposición -en caso de corresponder- de la Máquina, previa coordinación con el Locatario de fecha y hora de visita.
+
+    1.5. En el supuesto que la reparación implique el traslado de la Máquina a los talleres del Locador, éste último proporcionará al Locatario otro equipo por todo el tiempo que demore la reparación de la misma.
+
+    1.6. Asimismo, el servicio de mantenimiento de la Máquina incluye: a) servicio técnico telefónico permanente dentro de las veinticuatro (24) horas; b) servicio técnico presencial; c) mantenimiento trimestral con control de calidad del agua; d) cambio de filtros siempre que el Locador lo considere necesario a su exclusivo criterio; e) cambio de equipo en caso de ser necesario y mano de obra incluida; f) capacitación inicial al personal del establecimiento del Locatario; g) la reparación -sin costos adicionales al Precio- ante cualquier desperfecto que presentare la Máquina como resultado de su uso adecuado. Cualquier desperfecto deberá ser notificado por medio fehaciente al Locador dentro de las cuarenta y ocho (48) horas de haber tomado conocimiento del mismo.
+
+    1.7. Fadefil se encuentra facultado -a su exclusivo arbitrio- a modificar y/o reemplazar en cualquier momento la Máquina instalada en el Inmueble, previa comunicación fehaciente.
+
+SEGUNDA. PLAZO
+
+    2.1. La relación contractual entre las Partes entrará en vigencia a partir de la fecha de entrega de los Equipos e instalación de la Máquina en el Inmueble y se mantendrá vigente por el plazo de 12 (doce) meses (el "Plazo de Vigencia Inicial").
+
+    2.2. El Plazo de Vigencia Inicial se renovará automáticamente a su vencimiento por períodos de 24 (veinticuatro) meses (la "Prórroga"), salvo que alguna de las Partes notifique a la otra Parte su voluntad de no renovar con 30 (treinta) días de antelación.
+
+    2.3. Finalizado el Plazo de Vigencia Inicial o de la Prórroga, la Relación Comercial entre las Partes concluirá de pleno derecho, sin necesidad de interpelación judicial y/o extrajudicial alguna.
+
+    2.4. Las Partes establecen que el contrato de comodato es accesorio y complementario a la presente; en consecuencia, el Plazo del Comodato finalizará indefectiblemente en la misma fecha de terminación y/o rescisión de la presente.
+
+TERCERA. PRECIO
+
+    3.1. Las Partes convienen, por la prestación del servicio, la suma mensual de $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA (el "Precio").
+
+    3.2. El Precio será actualizado en forma ${ajAdj}, conforme la variación del índice de precios al consumidor ("IPC") acumulada durante el ${ajPer} inmediato posterior al último mes actualizado. Para la primera actualización se tomará como base de cálculo la suma del precio inicial de $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA, y luego para las siguientes actualizaciones se considerará la suma abonada el último mes inmediato anterior a la actualización.
+
+    3.3. En caso de que el Locatario solicite un cambio de la Máquina por un modelo distinto, previa conformidad expresa del Locador, se actualizará automáticamente el Precio de conformidad con el nuevo modelo de máquina solicitado por el Locatario.
+
+    3.4. El costo de la instalación inicial de la Máquina se encuentra a cargo exclusivamente del Locatario, el cual asciende a la suma total de $${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA (el "Costo de instalación").
+
+    3.5. El Locatario declara -expresa e irrevocablemente- conocer el valor total de los Equipos entregados en comodato (el "Valor de Reposición"), el cual al día de la fecha asciende a:
+        Máquina "AQA" ${f.modelo}: USD ${usd.value} (dólares estadounidenses ${usd.letras}) + IVA.
+        Cilindros de CO2: USD 350 (dólares estadounidenses trescientos cincuenta) + IVA.
+
+    3.6. El Locatario declara y garantiza expresamente que, ante la pérdida, robo, hurto, destrucción total y/o parcial y/o falta de restitución de la Máquina, abonará a Fadefil, dentro del plazo máximo de diez (10) días hábiles contados a partir de la fecha de intimación fehaciente, el Valor de Reposición.
+
+    3.7. El costo de reposición correspondiente a las botellas de AQA, por unidad, asciende a la suma de USD 2 (dólar estadounidense dos) más IVA (valor unitario), y la suma de USD 0,20 (veinte centavos de dólar) más IVA en concepto de reposición de las tapas (valor unitario). El importe será determinado conforme a la cotización oficial del dólar del Banco de la Nación Argentina vigente a la fecha de emisión de la factura.
+
+CUARTA. FACTURACIÓN Y PAGO
+
+    4.1. Fadefil facturará la prestación de sus Servicios de forma mensual, emitiendo la correspondiente factura por mes adelantado, en formato electrónico (la "Factura").
+
+    4.2. La Factura será abonada por el Locatario, dentro de los cinco (5) días corridos contados desde la fecha de su emisión, mediante transferencia bancaria a la cuenta de titularidad de Fadefil, del Banco Credicoop CBU: 1910043855004300999628.
+
+QUINTA. PERSONAL. AUTONOMÍA DE LAS PARTES.
+
+    5.1. Las Partes declaran que revisten el carácter de independientes la una respecto de la otra y que esta Oferta no constituye la formación de una sociedad de hecho ni accidental, ni una relación de dependencia entre las mismas.
+
+    5.2. Las Partes acuerdan que no podrán generarse obligaciones de ninguna índole respecto del personal y/o terceros y/o contratistas y/o subcontratistas de la otra Parte. En virtud de lo expuesto cada una de las Partes asume plena y total responsabilidad frente a terceros y a su propio personal de las obligaciones civiles, penales, laborales, previsionales, administrativas, etc., por las actividades desarrolladas. También se obligan a mantener indemne y a restituir a la otra Parte cualquier suma de dinero que ésta pudiera verse obligada a abonar por tales conceptos.
+
+SEXTA. MARCAS
+
+    6.1. Ninguna de las Partes podrá utilizar el nombre comercial de la otra Parte. El presente no autoriza ni otorga derecho alguno al Locatario a utilizar las marcas de titularidad exclusiva de Fadefil (las "Marcas").
+
+    6.2. Las Marcas son y seguirán siendo exclusivas y de irrestricta propiedad de Fadefil, bajo la protección de la legislación nacional e internacional sobre propiedad intelectual. Se prohíbe todo uso y/o explotación comercial de las Marcas.
+
+    6.3. Sin perjuicio de lo expuesto, Fadefil autoriza al Locatario a incluir en los menús y redes sociales el logo de la marca "AQA" única y exclusivamente para la promoción del servicio objeto de la presente y durante el plazo de vigencia de la misma.
+
+    6.4. El incumplimiento por parte del Locatario habilitará a Fadefil a iniciar las acciones legales que correspondan, incluyendo daños y perjuicios, denuncias penales y medidas cautelares, aún finalizada la vigencia de la presente Relación Comercial.
+
+SÉPTIMA. OBLIGACIONES DE LAS PARTES
+
+    7.1. Durante la vigencia del presente será obligación de Fadefil realizar la prestación de los Servicios poniendo en su ejecución la máxima diligencia y eficiencia, de conformidad con las sanas prácticas profesionales y las reglas de su buen arte y oficio.
+
+    7.2. Fadefil declara y garantiza contar con la capacidad técnica y económica para cumplir con el Servicio.
+
+    7.3. El Locatario declara y garantiza que posee una estructura eléctrica y conexión de agua adecuada para la instalación de los Equipos, quedando a exclusivo cargo, costo y riesgo el mantenimiento y conservación de dichas instalaciones.
+
+    7.4. El Locatario reconoce expresamente que la Máquina es de exclusiva propiedad de Fadefil, debiendo devolver inmediatamente los Equipos en caso de rescisión y/o terminación de la presente, en las mismas condiciones de entrega.
+
+    7.5. El Locatario se obliga -expresa e irrevocablemente- a utilizar los Equipos -única y exclusivamente- en el Inmueble y a no ceder, transferir, distribuir, comercializar, ampliar, alterar, desactivar, retener ni trasladar los Equipos; caso contrario deberá abonar el 50% de la mensualidad vigente en concepto de incumplimiento de cláusula.
+
+    7.6. El Locatario se obliga a notificar de forma fehaciente a Fadefil cualquier medida judicial o extrajudicial que afectare a los Equipos en el plazo de veinticuatro (24) horas de notificada u ocurrida la misma.
+
+    7.7. El Locatario se compromete a implementar un protector de tensión en el tomacorriente que ocupará la Máquina. Asimismo, deberá cerrar las llaves de paso y desenchufar la Máquina en caso de ausentarse del Inmueble por un período superior a dos (2) días corridos.
+
+    7.8. El Locatario se compromete a realizar la correcta limpieza y sanitizado de botellas, operar la Máquina bajo personal capacitado y proveer a la misma con agua potable de red.
+
+    7.9. El Locatario deberá cumplir con todas las habilitaciones exigidas por las leyes y reglamentaciones vigentes para mantener instalado y operar en su Inmueble tubos sometidos a presión.
+
+    7.10. El Locatario deberá utilizar las botellas de AQA -única y exclusivamente- para servir agua del Equipo, no pudiendo servir en las mismas cualquier otra bebida.
+
+OCTAVA. RESPONSABILIDAD DE LAS PARTES
+
+    8.1. Cada una de las Partes será responsable exclusiva por los daños ocasionados que les sean imputables por su acción u omisión, en virtud de las obligaciones asumidas por cada una por medio de la presente.
+
+    8.2. Las Partes se garantizan recíprocamente indemnidad total por los daños y perjuicios que ocasionen a terceros de todo tipo.
+
+NOVENA. MORA. INCUMPLIMIENTO. RESCISIÓN. RESOLUCIÓN ANTICIPADA
+
+    9.1. La mora en el cumplimiento de las obligaciones previstas en la Oferta se producirá en forma automática y de pleno derecho, sin necesidad de intimación previa judicial o extrajudicial.
+
+    9.2. En caso de que el Locatario incurra en mora en los pagos del Precio al Locador, se devengará un interés equivalente a una vez y media la tasa activa del Banco de la Nación Argentina para el descuento de documentos comerciales, en forma mensual, desde la fecha de mora hasta la fecha del efectivo pago.
+
+    9.3. Las Partes acuerdan que, dentro de los primeros treinta (30) días corridos contados desde la fecha de aceptación de la presente Oferta, las Partes podrán resolver la Relación Comercial en forma anticipada, unilateral y sin expresión de causa, mediante notificación fehaciente y con un preaviso de quince (15) días corridos, sin que ello implique indemnización alguna. Sin perjuicio de ello, el Locatario deberá: (i) abonar a Fadefil el monto proporcional correspondiente al servicio efectivamente prestado hasta la fecha de la efectiva rescisión y; (ii) restituir a Fadefil los Equipos entregados en el mismo estado en que fueron recibidos.
+
+    Sin expresión de causa:
+        - Fadefil podrá terminar la Relación Comercial en cualquier momento con preaviso de 15 días corridos, sin generar derecho a indemnización a favor del Locatario.
+        - El Locatario podrá rescindir con preaviso de 15 días corridos. Si lo hace dentro de los primeros 6 meses del Plazo de Vigencia Inicial, deberá abonar el 50% de las mensualidades pendientes hasta completar el primer año. Entre el mes 7 y 12, el 25% de las mensualidades pendientes del primer año.
+        - A partir del mes 13 hasta el 24 de la Prórroga: 50% de mensualidades pendientes del segundo año más 25% del tercer año de la Prórroga.
+        - A partir del mes 25: 25% de las mensualidades pendientes hasta el vencimiento de la Prórroga.
+
+    Incumplimiento: siempre que persistiera luego de transcurridos 15 días corridos de la fecha en que la parte cumplidora intime fehacientemente a su subsanación, la parte cumplidora podrá rescindir la Relación Comercial de pleno derecho, quedando a salvo su derecho de reclamar los daños y perjuicios ocasionados.
+
+    9.4. Producida la terminación de la Relación Comercial, el Locatario deberá proceder a la inmediata restitución de los Equipos y la totalidad de insumos entregados en comodato dentro del plazo máximo de cinco (5) días contados desde la fecha de la efectiva rescisión, en el domicilio de Fadefil. Queda terminantemente prohibida la utilización de la marca AQA o cualquiera de sus componentes una vez rescindido el contrato.
+
+    9.5. Toda obligación de cualquiera de las Partes que en forma expresa o por naturaleza propia subsista a la extinción o rescisión de la presente, se mantendrá plenamente vigente hasta que sea debidamente cumplida en su totalidad.
+
+DÉCIMA. CONFIDENCIALIDAD
+
+Ambas partes acuerdan mantener la confidencialidad de la información que se utilice a los fines y en el marco de la ejecución de la presente y durante la vigencia de la misma y hasta un plazo de dos (2) años contados a partir de la terminación de la Relación Comercial.
+
+DÉCIMA PRIMERA. ANEXOS Y SELLADOS
+
+    11.1. Los anexos que se mencionan a lo largo del presente se encuentran adjuntos al final de este documento y, para todos los efectos, forman parte integrante del mismo.
+
+    11.2. De corresponder el pago del impuesto de sellos, el mismo será soportado por las Partes por mitades.
+
+DÉCIMA SEGUNDA. CESIÓN
+
+Queda expresa e irrevocablemente convenido que el Locatario no podrá ceder ni transferir en todo o en parte la relación que surja de la presente Oferta, ni sus derechos y obligaciones, sin previa conformidad por escrito de la Locadora, bajo apercibimiento de resolución.
+
+DÉCIMA TERCERA. NULIDAD PARCIAL. ACUERDO COMPLETO.
+
+    13.1. Si se considerara que cualquier disposición de esta Oferta es ilegal, inaplicable o inejecutable por decisión de una autoridad competente, dicha estipulación no afectará las restantes disposiciones de esta Oferta.
+
+    13.2. La presente Oferta con sus anexos: (a) constituye el acuerdo principal entre las Partes para la prestación del Servicio; (b) sustituye todo acuerdo anterior entre las Partes con relación al Servicio; y (c) no será modificada o complementada, excepto mediante instrumento escrito firmado por ambas Partes.
+
+DÉCIMA CUARTA. NO EXCLUSIVIDAD DE FADEFIL.
+
+    14.1. La presente Oferta no implica exclusividad para Fadefil. En tal sentido, Fadefil podrá prestar libremente el Servicio a cualquier otra persona, empresa o entidad.
+
+    14.2. Sin perjuicio de lo expuesto, el Locatario no podrá contratar el objeto del Servicio y/o tareas similares con otro u otros proveedores.
+
+DÉCIMA QUINTA. DOMICILIOS
+
+A todos los efectos, las Partes constituyen domicilios especiales en los lugares que a continuación se detallan, domicilios donde se tendrán por válidas todas las notificaciones que las Partes practicaren (sean judiciales o extrajudiciales).
+
+    - Fadefil constituye domicilio especial físico en Camarones N°1975, Ciudad Autónoma de Buenos Aires.
+    - El Locatario constituye domicilio especial físico en ${f.direccion}.
+
+DÉCIMA SEXTA. LEGISLACIÓN Y JURISDICCIÓN
+
+    16.1. La presente Oferta se regirá por las leyes de la República Argentina y será interpretada de conformidad con las mismas.
+
+    16.2. Las Partes acuerdan que toda controversia que se suscite entre las Partes con relación al presente acuerdo, su existencia, validez, calificación, interpretación, alcance, cumplimiento o resolución, se resolverá definitivamente por los Tribunales Nacionales Ordinarios con asiento en la Ciudad Autónoma de Buenos Aires, renunciando a cualquier otro fuero que pudiese corresponderles.
+
+
+════════════════════════════════════════════════════
+CARTA DE ACEPTACIÓN
+════════════════════════════════════════════════════
+
+Ciudad Autónoma de Buenos Aires, ___ de ________ de 2026
+
+Sres. Fadefil S.A.
+Camarones 1975 CABA
+At.: Sr. Ignacio Musmanno
+
+Re: Aceptación de Oferta de prestación de servicios N°${f.nro}/26
+
+De nuestra consideración:
+
+Por la presente nos dirigimos a Uds. a fin de notificarles nuestra decisión de aceptar vuestra "Oferta de prestación de servicios N°${f.nro}/26" de fecha ${f.dia} de ${f.mes} de 2026.
+
+Los saludo atentamente.
+
+_________________
+FIRMA
+ACLARACIÓN
+DNI`;
+
+  // Generar .doc (RTF con extensión .doc, compatible con Word)
+  const rtf = `{\\rtf1\\ansi\\deff0
+{\\fonttbl{\\f0\\froman\\fcharset0 Times New Roman;}}
+{\\f0\\fs22 ${txt.replace(/\n/g,"\\par\n").replace(/[\\{}]/g,"\\$&")}}
+}`;
+  const blob = new Blob([rtf], {type:"application/msword"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Contrato_AQA_${(f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"")}_${f.dia}${(f.mes||"").slice(0,3)}2026.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function GeneradorContratos() {
+  const [f,setF]=useState({dia:"",mes:"",nro:"",razonSocial:"",cuit:"",tipoSociedad:"",firmante:"",dni:"",direccion:"",modelo:"",botellas:"",valorUsd:"",mensual:"",ajuste:"",instalacion:"0"});
+  const [ok,setOk]=useState(false);
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const generar=()=>{
+    const vm=parseInt(f.mensual)||0,cb=parseInt(f.botellas)||0;
+    if(!vm||!cb||!f.razonSocial||!f.firmante){alert("Completá todos los campos obligatorios");return;}
+    generarDocx(f);
+    setOk(true);
+  };
+  const SS2={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+  const inp=(k,ph,type="text")=>React.createElement('input',{type,value:f[k],onChange:e=>set(k,e.target.value),placeholder:ph,style:SS2});
+  const sel=(k,opts)=>React.createElement('select',{value:f[k],onChange:e=>set(k,e.target.value),style:{...SS2,cursor:"pointer"}},React.createElement('option',{value:""},"Seleccionar..."),...opts.map(o=>typeof o==="string"?React.createElement('option',{key:o},o):React.createElement('option',{key:o.value,value:o.value},o.label)));
+  const campo=(label,children,full=false)=>React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}},React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}},label),children);
+  const sec=(num,titulo,children)=>React.createElement('div',{style:{border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",marginBottom:12}},React.createElement('div',{style:{background:"#1F3864",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}},React.createElement('span',{style:{width:20,height:20,borderRadius:"50%",background:"rgba(255,255,255,.2)",color:"white",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},num),React.createElement('span',{style:{color:"white",fontSize:13,fontWeight:500}},titulo)),React.createElement('div',{style:{padding:"14px 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,background:"#fff"}},children));
+  return React.createElement('div',null,
+    sec(1,"Datos del Contrato",React.createElement('div',{style:{gridColumn:"1/-1",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},campo("Día",inp("dia","20","number")),campo("Mes",sel("mes",MESES)),campo("N° Oferta",inp("nro","142")))),
+    sec(2,"Datos del Cliente",React.createElement(React.Fragment,null,campo("Razón Social",inp("razonSocial","El Bar de Juan S.R.L."),true),campo("CUIT",inp("cuit","30-12345678-9")),campo("Tipo de Sociedad",sel("tipoSociedad",SOCIEDADES)),campo("Nombre del Firmante",inp("firmante","Juan Pérez")),campo("DNI del Firmante",inp("dni","28.456.789")),campo("Dirección",inp("direccion","Av. Corrientes 1234"),true))),
+    sec(3,"Equipo",React.createElement(React.Fragment,null,campo("Modelo",sel("modelo",MODELOS)),campo("Cant. Botellas",inp("botellas","6","number")),campo("Valor USD Reposición",sel("valorUsd",USD_OPTS),true))),
+    sec(4,"Precio",React.createElement(React.Fragment,null,campo("Valor Mensual ($ sin IVA)",inp("mensual","350000","number")),campo("Tipo de Ajuste",sel("ajuste",AJUSTES)),campo("Costo Instalación ($ sin IVA)",inp("instalacion","0","number")))),
+    React.createElement('button',{onClick:generar,style:{width:"100%",background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:4}},"⬇ Descargar Contrato (.doc)"),
+    ok&&React.createElement('div',{style:{marginTop:10,padding:"10px 14px",background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,fontSize:13,fontWeight:500}},"✔ Contrato descargado. Abrilo con Word para ver el formato completo.")
   );
 }
 
@@ -395,148 +708,69 @@ function App() {
   const [expanded,setExpanded]=useState(null);
   const [instPendExtra,setInstPendExtra]=useState([]);
 
-  // Cargar cobranzas + comodato para enriquecer con asesor At. Cliente y fecha instalación
   useEffect(()=>{
     (async()=>{
-      try {
-        const [rCobBsAs, rCobInt, rCobHiel, rComBsAs, rComInt, rComHiel, rComOff] = await Promise.all([
-          safeFetch(SHEET_URLS.cobBsAs),
-          safeFetch(SHEET_URLS.cobInt),
-          safeFetch(SHEET_URLS.cobHiel),
-          safeFetch(SHEET_URLS.baComodato),
-          safeFetch(SHEET_URLS.intComodato),
-          safeFetch(SHEET_URLS.hielComodato),
-          safeFetch(SHEET_URLS.offComodato),
+      try{
+        const [rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff]=await Promise.all([
+          safeFetch(SHEET_URLS.cobBsAs),safeFetch(SHEET_URLS.cobInt),safeFetch(SHEET_URLS.cobHiel),
+          safeFetch(SHEET_URLS.baComodato),safeFetch(SHEET_URLS.intComodato),safeFetch(SHEET_URLS.hielComodato),safeFetch(SHEET_URLS.offComodato),
         ]);
-
-        // Parsear comodatos para obtener asesor At. Cliente y fecha instalación por ID Persat
-        const comodatoMap = {
-          ...parseComodato(rComBsAs),
-          ...parseComodato(rComInt),
-          ...parseComodato(rComHiel),
-          ...parseComodato(rComOff),
-        };
-
-        const enrichClientes = (text, cartera) => {
-          return parseCob(text, cartera).map(c => {
-            const extra = comodatoMap[c.id] || {};
-            return { ...c, asesorAtClte: extra.asesorAtClte||"", fechaInstalacion: extra.fechaInstalacion||"" };
-          });
-        };
-
-        const all = [
-          ...enrichClientes(rCobBsAs, "Buenos Aires"),
-          ...enrichClientes(rCobInt, "Interior"),
-          ...enrichClientes(rCobHiel, "Hielogic"),
-        ];
-
-        if(all.length>0) setClientes(all);
-        else throw new Error();
-      } catch(e) { console.error(e); }
+        const comodatoMap={...parseComodato(rComBsAs),...parseComodato(rComInt),...parseComodato(rComHiel),...parseComodato(rComOff)};
+        const enrich=(text,cartera)=>parseCob(text,cartera).map(c=>{const x=comodatoMap[c.id]||{};return{...c,asesorAtClte:x.asesorAtClte||"",fechaInstalacion:x.fechaInstalacion||""};});
+        const all=[...enrich(rCobBsAs,"Buenos Aires"),...enrich(rCobInt,"Interior"),...enrich(rCobHiel,"Hielogic")];
+        if(all.length>0)setClientes(all);
+      }catch(e){console.error(e);}
       setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
       setLoading(false);
     })();
   },[]);
 
-  // Cargar hoja logística
   useEffect(()=>{
-    if(tab!=="Atención al Cliente") return;
+    if(tab!=="Atención al Cliente")return;
     const key=`${logCartera}_${logHoja}`;
-    if(logData[key]) return;
-    const urlKey = LOG_URL_MAP[key];
-    if(!urlKey) return;
+    if(logData[key])return;
+    const urlKey=LOG_URL_MAP[key];
+    if(!urlKey)return;
     setLoadingLog(true);
     (async()=>{
-      try {
-        const r=await safeFetch(SHEET_URLS[urlKey]);
-        setLogData(p=>({...p,[key]:parseGeneric(r)}));
-      } catch { setLogData(p=>({...p,[key]:{headers:["Error al cargar"],rows:[]}})); }
+      try{const r=await safeFetch(SHEET_URLS[urlKey]);setLogData(p=>({...p,[key]:parseGeneric(r)}));}
+      catch{setLogData(p=>({...p,[key]:{headers:["Error al cargar"],rows:[]}}));}
       setLoadingLog(false);
     })();
   },[tab,logCartera,logHoja]);
 
-  // Cargar administración
   useEffect(()=>{
-    if(tab!=="Administración"||admTab==="Generador de Contratos") return;
-    if(admData[admTab]) return;
+    if(tab!=="Administración"||admTab==="Generador de Contratos")return;
+    if(admData[admTab])return;
     setLoadingAdm(true);
     (async()=>{
-      try {
+      try{
         if(admTab==="Score Crediticio"){
           const [r1,r2,r3]=await Promise.all([safeFetch(SHEET_URLS.scoreBsAs),safeFetch(SHEET_URLS.scoreInt),safeFetch(SHEET_URLS.scoreHiel)]);
           setAdmData(p=>({...p,"Score Crediticio":{"Buenos Aires":parseGeneric(r1),"Interior":parseGeneric(r2),"Hielogic":parseGeneric(r3)}}));
-        } else if(admTab==="Intimaciones"){
-          const r=await safeFetch(SHEET_URLS.intimaciones);
-          setAdmData(p=>({...p,"Intimaciones":parseGeneric(r)}));
-        } else if(admTab==="Cartas Documento"){
-          const r=await safeFetch(SHEET_URLS.cartasDoc);
-          setAdmData(p=>({...p,"Cartas Documento":parseGeneric(r)}));
-        } else if(admTab==="Veraz"){
-          const r=await safeFetch(SHEET_URLS.veraz);
-          setAdmData(p=>({...p,"Veraz":parseGeneric(r)}));
-        }
-      } catch { setAdmData(p=>({...p,[admTab]:{headers:["Error al cargar"],rows:[]}})); }
+        }else if(admTab==="Intimaciones"){const r=await safeFetch(SHEET_URLS.intimaciones);setAdmData(p=>({...p,"Intimaciones":parseGeneric(r)}));}
+        else if(admTab==="Cartas Documento"){const r=await safeFetch(SHEET_URLS.cartasDoc);setAdmData(p=>({...p,"Cartas Documento":parseGeneric(r)}));}
+        else if(admTab==="Veraz"){const r=await safeFetch(SHEET_URLS.veraz);setAdmData(p=>({...p,"Veraz":parseGeneric(r)}));}
+      }catch{setAdmData(p=>({...p,[admTab]:{headers:["Error al cargar"],rows:[]}}));}
       setLoadingAdm(false);
     })();
   },[tab,admTab]);
 
-  const handleNuevoCierre = cierre => {
-    const instRow = {
-      Asesor:cierre.asesor, Vendedor:cierre.vendedor||"—", Modelo:cierre.modelo||"A Definir",
-      ["Nombre de Fantasía - Sucursal"]:cierre.nombreFantasia,
-      Solicitud:cierre.fecha, Documentación:"", Relevo:"", Estado:"Pendiente",
-      Instalación:"", Área:"At. Cliente", Observaciones:cierre.observaciones||""
-    };
+  const handleNuevoCierre=cierre=>{
+    const instRow={Asesor:cierre.asesor||"Sin asignar",Vendedor:cierre.vendedor||"—",Modelo:cierre.modelo||"A Definir",["Nombre de Fantasía - Sucursal"]:cierre.nombreFantasia,Solicitud:cierre.fecha,Documentación:"",Relevo:"",Estado:"Pendiente",Instalación:"",Área:"At. Cliente",Observaciones:cierre.observaciones||""};
     setInstPendExtra(p=>[instRow,...p]);
   };
 
-  const cobradores = useMemo(()=>["Todos",...new Set(clientes.map(c=>c.asesorCob).filter(Boolean))],[clientes]);
-  const asesoresAtClte = useMemo(()=>["Todos",...new Set(clientes.map(c=>c.asesorAtClte).filter(Boolean))]  ,[clientes]);
-
-  const stats = useMemo(()=>({
-    total:clientes.length,
-    inhab:clientes.filter(c=>c.estado==="inhabilitado").length,
-    pend:clientes.filter(c=>c.estado==="pendiente").length,
-    hab:clientes.filter(c=>c.estado==="habilitado").length,
-    deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0),
-  }),[clientes]);
-
-  // Filtrado para At. Cliente: por asesor At. Cliente
-  const filteredAtClte = useMemo(()=>clientes.filter(c=>{
-    const sq=q.toLowerCase();
-    return (c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq))
-      &&(fAtClte==="Todos"||c.asesorAtClte===fAtClte);
-  }),[clientes,q,fAtClte]);
-
-  // Filtrado para Cobranzas: por estado y cobrador
-  const filteredCob = useMemo(()=>clientes.filter(c=>{
-    const sq=q.toLowerCase();
-    return (c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))
-      &&(fEstado==="todos"||c.estado===fEstado)
-      &&(fCobrador==="Todos"||c.asesorCob===fCobrador);
-  }),[clientes,q,fEstado,fCobrador]);
-
-  const resumen=useMemo(()=>{
-    const r={};
-    clientes.forEach(c=>{
-      const k=c.asesorCob||"Sin asignar";
-      if(!r[k])r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};
-      r[k].total++;r[k][c.estado]=(r[k][c.estado]||0)+1;
-      if(c.deuda>0)r[k].deuda+=c.deuda;
-    });
-    return Object.values(r).sort((a,b)=>b.deuda-a.deuda);
-  },[clientes]);
-
-  const currentLogData = useMemo(()=>{
-    const key=`${logCartera}_${logHoja}`;
-    const base=logData[key]||{headers:[],rows:[]};
-    if(logHoja==="Instalaciones Pendientes") return {...base,rows:[...instPendExtra,...base.rows]};
-    return base;
-  },[logData,logCartera,logHoja,instPendExtra]);
+  const cobradores=useMemo(()=>["Todos",...new Set(clientes.map(c=>c.asesorCob).filter(Boolean))]  ,[clientes]);
+  const stats=useMemo(()=>({total:clientes.length,inhab:clientes.filter(c=>c.estado==="inhabilitado").length,pend:clientes.filter(c=>c.estado==="pendiente").length,hab:clientes.filter(c=>c.estado==="habilitado").length,deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0)}),[clientes]);
+  const filteredAtClte=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq))&&(fAtClte==="Todos"||c.asesorAtClte===fAtClte);}),[clientes,q,fAtClte]);
+  const filteredCob=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))&&(fEstado==="todos"||c.estado===fEstado)&&(fCobrador==="Todos"||c.asesorCob===fCobrador);}),[clientes,q,fEstado,fCobrador]);
+  const resumen=useMemo(()=>{const r={};clientes.forEach(c=>{const k=c.asesorCob||"Sin asignar";if(!r[k])r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};r[k].total++;r[k][c.estado]=(r[k][c.estado]||0)+1;if(c.deuda>0)r[k].deuda+=c.deuda;});return Object.values(r).sort((a,b)=>b.deuda-a.deuda);},[clientes]);
+  const currentLogData=useMemo(()=>{const key=`${logCartera}_${logHoja}`;const base=logData[key]||{headers:[],rows:[]};if(logHoja==="Instalaciones Pendientes")return{...base,rows:[...instPendExtra,...base.rows]};return base;},[logData,logCartera,logHoja,instPendExtra]);
 
   const SS={fontSize:13,padding:"8px 10px",borderRadius:8,border:"1px solid #dce6f5",background:"#fff",color:"#1a2340",outline:"none"};
 
-  const ClienteCard = ({c}) => {
+  const ClienteCard=({c})=>{
     const av=avColor(c.asesorAtClte||c.asesorCob);
     const open=expanded?.id===c.id&&expanded?.n===c.nombre;
     return React.createElement('div',{onClick:()=>setExpanded(open?null:{id:c.id,n:c.nombre}),style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"10px 14px",cursor:"pointer",borderLeft:`3px solid ${BCOL[c.estado]||"#ccc"}`}},
@@ -554,27 +788,19 @@ function App() {
         )
       ),
       open&&React.createElement('div',{style:{marginTop:10,paddingTop:10,borderTop:"1px solid #dce6f5",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6}},
-        ...[
-          {l:"Modelo",v:c.modelo||"—"},
-          {l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},
-          {l:"Deuda",v:fmt(c.deuda)},
-          {l:"FC pendientes",v:c.fc},
-          {l:"Mensualidades",v:c.mens},
-          {l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},
-          {l:"Asesor Cobranzas",v:c.asesorCob||"—"},
-          {l:"Fecha Instalación",v:c.fechaInstalacion||"—"},
-        ].map(({l,v})=>React.createElement('div',{key:l,style:{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}},
-          React.createElement('p',{style:{margin:0,fontSize:10,color:"#6b7a99"}},l),
-          React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:500}},v)
-        ))
+        ...[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"}].map(({l,v})=>
+          React.createElement('div',{key:l,style:{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}},
+            React.createElement('p',{style:{margin:0,fontSize:10,color:"#6b7a99"}},l),
+            React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:500}},v)
+          )
+        )
       )
     );
   };
 
-  if(loading) return React.createElement('div',{style:{padding:"3rem",textAlign:"center",color:"#6b7a99",fontSize:14}},"Cargando AQA Central...");
+  if(loading)return React.createElement('div',{style:{padding:"3rem",textAlign:"center",color:"#6b7a99",fontSize:14}},"Cargando AQA Central...");
 
   return React.createElement('div',{style:{color:"#1a2340"}},
-    // Header
     React.createElement('div',{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"1rem",flexWrap:"wrap",gap:8}},
       React.createElement('div',null,
         React.createElement('p',{style:{fontSize:20,fontWeight:600,margin:0}},"AQA Central"),
@@ -586,110 +812,53 @@ function App() {
         React.createElement('span',{style:{background:"#EAF3DE",color:"#27500A",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}},`${stats.hab} habilitados`)
       )
     ),
-
     React.createElement(TabBar,{tabs:MAIN_TABS,active:tab,onChange:t=>{setTab(t);setQ("");}}),
 
-    // ── Atención al Cliente ──
+    // Atención al Cliente
     tab==="Atención al Cliente"&&React.createElement(React.Fragment,null,
       React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,marginBottom:8}},
-        React.createElement('input',{placeholder:"Buscar nombre, ID, asesor At. Cliente...",value:q,onChange:e=>setQ(e.target.value),style:SS}),
+        React.createElement('input',{placeholder:"Buscar nombre, ID, asesor...",value:q,onChange:e=>setQ(e.target.value),style:SS}),
         React.createElement('select',{value:logHoja,onChange:e=>setLogHoja(e.target.value),style:SS},...LOG_HOJAS.map(o=>React.createElement('option',{key:o},o))),
         React.createElement('select',{value:logCartera,onChange:e=>setLogCartera(e.target.value),style:SS},...["Buenos Aires","Interior","Hielogic","AQA Office"].map(o=>React.createElement('option',{key:o},o))),
-        React.createElement('select',{value:fAtClte,onChange:e=>setFAtClte(e.target.value),style:SS},...(["Todos",...ASESORES_ATCLTE]).map(o=>React.createElement('option',{key:o},o)))
+        React.createElement('select',{value:fAtClte,onChange:e=>setFAtClte(e.target.value),style:SS},...["Todos",...ASESORES_ATCLTE].map(o=>React.createElement('option',{key:o},o)))
       ),
-      logHoja!=="Comodato"&&(
-        loadingLog
-          ?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando datos...")
-          :React.createElement(React.Fragment,null,
-            React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${currentLogData.rows.length} registros · ${logCartera} · ${logHoja}`),
-            React.createElement(GenericTable,{data:currentLogData,headerBg:"#1F3864"})
-          )
-      ),
+      logHoja!=="Comodato"&&(loadingLog?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando..."):React.createElement(React.Fragment,null,React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${currentLogData.rows.length} registros · ${logCartera} · ${logHoja}`),React.createElement(GenericTable,{data:currentLogData,headerBg:"#1F3864"}))),
       logHoja==="Comodato"&&React.createElement(React.Fragment,null,
         React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${filteredAtClte.length} de ${clientes.length}`),
-        React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5}},
-          ...filteredAtClte.map((c,i)=>React.createElement(ClienteCard,{key:c.id+i,c}))
-        )
+        React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5}},...filteredAtClte.map((c,i)=>React.createElement(ClienteCard,{key:c.id+i,c})))
       )
     ),
 
-    // ── Cobranzas ──
+    // Cobranzas
     tab==="Cobranzas"&&React.createElement('div',null,
       React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,marginBottom:12}},
-        React.createElement('input',{placeholder:"Buscar nombre, ID, asesor cobranzas...",value:q,onChange:e=>setQ(e.target.value),style:SS}),
-        React.createElement('select',{value:fEstado,onChange:e=>setFEstado(e.target.value),style:SS},
-          React.createElement('option',{value:"todos"},"Todos los estados"),
-          React.createElement('option',{value:"habilitado"},"Habilitado"),
-          React.createElement('option',{value:"pendiente"},"Fc. Pendientes"),
-          React.createElement('option',{value:"inhabilitado"},"Inhabilitado")
-        ),
+        React.createElement('input',{placeholder:"Buscar nombre, ID, cobrador...",value:q,onChange:e=>setQ(e.target.value),style:SS}),
+        React.createElement('select',{value:fEstado,onChange:e=>setFEstado(e.target.value),style:SS},React.createElement('option',{value:"todos"},"Todos los estados"),React.createElement('option',{value:"habilitado"},"Habilitado"),React.createElement('option',{value:"pendiente"},"Fc. Pendientes"),React.createElement('option',{value:"inhabilitado"},"Inhabilitado")),
         React.createElement('select',{value:fCobrador,onChange:e=>setFCobrador(e.target.value),style:SS},...cobradores.map(c=>React.createElement('option',{key:c},c)))
       ),
-      // Resumen stats
       React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5",marginBottom:12}},
         React.createElement('p',{style:{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}},"Deuda total cartera"),
         React.createElement('p',{style:{margin:0,fontSize:24,fontWeight:600,color:"#791F1F"}},fmt(stats.deudaTotal)),
         React.createElement('p',{style:{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}},`sobre ${stats.total} clientes · mostrando ${filteredCob.length}`)
       ),
-      // Lista clientes con filtro cobranzas
       React.createElement('p',{style:{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}},"Detalle por cliente"),
-      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5,marginBottom:20}},
-        ...filteredCob.map((c,i)=>React.createElement(ClienteCard,{key:c.id+i,c}))
-      ),
-      // Resumen por cobrador
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5,marginBottom:20}},...filteredCob.map((c,i)=>React.createElement(ClienteCard,{key:c.id+i,c}))),
       React.createElement('p',{style:{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}},"Resumen por asesor de cobranzas"),
-      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
-        ...resumen.map(r=>React.createElement('div',{key:r.cob,style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"12px 16px"}},
-          React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
-            React.createElement('p',{style:{margin:0,fontSize:14,fontWeight:500}},r.cob),
-            React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:600,color:"#791F1F"}},fmt(r.deuda))
-          ),
-          React.createElement('div',{style:{display:"flex",gap:5,flexWrap:"wrap"}},
-            React.createElement('span',{style:{background:"#FCEBEB",color:"#791F1F",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.inhabilitado||0} inhab.`),
-            React.createElement('span',{style:{background:"#FAEEDA",color:"#633806",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.pendiente||0} pend.`),
-            React.createElement('span',{style:{background:"#EAF3DE",color:"#27500A",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.habilitado||0} hab.`),
-            React.createElement('span',{style:{background:"#f4f7fb",color:"#6b7a99",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.total} total`)
-          )
-        ))
-      )
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},...resumen.map(r=>React.createElement('div',{key:r.cob,style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"12px 16px"}},React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},React.createElement('p',{style:{margin:0,fontSize:14,fontWeight:500}},r.cob),React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:600,color:"#791F1F"}},fmt(r.deuda))),React.createElement('div',{style:{display:"flex",gap:5,flexWrap:"wrap"}},React.createElement('span',{style:{background:"#FCEBEB",color:"#791F1F",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.inhabilitado||0} inhab.`),React.createElement('span',{style:{background:"#FAEEDA",color:"#633806",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.pendiente||0} pend.`),React.createElement('span',{style:{background:"#EAF3DE",color:"#27500A",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.habilitado||0} hab.`),React.createElement('span',{style:{background:"#f4f7fb",color:"#6b7a99",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.total} total`)))))
     ),
 
-    // ── Comercial ──
-    tab==="Comercial"&&React.createElement(PipelineComercial,{onNuevoCierre:handleNuevoCierre}),
+    // Comercial
+    tab==="Comercial"&&React.createElement(Comercial,{onNuevoCierre:handleNuevoCierre}),
 
-    // ── Logística ──
-    tab==="Logística"&&React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"1.25rem",border:"1px solid #dce6f5"}},
-      React.createElement('p',{style:{margin:"0 0 4px",fontSize:14,fontWeight:500}},"Próximamente"),
-      React.createElement('p',{style:{margin:0,fontSize:13,color:"#6b7a99"}},"Pedidos de CO2, botellas, tapas, relevos e instalaciones.")
-    ),
+    // Logística
+    tab==="Logística"&&React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"1.25rem",border:"1px solid #dce6f5"}},React.createElement('p',{style:{margin:"0 0 4px",fontSize:14,fontWeight:500}},"Próximamente"),React.createElement('p',{style:{margin:0,fontSize:13,color:"#6b7a99"}},"Pedidos de CO2, botellas, tapas, relevos e instalaciones.")),
 
-    // ── Administración ──
+    // Administración
     tab==="Administración"&&React.createElement('div',null,
       React.createElement(TabBar,{tabs:ADM_TABS,active:admTab,onChange:setAdmTab,color:"#1F3864"}),
       admTab==="Generador de Contratos"&&React.createElement(GeneradorContratos,null),
-      ["Intimaciones","Cartas Documento","Veraz"].includes(admTab)&&(
-        loadingAdm
-          ?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando...")
-          :admData[admTab]&&React.createElement('div',null,
-            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},
-              React.createElement('span',{style:{background:ADM_COLORS[admTab]+"22",color:ADM_COLORS[admTab],borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}},`${(admData[admTab].rows||[]).length} registros · ${admTab}`),
-              React.createElement('button',{onClick:()=>setAdmData(p=>{const n={...p};delete n[admTab];return n;}),style:{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}},"↻ Actualizar")
-            ),
-            React.createElement(GenericTable,{data:admData[admTab],headerBg:ADM_COLORS[admTab]})
-          )
-      ),
-      admTab==="Score Crediticio"&&React.createElement('div',null,
-        React.createElement(TabBar,{tabs:["Buenos Aires","Interior","Hielogic"],active:scoreTab,onChange:setScoreTab,color:"#1a5c3a"}),
-        loadingAdm
-          ?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando score...")
-          :admData["Score Crediticio"]?.[scoreTab]&&React.createElement('div',null,
-            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},
-              React.createElement('span',{style:{background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}},`${(admData["Score Crediticio"][scoreTab].rows||[]).length} clientes · ${scoreTab}`),
-              React.createElement('button',{onClick:()=>setAdmData(p=>{const n={...p};delete n["Score Crediticio"];return n;}),style:{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}},"↻ Actualizar")
-            ),
-            React.createElement(ScoreTable,{data:admData["Score Crediticio"][scoreTab]})
-          )
-      )
+      ["Intimaciones","Cartas Documento","Veraz"].includes(admTab)&&(loadingAdm?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando..."):admData[admTab]&&React.createElement('div',null,React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},React.createElement('span',{style:{background:ADM_COLORS[admTab]+"22",color:ADM_COLORS[admTab],borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}},`${(admData[admTab].rows||[]).length} registros · ${admTab}`),React.createElement('button',{onClick:()=>setAdmData(p=>{const n={...p};delete n[admTab];return n;}),style:{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}},"↻ Actualizar")),React.createElement(GenericTable,{data:admData[admTab],headerBg:ADM_COLORS[admTab]}))),
+      admTab==="Score Crediticio"&&React.createElement('div',null,React.createElement(TabBar,{tabs:["Buenos Aires","Interior","Hielogic"],active:scoreTab,onChange:setScoreTab,color:"#1a5c3a"}),loadingAdm?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando..."):admData["Score Crediticio"]?.[scoreTab]&&React.createElement('div',null,React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},React.createElement('span',{style:{background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}},`${(admData["Score Crediticio"][scoreTab].rows||[]).length} clientes · ${scoreTab}`),React.createElement('button',{onClick:()=>setAdmData(p=>{const n={...p};delete n["Score Crediticio"];return n;}),style:{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}},"↻ Actualizar")),React.createElement(ScoreTable,{data:admData["Score Crediticio"][scoreTab]})))
     )
   );
 }
