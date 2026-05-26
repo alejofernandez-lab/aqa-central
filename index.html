@@ -11,38 +11,38 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f7fb;color:#1a2340;min-height:100vh}
 input,select,textarea{font-family:inherit}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
-.modal-box{background:#fff;borderRadius:14px;padding:24px;width:100%;max-width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.18)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.18)}
 </style>
 </head>
 <body>
 <div id="root" style="max-width:960px;margin:0 auto;padding:16px"></div>
 <script type="text/babel">
-const { useState, useMemo, useEffect, useRef } = React;
+const { useState, useMemo, useEffect } = React;
 
 // ── URLs ──────────────────────────────────────────────────────────────
-const SHEET_URLS = {
-  cobBsAs:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=0&single=true&output=csv",
-  cobInt:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=467657686&single=true&output=csv",
-  cobHiel:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=752932186&single=true&output=csv",
-  scoreBsAs: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=0&single=true&output=csv",
-  scoreInt:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=1608986858&single=true&output=csv",
-  scoreHiel: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=448772783&single=true&output=csv",
-  baInstPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=540793092&single=true&output=csv",
-  baComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1309380371&single=true&output=csv",
-  baVenta:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=7134883&single=true&output=csv",
-  baDesins:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1964598055&single=true&output=csv",
+const URLS = {
+  cobBsAs:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=0&single=true&output=csv",
+  cobInt:     "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=467657686&single=true&output=csv",
+  cobHiel:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=752932186&single=true&output=csv",
+  scoreBsAs:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=0&single=true&output=csv",
+  scoreInt:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=1608986858&single=true&output=csv",
+  scoreHiel:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1mVHgebzS4w86ZvSpmtq_P9-_AR6GL6f7voTH0WoysswvFlSOtZjgo_SWUo8WlyivTAZvVv5edFJD/pub?gid=448772783&single=true&output=csv",
+  baInstPend: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=540793092&single=true&output=csv",
+  baComodato: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1309380371&single=true&output=csv",
+  baVenta:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=7134883&single=true&output=csv",
+  baDesins:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vT54MOAADRjIbtsmJLEVYLAexMdWDncbbCZMWZcmRjgcY-eMZmYoCznRFO4ruOS-8GTMT8if_mwRnuG/pub?gid=1964598055&single=true&output=csv",
   intInstPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1582569282&single=true&output=csv",
   intComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1522331961&single=true&output=csv",
-  intVenta:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=2137112092&single=true&output=csv",
-  intDesins: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1030117501&single=true&output=csv",
+  intVenta:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=2137112092&single=true&output=csv",
+  intDesins:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQTPFuI11oOGMZEMtQRL_y2AL7hkhCNtf99wESPy83DVN_HOe9grkxheUQQxJEW_GOvurwLWyWFMiGb/pub?gid=1030117501&single=true&output=csv",
   hielInstPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1909832169&single=true&output=csv",
   hielComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=392626389&single=true&output=csv",
-  hielDesins:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1502779041&single=true&output=csv",
+  hielDesins: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1502779041&single=true&output=csv",
   offInstPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=796818616&single=true&output=csv",
   offComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1425890095&single=true&output=csv",
-  offVenta:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1080444203&single=true&output=csv",
-  offDesins: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1428472954&single=true&output=csv",
+  offVenta:   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1080444203&single=true&output=csv",
+  offDesins:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1428472954&single=true&output=csv",
   intimaciones:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=354176531&single=true&output=csv",
   cartasDoc:  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=0&single=true&output=csv",
   veraz:      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=2086198383&single=true&output=csv",
@@ -55,425 +55,269 @@ const LOG_URL_MAP = {
   "AQA Office_Instalaciones Pendientes":"offInstPend","AQA Office_Comodato":"offComodato","AQA Office_Venta":"offVenta","AQA Office_Desinstalaciones":"offDesins",
 };
 
-// ── Equipos para seguimiento ──────────────────────────────────────────
-const EQUIPOS_SEGUIMIENTO = {
-  "Comercial": ["Santiago Puigmarti","Nicolas Albino","Paloma Suarez","Vicente Biondo","Laura Pomponio","Tomas Zoff","Claudio Lozano","Ignacio Musmanno","Alejo Fernandez","Marcelo Paccapelo"],
-  "Atención al Cliente": ["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"],
-  "Logística": ["Facundo Costabel","Alex Iraldi","Antonella Legname","Brian Gonzalez","Sebastian Garcia"],
-  "Cobranzas": ["Dante Briceño","Mathias Servin","Dorotea Mazzieri","Milagros Saracco"],
-};
-
-const VENDEDORES = ["Santiago Puigmarti","Nicolas Albino","Paloma Suarez","Vicente Biondo","Laura Pomponio","Tomas Zoff","Claudio Lozano","Ignacio Musmanno","Alejo Fernandez","Marcelo Paccapelo"];
-const ASESORES_ATCLTE = ["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"];
-const CLASIFICACIONES = ["HoReCa","AQA Office","Residencial","Hotel","Restaurante","Café","Bar","Otro"];
-const MODELOS_ALL = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20","A Definir"];
-const AJUSTES = ["Trimestral","Bimestral","Cuatrimestral","Semestral"];
+// ── Constantes ────────────────────────────────────────────────────────
 const MAIN_TABS = ["Atención al Cliente","Cobranzas","Comercial","Logística","Administración"];
 const LOG_HOJAS = ["Instalaciones Pendientes","Comodato","Desinstalaciones","Venta"];
 const ADM_TABS  = ["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio"];
 const ADM_COLORS = {"Intimaciones":"#8a3a00","Cartas Documento":"#1a3a8a","Veraz":"#5a1a8a"};
-const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-const MODELOS=["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20"];
-const USD_OPTS=[{label:"USD 6.900 (WL7 / SM)",value:"6.900",letras:"seis mil novecientos"},{label:"USD 7.400 (BM)",value:"7.400",letras:"siete mil cuatrocientos"},{label:"USD 5.900 (RBF)",value:"5.900",letras:"cinco mil novecientos"},{label:"USD 4.000 (RBL / OFF20)",value:"4.000",letras:"cuatro mil"}];
-const SOCIEDADES=["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributista","Asociación Civil"];
+const ASESORES_ATCLTE = ["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"];
+const VENDEDORES = ["Santiago Puigmarti","Nicolas Albino","Paloma Suarez","Vicente Biondo","Laura Pomponio","Tomas Zoff","Claudio Lozano","Ignacio Musmanno","Alejo Fernandez","Marcelo Paccapelo"];
+const CLASIFICACIONES = ["HoReCa","AQA Office","Residencial","Hotel","Restaurante","Café","Bar","Otro"];
+const MODELOS_ALL = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20","A Definir"];
+const AJUSTES = ["Trimestral","Bimestral","Cuatrimestral","Semestral"];
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const MODELOS = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20"];
+const USD_OPTS = [{label:"USD 6.900 (WL7/SM)",value:"6.900",letras:"seis mil novecientos"},{label:"USD 7.400 (BM)",value:"7.400",letras:"siete mil cuatrocientos"},{label:"USD 5.900 (RBF)",value:"5.900",letras:"cinco mil novecientos"},{label:"USD 4.000 (RBL/OFF20)",value:"4.000",letras:"cuatro mil"}];
+const SOCIEDADES = ["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributista","Asociación Civil"];
+const EQUIPOS_SEG = {
+  "Comercial": VENDEDORES,
+  "Atención al Cliente": ASESORES_ATCLTE,
+  "Logística": ["Facundo Costabel","Alex Iraldi","Antonella Legname","Brian Gonzalez","Sebastian Garcia"],
+  "Cobranzas": ["Dante Briceño","Mathias Servin","Dorotea Mazzieri","Milagros Saracco"],
+};
+const BCOL = {habilitado:"#639922",inhabilitado:"#E24B4A",pendiente:"#EF9F27"};
+const PAL = [{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
 
 // ── Helpers ───────────────────────────────────────────────────────────
-const splitCSV = line => {
-  const cols=[]; let cur="",inQ=false;
-  for(let ch of line){
-    if(ch==='"'){inQ=!inQ;continue;}
-    if(ch===','&&!inQ){cols.push(cur.trim());cur="";continue;}
-    if((ch==='\n'||ch==='\r')&&inQ){cur+=' ';continue;} // salto de línea dentro de celda
-    cur+=ch;
+function splitLine(line) {
+  const cols = []; let cur = "", inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; }
+    else { cur += ch; }
   }
-  cols.push(cur.trim()); return cols;
-};
+  cols.push(cur.trim());
+  return cols;
+}
 
-const parseGeneric = text => {
-  // Reagrupar líneas respetando comillas (celdas con saltos de línea internos)
-  const clean = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
-  const logicalLines = [];
-  let current = "", inQ = false;
-  for(let i=0;i<clean.length;i++){
-    const ch=clean[i];
-    if(ch==='"'){inQ=!inQ;current+=ch;}
-    else if(ch==='\n'&&!inQ){logicalLines.push(current);current="";}
-    else{current+=ch;}
+function parseCSVText(text) {
+  const norm = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+  // Reagrupar líneas lógicas (una celda puede tener \n adentro si está entre comillas)
+  const logical = [];
+  let cur = "", inQ = false;
+  for (let i = 0; i < norm.length; i++) {
+    const ch = norm[i];
+    if (ch === '"') { inQ = !inQ; cur += ch; }
+    else if (ch === '\n' && !inQ) { logical.push(cur); cur = ""; }
+    else { cur += ch; }
   }
-  if(current) logicalLines.push(current);
-  if(logicalLines.length<2) return {headers:[],rows:[]};
-  const headers=splitCSV(logicalLines[0]).map(h=>h.replace(/"/g,"").trim()).filter(h=>h);
-  const rows=logicalLines.slice(1).map(line=>{
-    const cols=splitCSV(line);
-    const row={};
-    headers.forEach((h,i)=>row[h]=(cols[i]||"").trim());
+  if (cur) logical.push(cur);
+  if (logical.length < 2) return { headers: [], rows: [] };
+  const headers = splitLine(logical[0]).map(h => h.replace(/"/g,"").trim()).filter(Boolean);
+  const rows = logical.slice(1).map(line => {
+    const cols = splitLine(line);
+    const row = {};
+    headers.forEach((h, i) => { row[h] = (cols[i] || "").replace(/"/g,"").replace(/\n/g," ").trim(); });
     return row;
-  }).filter(r=>Object.values(r).some(v=>v&&v.trim()));
-  return {headers,rows};
-};
-const parseNum = s => parseFloat((s||"").replace(/[^0-9,-]/g,"").replace(/\./g,"").replace(",","."))||0;
-const parseEstado = (f,g) => {
-  const c=s=>{const sl=(s||"").toLowerCase();if(sl.includes("inhabilitado"))return"inhabilitado";if(sl.includes("facturas")||sl.includes("pendiente"))return"pendiente";return"habilitado";};
-  const ef=c(f),eg=c(g);
-  if(ef==="inhabilitado"||eg==="inhabilitado")return"inhabilitado";
-  if(ef==="pendiente"||eg==="pendiente")return"pendiente";
-  return"habilitado";
-};
-const parseCob = (text,cartera) => {
-  const lines=text.trim().split("\n");
-  if(lines.length<2)return[];
-  return lines.slice(1).map(line=>{
-    const c=splitCSV(line);
-    const[asesorCob,id,modelo,abono,nombre,colF,colG,deudaRaw,fcRaw,mensRaw]=c;
-    if(!id?.trim()||!nombre?.trim())return null;
-    return{id:id.trim(),nombre:nombre.trim(),modelo:modelo||"",asesorCob:asesorCob||"",abono:parseNum(abono),estado:parseEstado(colF,colG),deuda:parseNum(deudaRaw),fc:parseInt(fcRaw)||0,mens:parseInt(mensRaw)||0,cartera,asesorAtClte:"",fechaInstalacion:""};
+  }).filter(r => Object.values(r).some(v => v));
+  return { headers, rows };
+}
+
+function parseNum(s) { return parseFloat((s||"").replace(/[^0-9,-]/g,"").replace(/\./g,"").replace(",",".")) || 0; }
+
+function parseEstado(f, g) {
+  const check = s => { const sl=(s||"").toLowerCase(); if(sl.includes("inhabilitado"))return"inhabilitado"; if(sl.includes("facturas")||sl.includes("pendiente"))return"pendiente"; return"habilitado"; };
+  const ef=check(f), eg=check(g);
+  if(ef==="inhabilitado"||eg==="inhabilitado") return "inhabilitado";
+  if(ef==="pendiente"||eg==="pendiente") return "pendiente";
+  return "habilitado";
+}
+
+function parseCob(text, cartera) {
+  const norm = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim();
+  const lines = norm.split("\n");
+  if (lines.length < 2) return [];
+  return lines.slice(1).map(line => {
+    const c = splitLine(line);
+    const [asesorCob,id,modelo,abono,nombre,colF,colG,deudaRaw,fcRaw,mensRaw] = c;
+    if (!id?.trim() || !nombre?.trim()) return null;
+    return { id:id.trim(), nombre:nombre.trim(), modelo:modelo||"", asesorCob:asesorCob||"",
+      abono:parseNum(abono), estado:parseEstado(colF,colG), deuda:parseNum(deudaRaw),
+      fc:parseInt(fcRaw)||0, mens:parseInt(mensRaw)||0, cartera,
+      asesorAtClte:"", fechaInstalacion:"" };
   }).filter(Boolean);
-};
-  // Parsea Comodato para extraer asesor At. Cliente (col A), fecha instalación (col I), nombre fantasía (col D), ID Persat (col E)
-const parseComodato = (text, cartera) => {
-  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");
-  if(lines.length<2)return{map:{},clientes:[]};
-  const map={};
-  const clientes=[];
-  lines.slice(1).forEach(line=>{
-    const c=splitCSV(line);
-    const asesor=(c[0]||"").trim();
-    const modelo=(c[2]||"").trim();
-    const nombreFantasia=(c[3]||"").trim();
-    const idPersat=(c[4]||"").trim();
-    const razonSocial=(c[5]||"").trim();
-    const fechaIns=(c[8]||"").trim();
-    if(idPersat) map[idPersat]={asesorAtClte:asesor,fechaInstalacion:fechaIns};
-    if(nombreFantasia&&cartera==="AQA Office"){
-      clientes.push({id:idPersat||nombreFantasia,nombre:nombreFantasia,modelo,asesorCob:"—",asesorAtClte:asesor,abono:0,estado:"habilitado",deuda:0,fc:0,mens:0,cartera,fechaInstalacion:fechaIns,razonSocial});
+}
+
+function parseComodato(text, cartera) {
+  const norm = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim();
+  const lines = norm.split("\n");
+  if (lines.length < 2) return { map:{}, clientes:[] };
+  const map = {}, clientes = [];
+  lines.slice(1).forEach(line => {
+    const c = splitLine(line);
+    const asesor = (c[0]||"").trim();
+    const modelo = (c[2]||"").trim();
+    const nombre = (c[3]||"").replace(/"/g,"").trim();
+    const idPersat = (c[4]||"").trim();
+    const fechaIns = (c[8]||"").trim();
+    if (idPersat) map[idPersat] = { asesorAtClte:asesor, fechaInstalacion:fechaIns };
+    if (nombre && cartera === "AQA Office") {
+      clientes.push({ id:idPersat||nombre, nombre, modelo, asesorCob:"—", asesorAtClte:asesor,
+        abono:0, estado:"habilitado", deuda:0, fc:0, mens:0, cartera, fechaInstalacion:fechaIns });
     }
   });
-  return{map,clientes};
-};
-const safeFetch = url => fetch(url).then(r=>{if(!r.ok)throw new Error();return r.text();});
-const fmt = n => n<=0?"Sin deuda":"$"+Math.round(n).toLocaleString("es-AR");
-const PAL=[{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
-const avColor=name=>PAL[(name||"").split("").reduce((a,ch)=>a+ch.charCodeAt(0),0)%PAL.length];
-const initials=name=>(name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
-const BCOL={habilitado:"#639922",inhabilitado:"#E24B4A",pendiente:"#EF9F27"};
-const nowStr=()=>new Date().toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  return { map, clientes };
+}
 
-const numLetras=n=>{
-  if(!n||n===0)return"cero";
+const safeFetch = url => fetch(url).then(r => { if(!r.ok) throw new Error(); return r.text(); });
+const fmt = n => n<=0 ? "Sin deuda" : "$"+Math.round(n).toLocaleString("es-AR");
+const avColor = name => PAL[(name||"").split("").reduce((a,c)=>a+c.charCodeAt(0),0)%PAL.length];
+const initials = name => (name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+const nowStr = () => new Date().toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+
+const numLetras = n => {
+  if(!n||n===0) return "cero";
   const M={1:"uno",2:"dos",3:"tres",4:"cuatro",5:"cinco",6:"seis",7:"siete",8:"ocho",9:"nueve",10:"diez",11:"once",12:"doce",13:"trece",14:"catorce",15:"quince",16:"dieciséis",17:"diecisiete",18:"dieciocho",19:"diecinueve",20:"veinte",21:"veintiún",22:"veintidós",23:"veintitrés",24:"veinticuatro",25:"veinticinco",26:"veintiséis",27:"veintisiete",28:"veintiocho",29:"veintinueve",30:"treinta",40:"cuarenta",50:"cincuenta",60:"sesenta",70:"setenta",80:"ochenta",90:"noventa"};
-  if(n<=29)return M[n]||"";
-  if(n<100){const d=Math.floor(n/10)*10,u=n%10;return u===0?M[d]:M[d]+" y "+M[u];}
-  if(n===100)return"cien";
-  if(n<200)return"ciento "+numLetras(n-100);
+  if(n<=29) return M[n]||"";
+  if(n<100){const d=Math.floor(n/10)*10,u=n%10; return u===0?M[d]:M[d]+" y "+M[u];}
+  if(n===100) return "cien";
+  if(n<200) return "ciento "+numLetras(n-100);
   const C={200:"doscientos",300:"trescientos",400:"cuatrocientos",500:"quinientos",600:"seiscientos",700:"setecientos",800:"ochocientos",900:"novecientos"};
-  const cv=Math.floor(n/100)*100,r=n%100;
-  if(n<1000)return r===0?C[cv]:C[cv]+" "+numLetras(r);
-  const m2=Math.floor(n/1000),r2=n%1000;
+  const cv=Math.floor(n/100)*100, r=n%100;
+  if(n<1000) return r===0?C[cv]:C[cv]+" "+numLetras(r);
+  const m2=Math.floor(n/1000), r2=n%1000;
   const ms=m2===1?"mil":numLetras(m2)+" mil";
   return r2===0?ms:ms+" "+numLetras(r2);
 };
 
-// ── Componentes UI ────────────────────────────────────────────────────
-const Badge=({estado})=>{
+// ── Componentes base ──────────────────────────────────────────────────
+function Badge({estado}) {
   const M={habilitado:{bg:"#EAF3DE",c:"#27500A",t:"Habilitado"},inhabilitado:{bg:"#FCEBEB",c:"#791F1F",t:"Inhabilitado"},pendiente:{bg:"#FAEEDA",c:"#633806",t:"Fc. Pendientes"}};
   const s=M[estado]||M.habilitado;
-  return React.createElement('span',{style:{background:s.bg,color:s.c,fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}},s.t);
-};
+  return <span style={{background:s.bg,color:s.c,fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}}>{s.t}</span>;
+}
 
-const TabBar=({tabs,active,onChange,color="#1F3864"})=>
-  React.createElement('div',{style:{display:"flex",gap:2,borderBottom:"1px solid #dce6f5",marginBottom:12,overflowX:"auto"}},
-    tabs.map(t=>React.createElement('button',{key:t,onClick:()=>onChange(t),style:{background:"transparent",border:"none",borderBottom:active===t?`2px solid ${color}`:"2px solid transparent",padding:"7px 12px",fontSize:12,fontWeight:active===t?500:400,color:active===t?color:"#6b7a99",cursor:"pointer",marginBottom:-1,whiteSpace:"nowrap"}},t))
+function TabBar({tabs, active, onChange, color="#1F3864"}) {
+  return (
+    <div style={{display:"flex",gap:2,borderBottom:"1px solid #dce6f5",marginBottom:12,overflowX:"auto"}}>
+      {tabs.map(t=>(
+        <button key={t} onClick={()=>onChange(t)} style={{background:"transparent",border:"none",borderBottom:active===t?`2px solid ${color}`:"2px solid transparent",padding:"7px 12px",fontSize:12,fontWeight:active===t?500:400,color:active===t?color:"#6b7a99",cursor:"pointer",marginBottom:-1,whiteSpace:"nowrap"}}>{t}</button>
+      ))}
+    </div>
   );
+}
 
-const GenericTable=({data,headerBg="#1F3864"})=>
-  React.createElement('div',{style:{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}},
-    React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
-      React.createElement('thead',null,React.createElement('tr',null,...(data.headers||[]).map(h=>React.createElement('th',{key:h,style:{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}},h)))),
-      React.createElement('tbody',null,...(data.rows||[]).map((row,i)=>React.createElement('tr',{key:i,style:{background:i%2===0?"#fff":"#f4f7fb"}},...(data.headers||[]).map(h=>React.createElement('td',{key:h,style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",whiteSpace:"nowrap",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis"}},row[h]||"—")))))
-    )
+function GenericTable({data, headerBg="#1F3864"}) {
+  if(!data||!data.headers||data.headers.length===0) return <div style={{padding:"1rem",textAlign:"center",color:"#6b7a99",fontSize:13}}>Sin datos</div>;
+  return (
+    <div style={{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <thead>
+          <tr>{data.headers.map(h=><th key={h} style={{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {data.rows.map((row,i)=>(
+            <tr key={i} style={{background:i%2===0?"#fff":"#f4f7fb"}}>
+              {data.headers.map(h=><td key={h} style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",whiteSpace:"nowrap",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis"}}>{row[h]||"—"}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
+}
 
-const parseScoreNum=s=>{const m=String(s||"").match(/\d+/);return m?parseInt(m[0]):0;};
-const ScoreTable=({data})=>
-  React.createElement('div',{style:{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}},
-    React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
-      React.createElement('thead',null,React.createElement('tr',null,...(data.headers||[]).map(h=>React.createElement('th',{key:h,style:{background:"#1a5c3a",color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}},h)))),
-      React.createElement('tbody',null,...(data.rows||[]).map((row,i)=>{
-        const ok=parseScoreNum(row["SCORE"])>=600||parseScoreNum(row["FIRMANTE"])>=600;
-        return React.createElement('tr',{key:i,style:{background:ok?"#f0faf0":"#fff7ee"}},
-          React.createElement('td',{style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",fontWeight:500}},React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6}},React.createElement('div',{style:{width:8,height:8,borderRadius:"50%",background:ok?"#2e9e4f":"#d97706",flexShrink:0}}),row["CLIENTE"]||"—")),
-          React.createElement('td',{style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:parseScoreNum(row["SCORE"])>=600?"#1a5c3a":"#c05a00"}},row["SCORE"]||"—"),
-          React.createElement('td',{style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:parseScoreNum(row["FIRMANTE"])>=600?"#1a5c3a":"#c05a00"}},row["FIRMANTE"]||"—"),
-          React.createElement('td',{style:{padding:"8px 12px",borderBottom:"1px solid #dce6f5",color:"#6b7a99",maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},row["COMENTARIOS"]||"—")
-        );
-      }))
-    )
+function ScoreTable({data}) {
+  const pn = s => { const m=String(s||"").match(/\d+/); return m?parseInt(m[0]):0; };
+  return (
+    <div style={{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <thead><tr>{(data.headers||[]).map(h=><th key={h} style={{background:"#1a5c3a",color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+        <tbody>
+          {(data.rows||[]).map((row,i)=>{
+            const ok=pn(row["SCORE"])>=600||pn(row["FIRMANTE"])>=600;
+            return (
+              <tr key={i} style={{background:ok?"#f0faf0":"#fff7ee"}}>
+                <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",fontWeight:500}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:ok?"#2e9e4f":"#d97706",flexShrink:0}}/>
+                    {row["CLIENTE"]||"—"}
+                  </div>
+                </td>
+                <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:pn(row["SCORE"])>=600?"#1a5c3a":"#c05a00"}}>{row["SCORE"]||"—"}</td>
+                <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:pn(row["FIRMANTE"])>=600?"#1a5c3a":"#c05a00"}}>{row["FIRMANTE"]||"—"}</td>
+                <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",color:"#6b7a99",maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row["COMENTARIOS"]||"—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
+}
 
-// ── Modal de Seguimiento ──────────────────────────────────────────────
+// ── Modales ───────────────────────────────────────────────────────────
+function ModalLista({titulo, items, onSelect, onClose}) {
+  return (
+    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}>
+      <div className="modal">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <p style={{fontSize:15,fontWeight:600}}>{titulo}</p>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {items.map(v=>(
+            <button key={v} onClick={()=>{onSelect(v);onClose();}} style={{background:"#f4f7fb",border:"1px solid #dce6f5",borderRadius:8,padding:"10px 14px",fontSize:13,cursor:"pointer",textAlign:"left",color:"#1a2340"}}>{v}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModalSeguimiento({onClose, onGuardar}) {
-  const [equipo, setEquipo] = useState("");
-  const [autor, setAutor] = useState("");
-  const [texto, setTexto] = useState("");
-
-  const guardar = () => {
-    if(!equipo||!autor||!texto.trim()){alert("Completá equipo, autor y el texto");return;}
-    onGuardar({equipo, autor, texto, fecha: nowStr()});
+  const [equipo,setEquipo]=useState("");
+  const [autor,setAutor]=useState("");
+  const [texto,setTexto]=useState("");
+  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+  const guardar=()=>{
+    if(!equipo||!autor||!texto.trim()){alert("Completá todos los campos");return;}
+    onGuardar({equipo,autor,texto,fecha:nowStr()});
     onClose();
   };
-
-  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
-
-  return React.createElement('div',{className:"modal-overlay",onClick:e=>{if(e.target.className==="modal-overlay")onClose()}},
-    React.createElement('div',{className:"modal-box"},
-      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-        React.createElement('p',{style:{fontSize:15,fontWeight:600}},"Nueva actualización"),
-        React.createElement('button',{onClick:onClose,style:{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}},"✕")
-      ),
-      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:12}},
-        React.createElement('div',null,
-          React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px",display:"block",marginBottom:5}},"Equipo"),
-          React.createElement('select',{value:equipo,onChange:e=>{setEquipo(e.target.value);setAutor("");},style:SS},
-            React.createElement('option',{value:""},"Seleccionar equipo..."),
-            ...Object.keys(EQUIPOS_SEGUIMIENTO).map(k=>React.createElement('option',{key:k},k))
-          )
-        ),
-        equipo&&React.createElement('div',null,
-          React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px",display:"block",marginBottom:5}},"Quién escribe"),
-          React.createElement('select',{value:autor,onChange:e=>setAutor(e.target.value),style:SS},
-            React.createElement('option',{value:""},"Seleccionar..."),
-            ...EQUIPOS_SEGUIMIENTO[equipo].map(a=>React.createElement('option',{key:a},a))
-          )
-        ),
-        React.createElement('div',null,
-          React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px",display:"block",marginBottom:5}},"Actualización"),
-          React.createElement('textarea',{value:texto,onChange:e=>setTexto(e.target.value),placeholder:"Escribí la actualización...",rows:4,style:{...SS,resize:"vertical"}})
-        ),
-        React.createElement('button',{onClick:guardar,style:{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:"pointer"}},"✔ Guardar actualización")
-      )
-    )
-  );
-}
-
-// ── Modal Selección Vendedor ──────────────────────────────────────────
-function ModalVendedor({onClose, onSelect}) {
-  return React.createElement('div',{className:"modal-overlay",onClick:e=>{if(e.target.className==="modal-overlay")onClose()}},
-    React.createElement('div',{className:"modal-box"},
-      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-        React.createElement('p',{style:{fontSize:15,fontWeight:600}},"Seleccionar Vendedor"),
-        React.createElement('button',{onClick:onClose,style:{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}},"✕")
-      ),
-      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:6}},
-        ...VENDEDORES.map(v=>React.createElement('button',{key:v,onClick:()=>{onSelect(v);onClose();},style:{background:"#f4f7fb",border:"1px solid #dce6f5",borderRadius:8,padding:"10px 14px",fontSize:13,cursor:"pointer",textAlign:"left",fontWeight:400,color:"#1a2340",transition:"background .15s"}},v))
-      )
-    )
-  );
-}
-
-// ── Modal Selección Asesor ────────────────────────────────────────────
-function ModalAsesor({onClose, onSelect}) {
-  return React.createElement('div',{className:"modal-overlay",onClick:e=>{if(e.target.className==="modal-overlay")onClose()}},
-    React.createElement('div',{className:"modal-box"},
-      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-        React.createElement('p',{style:{fontSize:15,fontWeight:600}},"Asignar Asesor"),
-        React.createElement('button',{onClick:onClose,style:{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}},"✕")
-      ),
-      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:6}},
-        ...ASESORES_ATCLTE.map(a=>React.createElement('button',{key:a,onClick:()=>{onSelect(a);onClose();},style:{background:"#f4f7fb",border:"1px solid #dce6f5",borderRadius:8,padding:"10px 14px",fontSize:13,cursor:"pointer",textAlign:"left",fontWeight:400,color:"#1a2340"}},a))
-      )
-    )
-  );
-}
-
-// ── Comercial ─────────────────────────────────────────────────────────
-const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",fecha:""};
-
-function Comercial({onNuevoCierre}) {
-  const [cierres,setCierres]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const [showForm,setShowForm]=useState(false);
-  const [form,setForm]=useState(CIERRE_VACIO);
-  const [saving,setSaving]=useState(false);
-  const [expandedId,setExpandedId]=useState(null);
-  const [modalVendedor,setModalVendedor]=useState(false);
-  const [modalAsesor,setModalAsesor]=useState(null); // id del cierre a asignar
-  const [modalSeg,setModalSeg]=useState(null); // id del cierre a actualizar
-  const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
-
-  useEffect(()=>{
-    const saved=localStorage.getItem("aqa_cierres");
-    if(saved)setCierres(JSON.parse(saved));
-    setLoading(false);
-  },[]);
-
-  const save=nuevos=>{localStorage.setItem("aqa_cierres",JSON.stringify(nuevos));setCierres(nuevos);};
-
-  const guardar=()=>{
-    if(!form.nombreFantasia||!form.razonSocial){alert("Completá al menos Nombre de Fantasía y Razón Social");return;}
-    setSaving(true);
-    const nuevo={...form,id:Date.now().toString(),fecha:new Date().toLocaleDateString("es-AR"),historial:[]};
-    const nuevos=[nuevo,...cierres];
-    save(nuevos);
-    onNuevoCierre(nuevo);
-    setForm(CIERRE_VACIO);
-    setShowForm(false);
-    setSaving(false);
-  };
-
-  const asignarAsesor=(id,asesor)=>{
-    const nuevos=cierres.map(c=>c.id===id?{...c,asesor}:c);
-    save(nuevos);
-  };
-
-  const agregarSeguimiento=(id,entrada)=>{
-    const nuevos=cierres.map(c=>c.id===id?{...c,historial:[...(c.historial||[]),entrada]}:c);
-    save(nuevos);
-  };
-
-  const eliminar=id=>{save(cierres.filter(c=>c.id!==id));};
-
-  const SS2={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
-  const inp=(k,ph,type="text")=>React.createElement('input',{type,value:form[k],onChange:e=>setF(k,e.target.value),placeholder:ph,style:SS2});
-  const sel=(k,opts,ph="Seleccionar...")=>React.createElement('select',{value:form[k],onChange:e=>setF(k,e.target.value),style:{...SS2,cursor:"pointer"}},React.createElement('option',{value:""},ph),...opts.map(o=>React.createElement('option',{key:o},o)));
-  const campo=(label,children,full=false)=>React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}},React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}},label),children);
-
-  if(loading)return React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando...");
-
-  return React.createElement('div',null,
-    modalVendedor&&React.createElement(ModalVendedor,{onClose:()=>setModalVendedor(false),onSelect:v=>setF("vendedor",v)}),
-    modalAsesor&&React.createElement(ModalAsesor,{onClose:()=>setModalAsesor(null),onSelect:a=>asignarAsesor(modalAsesor,a)}),
-    modalSeg&&React.createElement(ModalSeguimiento,{onClose:()=>setModalSeg(null),onGuardar:e=>agregarSeguimiento(modalSeg,e)}),
-
-    React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
-      React.createElement('div',null,
-        React.createElement('p',{style:{margin:0,fontSize:14,fontWeight:600}},"Comercial"),
-        React.createElement('p',{style:{margin:0,fontSize:12,color:"#6b7a99"}},`${cierres.length} cierres`)
-      ),
-      React.createElement('button',{onClick:()=>setShowForm(p=>!p),style:{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:600,cursor:"pointer"}},showForm?"✕ Cancelar":"+ Nuevo Cierre")
-    ),
-
-    showForm&&React.createElement('div',{style:{border:"1.5px solid #2E75B6",borderRadius:14,overflow:"hidden",marginBottom:16}},
-      React.createElement('div',{style:{background:"#1F3864",padding:"12px 16px"}},React.createElement('p',{style:{margin:0,color:"white",fontSize:14,fontWeight:600}},"Nuevo Cierre Comercial")),
-      React.createElement('div',{style:{padding:"16px",background:"#fff"}},
-        React.createElement('p',{style:{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}},"📋 Datos del Cliente"),
-        React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
-          campo("Clasificación",sel("clasificacion",CLASIFICACIONES)),
-          campo("Vendedor",
-            React.createElement('div',{style:{display:"flex",gap:6,alignItems:"center"}},
-              React.createElement('div',{style:{flex:1,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",fontSize:13,color:form.vendedor?"#1a2340":"#9baabf",minHeight:38}},form.vendedor||"Sin seleccionar"),
-              React.createElement('button',{onClick:()=>setModalVendedor(true),style:{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"9px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}},"Elegir")
-            )
-          ),
-          campo("Nombre de Fantasía",inp("nombreFantasia","Ej: LOI SUITES CHAPELCO"),true),
-          campo("Razón Social",inp("razonSocial","Ej: LOITEGUI SA"),true),
-          campo("Dirección",inp("direccion","Dirección de instalación"),true),
-          campo("Correo responsable",inp("correo","email@ejemplo.com")),
-          campo("Contacto de referencia",inp("contacto","Nombre - Cargo - Teléfono"))
-        ),
-        React.createElement('p',{style:{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}},"💧 Condiciones Comerciales"),
-        React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
-          campo("Modelo AQA",sel("modelo",MODELOS_ALL)),
-          campo("Valor / Acuerdo",inp("valor","Ej: $350.000")),
-          campo("Instalación",inp("instalacion","Ej: Bonificada 100%")),
-          campo("Insumos",inp("insumos","Ej: 200 botellas bonificadas")),
-          campo("Contrato",inp("contrato","Ej: 24 meses")),
-          campo("Ajuste",sel("ajuste",AJUSTES)),
-          campo("Observaciones",React.createElement('textarea',{value:form.observaciones,onChange:e=>setF("observaciones",e.target.value),placeholder:"Notas adicionales...",rows:2,style:{...SS2,resize:"vertical"}}),true)
-        ),
-        React.createElement('p',{style:{margin:"0 0 6px",fontSize:11,color:"#6b7a99"}},"El asesor de Atención al Cliente se puede asignar después desde cada cierre."),
-        React.createElement('button',{onClick:guardar,disabled:saving,style:{width:"100%",background:"#1a5c3a",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:saving?"not-allowed":"pointer",marginTop:8}},saving?"Guardando...":"✔ Guardar Cierre")
-      )
-    ),
-
-    cierres.length===0&&!showForm&&React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"2rem",textAlign:"center",border:"1px solid #dce6f5"}},
-      React.createElement('p',{style:{margin:"0 0 4px",fontSize:14,color:"#6b7a99"}},"No hay cierres cargados"),
-      React.createElement('p',{style:{margin:0,fontSize:12,color:"#6b7a99"}},'Hacé clic en "+ Nuevo Cierre"')
-    ),
-
-    React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
-      ...cierres.map(c=>{
-        const open=expandedId===c.id;
-        const sinAsesor=!c.asesor;
-        return React.createElement('div',{key:c.id,style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${sinAsesor?"#EF9F27":"#2E75B6"}`}},
-          // Header del cierre
-          React.createElement('div',{onClick:()=>setExpandedId(open?null:c.id),style:{padding:"12px 14px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}},
-            React.createElement('div',{style:{minWidth:0}},
-              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8}},
-                React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombreFantasia),
-                sinAsesor&&React.createElement('span',{style:{background:"#FAEEDA",color:"#633806",fontSize:10,padding:"1px 7px",borderRadius:5,fontWeight:500,whiteSpace:"nowrap"}},"Sin asesor")
-              ),
-              React.createElement('p',{style:{margin:0,fontSize:11,color:"#6b7a99"}},`${c.razonSocial} · ${c.vendedor||"Sin vendedor"} · ${c.modelo||"Modelo a definir"}`)
-            ),
-            React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
-              React.createElement('span',{style:{background:"#e8f1fb",color:"#1F3864",fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}},c.fecha),
-              React.createElement('span',{style:{fontSize:11,color:"#6b7a99"}},open?"▲":"▼")
-            )
-          ),
-
-          // Detalle expandido
-          open&&React.createElement('div',{style:{padding:"0 14px 14px",borderTop:"1px solid #dce6f5"}},
-            // Datos
-            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginTop:10}},
-              ...[{l:"Clasificación",v:c.clasificacion},{l:"Vendedor",v:c.vendedor},{l:"Dirección",v:c.direccion},{l:"Correo",v:c.correo},{l:"Contacto",v:c.contacto},{l:"Modelo",v:c.modelo},{l:"Valor",v:c.valor},{l:"Instalación",v:c.instalacion},{l:"Insumos",v:c.insumos},{l:"Contrato",v:c.contrato},{l:"Ajuste",v:c.ajuste}].filter(x=>x.v).map(({l,v})=>
-                React.createElement('div',{key:l,style:{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}},
-                  React.createElement('p',{style:{margin:0,fontSize:10,color:"#6b7a99"}},l),
-                  React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:500}},v)
-                )
-              ),
-              // Asesor At. Cliente
-              React.createElement('div',{style:{background:sinAsesor?"#fffbe6":"#f4f7fb",borderRadius:8,padding:"7px 10px",border:sinAsesor?"1px solid #f0d060":"none"}},
-                React.createElement('p',{style:{margin:0,fontSize:10,color:"#6b7a99"}},"Asesor At. Cliente"),
-                React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6,marginTop:2}},
-                  React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:500}},c.asesor||"Sin asignar"),
-                  React.createElement('button',{onClick:()=>setModalAsesor(c.id),style:{fontSize:10,padding:"2px 8px",borderRadius:5,border:"1px solid #1F3864",background:"transparent",color:"#1F3864",cursor:"pointer"}},c.asesor?"Cambiar":"Asignar")
-                )
-              )
-            ),
-            c.observaciones&&React.createElement('div',{style:{background:"#fffbe6",borderRadius:8,padding:"7px 10px",border:"1px solid #f0d060",marginTop:8}},
-              React.createElement('p',{style:{margin:0,fontSize:10,color:"#856404"}},"Observaciones iniciales"),
-              React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:500}},c.observaciones)
-            ),
-
-            // Historial de seguimiento
-            React.createElement('div',{style:{marginTop:12}},
-              React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
-                React.createElement('p',{style:{margin:0,fontSize:12,fontWeight:600,color:"#1F3864"}},"Historial de seguimiento"),
-                React.createElement('button',{onClick:()=>setModalSeg(c.id),style:{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"5px 12px",fontSize:11,cursor:"pointer",fontWeight:500}},
-                  "+ Agregar actualización"
-                )
-              ),
-              (!c.historial||c.historial.length===0)
-                ?React.createElement('p',{style:{fontSize:12,color:"#9baabf",fontStyle:"italic",margin:0}},"Sin actualizaciones aún.")
-                :React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:6}},
-                  ...[...(c.historial||[])].reverse().map((h,i)=>
-                    React.createElement('div',{key:i,style:{background:"#f4f7fb",borderRadius:8,padding:"8px 12px",borderLeft:"3px solid #2E75B6"}},
-                      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
-                        React.createElement('span',{style:{fontSize:11,fontWeight:600,color:"#1F3864"}},`${h.equipo} — ${h.autor}`),
-                        React.createElement('span',{style:{fontSize:10,color:"#9baabf"}},h.fecha)
-                      ),
-                      React.createElement('p',{style:{margin:0,fontSize:12,color:"#1a2340"}},h.texto)
-                    )
-                  )
-                )
-            ),
-
-            React.createElement('button',{onClick:()=>eliminar(c.id),style:{marginTop:12,fontSize:11,padding:"5px 14px",borderRadius:8,border:"1px solid #FCEBEB",background:"#FCEBEB",color:"#791F1F",cursor:"pointer",fontWeight:500}},"🗑 Eliminar cierre")
-          )
-        );
-      })
-    )
+  return (
+    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}>
+      <div className="modal">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <p style={{fontSize:15,fontWeight:600}}>Nueva actualización</p>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:5}}>Equipo</label>
+            <select value={equipo} onChange={e=>{setEquipo(e.target.value);setAutor("");}} style={SS}>
+              <option value="">Seleccionar equipo...</option>
+              {Object.keys(EQUIPOS_SEG).map(k=><option key={k}>{k}</option>)}
+            </select>
+          </div>
+          {equipo&&(
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:5}}>Quién escribe</label>
+              <select value={autor} onChange={e=>setAutor(e.target.value)} style={SS}>
+                <option value="">Seleccionar...</option>
+                {EQUIPOS_SEG[equipo].map(a=><option key={a}>{a}</option>)}
+              </select>
+            </div>
+          )}
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:5}}>Actualización</label>
+            <textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Escribí la actualización..." rows={4} style={{...SS,resize:"vertical"}}/>
+          </div>
+          <button onClick={guardar} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:"pointer"}}>✔ Guardar</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 // ── Generador de Contratos ────────────────────────────────────────────
-function generarDocx(f) {
+function generarTxt(f) {
   const vm=parseInt(f.mensual)||0, ci=parseInt(f.instalacion)||0, cb=parseInt(f.botellas)||0;
   const usd=USD_OPTS.find(o=>o.value===f.valorUsd)||{value:"—",letras:"—"};
   const ajAdj=f.ajuste.toLowerCase();
   const ajPer={trimestral:"trimestre",bimestral:"bimestre",cuatrimestral:"cuatrimestre",semestral:"semestre"}[ajAdj]||ajAdj;
-
-  const txt =
-`Ciudad Autónoma de Buenos Aires, ${f.dia} de ${f.mes} de 2026
+  const txt=`Ciudad Autónoma de Buenos Aires, ${f.dia} de ${f.mes} de 2026
 
 Señores
 ${f.razonSocial}
@@ -497,167 +341,159 @@ Carácter: apoderado
 ANEXO I
 Términos y Condiciones de la Oferta
 
-Entre, por una parte, FADEFIL S.A., CUIT 30-71295020-6, representado en este acto por el Sr. Ignacio Musmanno con DNI 37.988.431, en su carácter de apoderado, con domicilio constituido en la calle Camarones N°1975, de la Ciudad Autónoma de Buenos Aires (el "Locador" y/o Fadefil); y por la otra parte ${f.razonSocial} CUIT ${f.cuit}, representado en este acto por el Sr. ${f.firmante} DNI ${f.dni}, en su carácter de Representante (el "Locatario" y junto con Fadefil y/o el Locador las "Partes" e individualmente la "Parte"), con domicilio constituido en ${f.direccion}.
+Entre, por una parte, FADEFIL S.A., CUIT 30-71295020-6, representado en este acto por el Sr. Ignacio Musmanno con DNI 37.988.431, en su carácter de apoderado, con domicilio constituido en la calle Camarones N°1975, de la Ciudad Autónoma de Buenos Aires (el "Locador" y/o Fadefil); y por la otra parte ${f.razonSocial} CUIT ${f.cuit}, representado en este acto por el Sr. ${f.firmante} DNI ${f.dni}, en su carácter de Representante (el "Locatario"), con domicilio constituido en ${f.direccion}.
 
 CONSIDERANDO:
 
     - Que el Locador es una sociedad anónima constituida de conformidad con las leyes de la República Argentina, que brinda servicios profesionales de instalación y mantenimiento de dispensadores y purificadores de agua potable, que se conectan a la red de agua corriente.
-    - Que el Locatario es una ${f.tipoSociedad} para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" correspondiente al equipo descripto en la presente Oferta y que incluye la provisión de 2 (dos) cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una.
-
-En consecuencia, las Partes acuerdan que, una vez aceptada la Oferta, la relación comercial resultante entre las mismas (la "Relación Comercial"), se regirá por los términos y condiciones que se indican a continuación y, en subsidio, por las disposiciones legales vigentes que le sean aplicables:
+    - Que el Locatario es una ${f.tipoSociedad} para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" que incluye la provisión de 2 (dos) cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una.
 
 PRIMERA. OBJETO
 
-    1.1. El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de dispensadores y purificadores de agua potable correspondiente a la máquina ${f.modelo} de marca "AQA" (la "Máquina") que incluye la provisión de 2 (dos) cilindros CO2 los cuales son rotativos en base al requerimiento del Locatario y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una (los "Equipos").
+    1.1. El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de la máquina ${f.modelo} de marca "AQA" (la "Máquina") que incluye la provisión de 2 (dos) cilindros CO2 rotativos y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml (los "Equipos").
 
-    1.2. La Máquina es de titularidad exclusiva de Fadefil, la cual será entregada al Locatario, en comodato, e instalada en el inmueble sito en ${f.direccion} (el "Inmueble") para el uso y goce de la misma por parte del Locatario (el "Servicio" y/o los "Servicios").
+    1.2. La Máquina será instalada en el inmueble sito en ${f.direccion} (el "Inmueble") para el uso y goce del Locatario.
 
-    1.3. El Servicio será prestado -única y exclusivamente- dentro de las instalaciones del Inmueble, mediante la instalación de la Máquina por parte del personal de Fadefil, la cual se encuentra en perfecto estado de conservación y funcionamiento.
+    1.3. El Servicio será prestado únicamente dentro de las instalaciones del Inmueble, mediante la instalación de la Máquina por personal de Fadefil.
 
-    1.4. Las Partes acuerdan que, a partir de la instalación de la Máquina, el Locador asistirá al Inmueble cada noventa (90) días a fin de efectuar la revisión, mantenimiento, cambio de filtros y/o reposición -en caso de corresponder- de la Máquina, previa coordinación con el Locatario de fecha y hora de visita.
+    1.4. El Locador asistirá al Inmueble cada noventa (90) días para revisión, mantenimiento, cambio de filtros y/o reposición de la Máquina, previa coordinación de fecha y hora.
 
-    1.5. En el supuesto que la reparación implique el traslado de la Máquina a los talleres del Locador, éste último proporcionará al Locatario otro equipo por todo el tiempo que demore la reparación de la misma.
+    1.5. En caso de reparación que implique traslado, Fadefil proveerá un equipo de reemplazo durante todo el tiempo que demore la reparación.
 
-    1.6. Asimismo, el servicio de mantenimiento de la Máquina incluye: a) servicio técnico telefónico permanente dentro de las veinticuatro (24) horas; b) servicio técnico presencial; c) mantenimiento trimestral con control de calidad del agua; d) cambio de filtros siempre que el Locador lo considere necesario a su exclusivo criterio; e) cambio de equipo en caso de ser necesario y mano de obra incluida; f) capacitación inicial al personal del establecimiento del Locatario; g) la reparación -sin costos adicionales al Precio- ante cualquier desperfecto que presentare la Máquina como resultado de su uso adecuado. Cualquier desperfecto deberá ser notificado por medio fehaciente al Locador dentro de las cuarenta y ocho (48) horas de haber tomado conocimiento del mismo.
+    1.6. El servicio de mantenimiento incluye: a) soporte técnico telefónico permanente dentro de las 24hs; b) servicio técnico presencial; c) mantenimiento trimestral con control de calidad del agua; d) cambio de filtros a criterio del Locador; e) cambio de equipo si necesario con mano de obra incluida; f) capacitación inicial al personal del Locatario; g) reparaciones sin costo adicional ante desperfectos por uso adecuado.
 
-    1.7. Fadefil se encuentra facultado -a su exclusivo arbitrio- a modificar y/o reemplazar en cualquier momento la Máquina instalada en el Inmueble, previa comunicación fehaciente.
+    1.7. Fadefil podrá modificar o reemplazar la Máquina instalada en el Inmueble con comunicación fehaciente previa.
 
 SEGUNDA. PLAZO
 
-    2.1. La relación contractual entre las Partes entrará en vigencia a partir de la fecha de entrega de los Equipos e instalación de la Máquina en el Inmueble y se mantendrá vigente por el plazo de 12 (doce) meses (el "Plazo de Vigencia Inicial").
+    2.1. La relación contractual entrará en vigencia a partir de la instalación de la Máquina y se mantendrá vigente por el plazo de 12 (doce) meses (el "Plazo de Vigencia Inicial").
 
-    2.2. El Plazo de Vigencia Inicial se renovará automáticamente a su vencimiento por períodos de 24 (veinticuatro) meses (la "Prórroga"), salvo que alguna de las Partes notifique a la otra Parte su voluntad de no renovar con 30 (treinta) días de antelación.
+    2.2. El Plazo de Vigencia Inicial se renovará automáticamente por períodos de 24 (veinticuatro) meses (la "Prórroga"), salvo que alguna de las Partes notifique su voluntad de no renovar con 30 (treinta) días de antelación.
 
-    2.3. Finalizado el Plazo de Vigencia Inicial o de la Prórroga, la Relación Comercial entre las Partes concluirá de pleno derecho, sin necesidad de interpelación judicial y/o extrajudicial alguna.
+    2.3. Finalizado el Plazo de Vigencia Inicial o de la Prórroga, la Relación Comercial concluirá de pleno derecho, sin necesidad de interpelación judicial y/o extrajudicial alguna.
 
-    2.4. Las Partes establecen que el contrato de comodato es accesorio y complementario a la presente; en consecuencia, el Plazo del Comodato finalizará indefectiblemente en la misma fecha de terminación y/o rescisión de la presente.
+    2.4. El contrato de comodato es accesorio y complementario a la presente; en consecuencia, el Plazo del Comodato finalizará indefectiblemente en la misma fecha de terminación y/o rescisión de la presente.
 
 TERCERA. PRECIO
 
     3.1. Las Partes convienen, por la prestación del servicio, la suma mensual de $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA (el "Precio").
 
-    3.2. El Precio será actualizado en forma ${ajAdj}, conforme la variación del índice de precios al consumidor ("IPC") acumulada durante el ${ajPer} inmediato posterior al último mes actualizado. Para la primera actualización se tomará como base de cálculo la suma del precio inicial de $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA, y luego para las siguientes actualizaciones se considerará la suma abonada el último mes inmediato anterior a la actualización.
+    3.2. El Precio será actualizado en forma ${ajAdj}, conforme la variación del IPC acumulada durante el ${ajPer} inmediato posterior al último mes actualizado. Para la primera actualización se tomará como base $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.
 
-    3.3. En caso de que el Locatario solicite un cambio de la Máquina por un modelo distinto, previa conformidad expresa del Locador, se actualizará automáticamente el Precio de conformidad con el nuevo modelo de máquina solicitado por el Locatario.
+    3.3. En caso de que el Locatario solicite un cambio de Máquina por un modelo distinto, previa conformidad del Locador, se actualizará automáticamente el Precio.
 
-    3.4. El costo de la instalación inicial de la Máquina se encuentra a cargo exclusivamente del Locatario, el cual asciende a la suma total de $${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA (el "Costo de instalación").
+    3.4. El costo de la instalación inicial asciende a la suma total de $${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA (el "Costo de instalación").
 
-    3.5. El Locatario declara -expresa e irrevocablemente- conocer el valor total de los Equipos entregados en comodato (el "Valor de Reposición"), el cual al día de la fecha asciende a:
+    3.5. El Locatario declara conocer el Valor de Reposición de los Equipos:
         Máquina "AQA" ${f.modelo}: USD ${usd.value} (dólares estadounidenses ${usd.letras}) + IVA.
         Cilindros de CO2: USD 350 (dólares estadounidenses trescientos cincuenta) + IVA.
 
-    3.6. El Locatario declara y garantiza expresamente que, ante la pérdida, robo, hurto, destrucción total y/o parcial y/o falta de restitución de la Máquina, abonará a Fadefil, dentro del plazo máximo de diez (10) días hábiles contados a partir de la fecha de intimación fehaciente, el Valor de Reposición.
+    3.6. Ante la pérdida, robo, hurto o destrucción de la Máquina, el Locatario abonará el Valor de Reposición dentro de los 10 (diez) días hábiles de intimación fehaciente.
 
-    3.7. El costo de reposición correspondiente a las botellas de AQA, por unidad, asciende a la suma de USD 2 (dólar estadounidense dos) más IVA (valor unitario), y la suma de USD 0,20 (veinte centavos de dólar) más IVA en concepto de reposición de las tapas (valor unitario). El importe será determinado conforme a la cotización oficial del dólar del Banco de la Nación Argentina vigente a la fecha de emisión de la factura.
+    3.7. El costo de reposición de botellas asciende a USD 2 (dos) más IVA por unidad, y USD 0,20 (veinte centavos) más IVA por tapa. El importe se determinará conforme la cotización oficial del dólar del Banco Nación vigente a la fecha de emisión de la factura.
 
 CUARTA. FACTURACIÓN Y PAGO
 
-    4.1. Fadefil facturará la prestación de sus Servicios de forma mensual, emitiendo la correspondiente factura por mes adelantado, en formato electrónico (la "Factura").
+    4.1. Fadefil facturará mensualmente por mes adelantado, en formato electrónico.
 
-    4.2. La Factura será abonada por el Locatario, dentro de los cinco (5) días corridos contados desde la fecha de su emisión, mediante transferencia bancaria a la cuenta de titularidad de Fadefil, del Banco Credicoop CBU: 1910043855004300999628.
+    4.2. La Factura será abonada dentro de los 5 (cinco) días corridos desde su emisión, mediante transferencia bancaria. Banco Credicoop CBU: 1910043855004300999628.
 
 QUINTA. PERSONAL. AUTONOMÍA DE LAS PARTES.
 
-    5.1. Las Partes declaran que revisten el carácter de independientes la una respecto de la otra y que esta Oferta no constituye la formación de una sociedad de hecho ni accidental, ni una relación de dependencia entre las mismas.
+    5.1. Las Partes son independientes entre sí. Esta Oferta no constituye sociedad de hecho, ni relación de dependencia entre las mismas.
 
-    5.2. Las Partes acuerdan que no podrán generarse obligaciones de ninguna índole respecto del personal y/o terceros y/o contratistas y/o subcontratistas de la otra Parte. En virtud de lo expuesto cada una de las Partes asume plena y total responsabilidad frente a terceros y a su propio personal de las obligaciones civiles, penales, laborales, previsionales, administrativas, etc., por las actividades desarrolladas. También se obligan a mantener indemne y a restituir a la otra Parte cualquier suma de dinero que ésta pudiera verse obligada a abonar por tales conceptos.
+    5.2. Las Partes acuerdan que no podrán generarse obligaciones respecto del personal y/o contratistas de la otra Parte. Cada Parte asume plena responsabilidad frente a terceros y a su propio personal de las obligaciones civiles, penales, laborales, previsionales y administrativas por las actividades desarrolladas.
 
 SEXTA. MARCAS
 
-    6.1. Ninguna de las Partes podrá utilizar el nombre comercial de la otra Parte. El presente no autoriza ni otorga derecho alguno al Locatario a utilizar las marcas de titularidad exclusiva de Fadefil (las "Marcas").
+    6.1. El presente no autoriza al Locatario a utilizar las marcas de titularidad exclusiva de Fadefil (las "Marcas").
 
-    6.2. Las Marcas son y seguirán siendo exclusivas y de irrestricta propiedad de Fadefil, bajo la protección de la legislación nacional e internacional sobre propiedad intelectual. Se prohíbe todo uso y/o explotación comercial de las Marcas.
+    6.2. Las Marcas son y seguirán siendo de irrestricta propiedad de Fadefil, bajo la protección de la legislación nacional e internacional sobre propiedad intelectual.
 
-    6.3. Sin perjuicio de lo expuesto, Fadefil autoriza al Locatario a incluir en los menús y redes sociales el logo de la marca "AQA" única y exclusivamente para la promoción del servicio objeto de la presente y durante el plazo de vigencia de la misma.
+    6.3. Fadefil autoriza al Locatario a incluir en los menús y redes sociales el logo de la marca "AQA" únicamente para la promoción del servicio y durante la vigencia de la presente.
 
-    6.4. El incumplimiento por parte del Locatario habilitará a Fadefil a iniciar las acciones legales que correspondan, incluyendo daños y perjuicios, denuncias penales y medidas cautelares, aún finalizada la vigencia de la presente Relación Comercial.
+    6.4. El incumplimiento de esta cláusula habilitará a Fadefil a iniciar las acciones legales que correspondan, incluyendo daños y perjuicios, denuncias penales y medidas cautelares.
 
 SÉPTIMA. OBLIGACIONES DE LAS PARTES
 
-    7.1. Durante la vigencia del presente será obligación de Fadefil realizar la prestación de los Servicios poniendo en su ejecución la máxima diligencia y eficiencia, de conformidad con las sanas prácticas profesionales y las reglas de su buen arte y oficio.
+    7.1. Fadefil realizará la prestación de los Servicios con máxima diligencia y eficiencia.
 
     7.2. Fadefil declara y garantiza contar con la capacidad técnica y económica para cumplir con el Servicio.
 
-    7.3. El Locatario declara y garantiza que posee una estructura eléctrica y conexión de agua adecuada para la instalación de los Equipos, quedando a exclusivo cargo, costo y riesgo el mantenimiento y conservación de dichas instalaciones.
+    7.3. El Locatario garantiza que posee estructura eléctrica y conexión de agua adecuada para la instalación de los Equipos.
 
-    7.4. El Locatario reconoce expresamente que la Máquina es de exclusiva propiedad de Fadefil, debiendo devolver inmediatamente los Equipos en caso de rescisión y/o terminación de la presente, en las mismas condiciones de entrega.
+    7.4. El Locatario reconoce que la Máquina es de exclusiva propiedad de Fadefil y deberá devolverla en caso de rescisión o terminación de la presente.
 
-    7.5. El Locatario se obliga -expresa e irrevocablemente- a utilizar los Equipos -única y exclusivamente- en el Inmueble y a no ceder, transferir, distribuir, comercializar, ampliar, alterar, desactivar, retener ni trasladar los Equipos; caso contrario deberá abonar el 50% de la mensualidad vigente en concepto de incumplimiento de cláusula.
+    7.5. El Locatario se obliga a utilizar los Equipos únicamente en el Inmueble y a no ceder, transferir ni trasladar los Equipos sin autorización escrita previa de Fadefil.
 
-    7.6. El Locatario se obliga a notificar de forma fehaciente a Fadefil cualquier medida judicial o extrajudicial que afectare a los Equipos en el plazo de veinticuatro (24) horas de notificada u ocurrida la misma.
+    7.6. El Locatario se obliga a notificar fehacientemente a Fadefil cualquier medida judicial o extrajudicial que afectare a los Equipos dentro de las 24 (veinticuatro) horas de ocurrida la misma.
 
-    7.7. El Locatario se compromete a implementar un protector de tensión en el tomacorriente que ocupará la Máquina. Asimismo, deberá cerrar las llaves de paso y desenchufar la Máquina en caso de ausentarse del Inmueble por un período superior a dos (2) días corridos.
+    7.7. El Locatario implementará un protector de tensión y deberá cerrar las llaves de paso y desenchufar la Máquina ante ausencias superiores a 2 (dos) días corridos.
 
-    7.8. El Locatario se compromete a realizar la correcta limpieza y sanitizado de botellas, operar la Máquina bajo personal capacitado y proveer a la misma con agua potable de red.
+    7.8. El Locatario se compromete a realizar la correcta limpieza y sanitizado de botellas, operar la Máquina bajo personal capacitado y proveerla con agua potable de red.
 
-    7.9. El Locatario deberá cumplir con todas las habilitaciones exigidas por las leyes y reglamentaciones vigentes para mantener instalado y operar en su Inmueble tubos sometidos a presión.
+    7.9. El Locatario deberá poseer todas las habilitaciones exigidas por las leyes vigentes para el desarrollo de su actividad y para operar tubos sometidos a presión.
 
-    7.10. El Locatario deberá utilizar las botellas de AQA -única y exclusivamente- para servir agua del Equipo, no pudiendo servir en las mismas cualquier otra bebida.
+    7.10. El Locatario deberá utilizar las botellas de AQA únicamente para servir agua del Equipo.
 
 OCTAVA. RESPONSABILIDAD DE LAS PARTES
 
-    8.1. Cada una de las Partes será responsable exclusiva por los daños ocasionados que les sean imputables por su acción u omisión, en virtud de las obligaciones asumidas por cada una por medio de la presente.
+    8.1. Cada Parte será responsable exclusiva por los daños ocasionados que le sean imputables por su acción u omisión.
 
-    8.2. Las Partes se garantizan recíprocamente indemnidad total por los daños y perjuicios que ocasionen a terceros de todo tipo.
+    8.2. Las Partes se garantizan recíprocamente indemnidad total por los daños y perjuicios que ocasionen a terceros.
 
 NOVENA. MORA. INCUMPLIMIENTO. RESCISIÓN. RESOLUCIÓN ANTICIPADA
 
-    9.1. La mora en el cumplimiento de las obligaciones previstas en la Oferta se producirá en forma automática y de pleno derecho, sin necesidad de intimación previa judicial o extrajudicial.
+    9.1. La mora se producirá en forma automática y de pleno derecho, sin necesidad de intimación previa.
 
-    9.2. En caso de que el Locatario incurra en mora en los pagos del Precio al Locador, se devengará un interés equivalente a una vez y media la tasa activa del Banco de la Nación Argentina para el descuento de documentos comerciales, en forma mensual, desde la fecha de mora hasta la fecha del efectivo pago.
+    9.2. En caso de mora en los pagos, se devengará un interés equivalente a una vez y media la tasa activa del Banco de la Nación Argentina para el descuento de documentos comerciales, en forma mensual.
 
-    9.3. Las Partes acuerdan que, dentro de los primeros treinta (30) días corridos contados desde la fecha de aceptación de la presente Oferta, las Partes podrán resolver la Relación Comercial en forma anticipada, unilateral y sin expresión de causa, mediante notificación fehaciente y con un preaviso de quince (15) días corridos, sin que ello implique indemnización alguna. Sin perjuicio de ello, el Locatario deberá: (i) abonar a Fadefil el monto proporcional correspondiente al servicio efectivamente prestado hasta la fecha de la efectiva rescisión y; (ii) restituir a Fadefil los Equipos entregados en el mismo estado en que fueron recibidos.
+    9.3. Dentro de los primeros 30 (treinta) días corridos desde la aceptación, las Partes podrán resolver la Relación Comercial con preaviso de 15 (quince) días corridos, sin indemnización. El Locatario deberá abonar el monto proporcional al servicio prestado y restituir los Equipos.
 
     Sin expresión de causa:
-        - Fadefil podrá terminar la Relación Comercial en cualquier momento con preaviso de 15 días corridos, sin generar derecho a indemnización a favor del Locatario.
-        - El Locatario podrá rescindir con preaviso de 15 días corridos. Si lo hace dentro de los primeros 6 meses del Plazo de Vigencia Inicial, deberá abonar el 50% de las mensualidades pendientes hasta completar el primer año. Entre el mes 7 y 12, el 25% de las mensualidades pendientes del primer año.
-        - A partir del mes 13 hasta el 24 de la Prórroga: 50% de mensualidades pendientes del segundo año más 25% del tercer año de la Prórroga.
+        - Fadefil podrá terminar la Relación Comercial en cualquier momento con preaviso de 15 días corridos.
+        - El Locatario podrá rescindir con preaviso de 15 días corridos abonando el Precio hasta la fecha de terminación. Si rescinde dentro de los primeros 6 meses, abonará el 50% de las mensualidades pendientes del primer año. Entre el mes 7 y 12, el 25% de las mensualidades pendientes del primer año.
+        - A partir del mes 13 hasta el 24 de la Prórroga: 50% de mensualidades pendientes del segundo año + 25% del tercer año.
         - A partir del mes 25: 25% de las mensualidades pendientes hasta el vencimiento de la Prórroga.
 
-    Incumplimiento: siempre que persistiera luego de transcurridos 15 días corridos de la fecha en que la parte cumplidora intime fehacientemente a su subsanación, la parte cumplidora podrá rescindir la Relación Comercial de pleno derecho, quedando a salvo su derecho de reclamar los daños y perjuicios ocasionados.
+    Incumplimiento: si persistiera luego de 15 días corridos de intimación fehaciente, la parte cumplidora podrá rescindir de pleno derecho, quedando a salvo su derecho de reclamar daños y perjuicios.
 
-    9.4. Producida la terminación de la Relación Comercial, el Locatario deberá proceder a la inmediata restitución de los Equipos y la totalidad de insumos entregados en comodato dentro del plazo máximo de cinco (5) días contados desde la fecha de la efectiva rescisión, en el domicilio de Fadefil. Queda terminantemente prohibida la utilización de la marca AQA o cualquiera de sus componentes una vez rescindido el contrato.
+    9.4. Producida la terminación, el Locatario deberá restituir los Equipos dentro de los 5 (cinco) días en el domicilio de Fadefil. Queda prohibida la utilización de la marca AQA una vez rescindido el contrato.
 
-    9.5. Toda obligación de cualquiera de las Partes que en forma expresa o por naturaleza propia subsista a la extinción o rescisión de la presente, se mantendrá plenamente vigente hasta que sea debidamente cumplida en su totalidad.
+    9.5. Toda obligación que subsista a la extinción o rescisión de la presente se mantendrá plenamente vigente hasta su total cumplimiento.
 
 DÉCIMA. CONFIDENCIALIDAD
 
-Ambas partes acuerdan mantener la confidencialidad de la información que se utilice a los fines y en el marco de la ejecución de la presente y durante la vigencia de la misma y hasta un plazo de dos (2) años contados a partir de la terminación de la Relación Comercial.
+Las Partes mantendrán confidencialidad de la información durante la vigencia de la presente y hasta 2 (dos) años contados a partir de la terminación de la Relación Comercial.
 
 DÉCIMA PRIMERA. ANEXOS Y SELLADOS
 
-    11.1. Los anexos que se mencionan a lo largo del presente se encuentran adjuntos al final de este documento y, para todos los efectos, forman parte integrante del mismo.
-
+    11.1. Los anexos mencionados en el presente forman parte integrante del mismo.
     11.2. De corresponder el pago del impuesto de sellos, el mismo será soportado por las Partes por mitades.
 
 DÉCIMA SEGUNDA. CESIÓN
 
-Queda expresa e irrevocablemente convenido que el Locatario no podrá ceder ni transferir en todo o en parte la relación que surja de la presente Oferta, ni sus derechos y obligaciones, sin previa conformidad por escrito de la Locadora, bajo apercibimiento de resolución.
+El Locatario no podrá ceder ni transferir en todo o en parte la relación que surja de la presente Oferta, ni sus derechos y obligaciones, sin previa conformidad escrita de la Locadora.
 
 DÉCIMA TERCERA. NULIDAD PARCIAL. ACUERDO COMPLETO.
 
-    13.1. Si se considerara que cualquier disposición de esta Oferta es ilegal, inaplicable o inejecutable por decisión de una autoridad competente, dicha estipulación no afectará las restantes disposiciones de esta Oferta.
-
-    13.2. La presente Oferta con sus anexos: (a) constituye el acuerdo principal entre las Partes para la prestación del Servicio; (b) sustituye todo acuerdo anterior entre las Partes con relación al Servicio; y (c) no será modificada o complementada, excepto mediante instrumento escrito firmado por ambas Partes.
+    13.1. Si se considerara que cualquier disposición de esta Oferta es ilegal o inejecutable, dicha estipulación no afectará las restantes disposiciones.
+    13.2. La presente Oferta constituye el acuerdo principal entre las Partes y sustituye todo acuerdo anterior en relación al Servicio.
 
 DÉCIMA CUARTA. NO EXCLUSIVIDAD DE FADEFIL.
 
-    14.1. La presente Oferta no implica exclusividad para Fadefil. En tal sentido, Fadefil podrá prestar libremente el Servicio a cualquier otra persona, empresa o entidad.
-
-    14.2. Sin perjuicio de lo expuesto, el Locatario no podrá contratar el objeto del Servicio y/o tareas similares con otro u otros proveedores.
+    14.1. La presente Oferta no implica exclusividad para Fadefil.
+    14.2. El Locatario no podrá contratar el objeto del Servicio y/o tareas similares con otro u otros proveedores.
 
 DÉCIMA QUINTA. DOMICILIOS
 
-A todos los efectos, las Partes constituyen domicilios especiales en los lugares que a continuación se detallan, domicilios donde se tendrán por válidas todas las notificaciones que las Partes practicaren (sean judiciales o extrajudiciales).
-
-    - Fadefil constituye domicilio especial físico en Camarones N°1975, Ciudad Autónoma de Buenos Aires.
-    - El Locatario constituye domicilio especial físico en ${f.direccion}.
+    - Fadefil: Camarones N°1975, Ciudad Autónoma de Buenos Aires.
+    - El Locatario: ${f.direccion}.
 
 DÉCIMA SEXTA. LEGISLACIÓN Y JURISDICCIÓN
 
-    16.1. La presente Oferta se regirá por las leyes de la República Argentina y será interpretada de conformidad con las mismas.
-
-    16.2. Las Partes acuerdan que toda controversia que se suscite entre las Partes con relación al presente acuerdo, su existencia, validez, calificación, interpretación, alcance, cumplimiento o resolución, se resolverá definitivamente por los Tribunales Nacionales Ordinarios con asiento en la Ciudad Autónoma de Buenos Aires, renunciando a cualquier otro fuero que pudiese corresponderles.
+    16.1. La presente Oferta se regirá por las leyes de la República Argentina.
+    16.2. Toda controversia se resolverá por los Tribunales Nacionales Ordinarios con asiento en la Ciudad Autónoma de Buenos Aires.
 
 
 ════════════════════════════════════════════════════
@@ -682,39 +518,213 @@ _________________
 FIRMA
 ACLARACIÓN
 DNI`;
-
-  // Generar .txt limpio (Word lo abre perfectamente con Ctrl+V o doble clic)
-  const blob = new Blob([txt], {type:"text/plain;charset=utf-8"});
+  const blob = new Blob([txt],{type:"text/plain;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = `Contrato_AQA_${(f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"")}_${f.dia}${(f.mes||"").slice(0,3)}2026.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
+  a.href=url; a.download=`Contrato_AQA_${(f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"")}_${f.dia}${(f.mes||"").slice(0,3)}2026.txt`;
+  a.click(); URL.revokeObjectURL(url);
 }
 
 function GeneradorContratos() {
   const [f,setF]=useState({dia:"",mes:"",nro:"",razonSocial:"",cuit:"",tipoSociedad:"",firmante:"",dni:"",direccion:"",modelo:"",botellas:"",valorUsd:"",mensual:"",ajuste:"",instalacion:"0"});
   const [ok,setOk]=useState(false);
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+  const inp=(k,ph,type="text")=><input type={type} value={f[k]} onChange={e=>set(k,e.target.value)} placeholder={ph} style={SS}/>;
+  const sel=(k,opts)=><select value={f[k]} onChange={e=>set(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{opts.map(o=>typeof o==="string"?<option key={o}>{o}</option>:<option key={o.value} value={o.value}>{o.label}</option>)}</select>;
+  const campo=(label,child,full=false)=><div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</label>{child}</div>;
+  const sec=(num,titulo,children)=>(
+    <div style={{border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",marginBottom:12}}>
+      <div style={{background:"#1F3864",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}>
+        <span style={{width:20,height:20,borderRadius:"50%",background:"rgba(255,255,255,.2)",color:"white",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{num}</span>
+        <span style={{color:"white",fontSize:13,fontWeight:500}}>{titulo}</span>
+      </div>
+      <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,background:"#fff"}}>{children}</div>
+    </div>
+  );
   const generar=()=>{
-    const vm=parseInt(f.mensual)||0,cb=parseInt(f.botellas)||0;
-    if(!vm||!cb||!f.razonSocial||!f.firmante){alert("Completá todos los campos obligatorios");return;}
-    generarDocx(f);
-    setOk(true);
+    if(!parseInt(f.mensual)||!parseInt(f.botellas)||!f.razonSocial||!f.firmante){alert("Completá todos los campos");return;}
+    generarTxt(f); setOk(true);
   };
-  const SS2={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
-  const inp=(k,ph,type="text")=>React.createElement('input',{type,value:f[k],onChange:e=>set(k,e.target.value),placeholder:ph,style:SS2});
-  const sel=(k,opts)=>React.createElement('select',{value:f[k],onChange:e=>set(k,e.target.value),style:{...SS2,cursor:"pointer"}},React.createElement('option',{value:""},"Seleccionar..."),...opts.map(o=>typeof o==="string"?React.createElement('option',{key:o},o):React.createElement('option',{key:o.value,value:o.value},o.label)));
-  const campo=(label,children,full=false)=>React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}},React.createElement('label',{style:{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}},label),children);
-  const sec=(num,titulo,children)=>React.createElement('div',{style:{border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",marginBottom:12}},React.createElement('div',{style:{background:"#1F3864",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}},React.createElement('span',{style:{width:20,height:20,borderRadius:"50%",background:"rgba(255,255,255,.2)",color:"white",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},num),React.createElement('span',{style:{color:"white",fontSize:13,fontWeight:500}},titulo)),React.createElement('div',{style:{padding:"14px 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,background:"#fff"}},children));
-  return React.createElement('div',null,
-    sec(1,"Datos del Contrato",React.createElement('div',{style:{gridColumn:"1/-1",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},campo("Día",inp("dia","20","number")),campo("Mes",sel("mes",MESES)),campo("N° Oferta",inp("nro","142")))),
-    sec(2,"Datos del Cliente",React.createElement(React.Fragment,null,campo("Razón Social",inp("razonSocial","El Bar de Juan S.R.L."),true),campo("CUIT",inp("cuit","30-12345678-9")),campo("Tipo de Sociedad",sel("tipoSociedad",SOCIEDADES)),campo("Nombre del Firmante",inp("firmante","Juan Pérez")),campo("DNI del Firmante",inp("dni","28.456.789")),campo("Dirección",inp("direccion","Av. Corrientes 1234"),true))),
-    sec(3,"Equipo",React.createElement(React.Fragment,null,campo("Modelo",sel("modelo",MODELOS)),campo("Cant. Botellas",inp("botellas","6","number")),campo("Valor USD Reposición",sel("valorUsd",USD_OPTS),true))),
-    sec(4,"Precio",React.createElement(React.Fragment,null,campo("Valor Mensual ($ sin IVA)",inp("mensual","350000","number")),campo("Tipo de Ajuste",sel("ajuste",AJUSTES)),campo("Costo Instalación ($ sin IVA)",inp("instalacion","0","number")))),
-    React.createElement('button',{onClick:generar,style:{width:"100%",background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:4}},"⬇ Descargar Contrato (.txt)"),
-    ok&&React.createElement('div',{style:{marginTop:10,padding:"10px 14px",background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,fontSize:13,fontWeight:500}},"✔ Descargado. Abrilo con Word — el texto ya viene formateado y listo para usar.")
+  return (
+    <div>
+      {sec(1,"Datos del Contrato",<div style={{gridColumn:"1/-1",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>{campo("Día",inp("dia","20","number"))}{campo("Mes",sel("mes",MESES))}{campo("N° Oferta",inp("nro","142"))}</div>)}
+      {sec(2,"Datos del Cliente",<>{campo("Razón Social",inp("razonSocial","El Bar de Juan S.R.L."),true)}{campo("CUIT",inp("cuit","30-12345678-9"))}{campo("Tipo de Sociedad",sel("tipoSociedad",SOCIEDADES))}{campo("Nombre del Firmante",inp("firmante","Juan Pérez"))}{campo("DNI del Firmante",inp("dni","28.456.789"))}{campo("Dirección",inp("direccion","Av. Corrientes 1234"),true)}</>)}
+      {sec(3,"Equipo",<>{campo("Modelo",sel("modelo",MODELOS))}{campo("Cant. Botellas",inp("botellas","6","number"))}{campo("Valor USD Reposición",sel("valorUsd",USD_OPTS),true)}</>)}
+      {sec(4,"Precio",<>{campo("Valor Mensual ($ sin IVA)",inp("mensual","350000","number"))}{campo("Tipo de Ajuste",sel("ajuste",AJUSTES))}{campo("Costo Instalación ($ sin IVA)",inp("instalacion","0","number"))}</>)}
+      <button onClick={generar} style={{width:"100%",background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:4}}>⬇ Descargar Contrato (.txt)</button>
+      {ok&&<div style={{marginTop:10,padding:"10px 14px",background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,fontSize:13,fontWeight:500}}>✔ Descargado. Abrilo con Word.</div>}
+    </div>
+  );
+}
+
+// ── Comercial ─────────────────────────────────────────────────────────
+const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",fecha:""};
+
+function Comercial({onNuevoCierre}) {
+  const [cierres,setCierres]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [showForm,setShowForm]=useState(false);
+  const [form,setForm]=useState(CIERRE_VACIO);
+  const [expandedId,setExpandedId]=useState(null);
+  const [modalVendedor,setModalVendedor]=useState(false);
+  const [modalAsesor,setModalAsesor]=useState(null);
+  const [modalSeg,setModalSeg]=useState(null);
+  const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+
+  useEffect(()=>{
+    try { const s=localStorage.getItem("aqa_cierres"); if(s) setCierres(JSON.parse(s)); } catch(e){}
+    setLoading(false);
+  },[]);
+
+  const save=n=>{try{localStorage.setItem("aqa_cierres",JSON.stringify(n));}catch(e){} setCierres(n);};
+
+  const guardar=()=>{
+    if(!form.nombreFantasia||!form.razonSocial){alert("Completá Nombre de Fantasía y Razón Social");return;}
+    const nuevo={...form,id:Date.now().toString(),fecha:new Date().toLocaleDateString("es-AR"),historial:[]};
+    save([nuevo,...cierres]);
+    onNuevoCierre(nuevo);
+    setForm(CIERRE_VACIO); setShowForm(false);
+  };
+
+  const asignarAsesor=(id,a)=>save(cierres.map(c=>c.id===id?{...c,asesor:a}:c));
+  const agregarSeg=(id,e)=>save(cierres.map(c=>c.id===id?{...c,historial:[...(c.historial||[]),e]}:c));
+  const eliminar=id=>save(cierres.filter(c=>c.id!==id));
+
+  const inp=(k,ph,type="text")=><input type={type} value={form[k]} onChange={e=>setF(k,e.target.value)} placeholder={ph} style={SS}/>;
+  const sel=(k,opts,ph="Seleccionar...")=><select value={form[k]} onChange={e=>setF(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}</select>;
+  const campo=(label,child,full=false)=><div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</label>{child}</div>;
+
+  if(loading) return <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>;
+
+  return (
+    <div>
+      {modalVendedor&&<ModalLista titulo="Seleccionar Vendedor" items={VENDEDORES} onSelect={v=>setF("vendedor",v)} onClose={()=>setModalVendedor(false)}/>}
+      {modalAsesor&&<ModalLista titulo="Asignar Asesor At. Cliente" items={ASESORES_ATCLTE} onSelect={a=>asignarAsesor(modalAsesor,a)} onClose={()=>setModalAsesor(null)}/>}
+      {modalSeg&&<ModalSeguimiento onClose={()=>setModalSeg(null)} onGuardar={e=>agregarSeg(modalSeg,e)}/>}
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div>
+          <p style={{margin:0,fontSize:14,fontWeight:600}}>Comercial</p>
+          <p style={{margin:0,fontSize:12,color:"#6b7a99"}}>{cierres.length} cierres</p>
+        </div>
+        <button onClick={()=>setShowForm(p=>!p)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:600,cursor:"pointer"}}>
+          {showForm?"✕ Cancelar":"+ Nuevo Cierre"}
+        </button>
+      </div>
+
+      {showForm&&(
+        <div style={{border:"1.5px solid #2E75B6",borderRadius:14,overflow:"hidden",marginBottom:16}}>
+          <div style={{background:"#1F3864",padding:"12px 16px"}}><p style={{margin:0,color:"white",fontSize:14,fontWeight:600}}>Nuevo Cierre</p></div>
+          <div style={{padding:"16px",background:"#fff"}}>
+            <p style={{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>📋 Datos del Cliente</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              {campo("Clasificación",sel("clasificacion",CLASIFICACIONES))}
+              {campo("Vendedor",
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <div style={{flex:1,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",fontSize:13,color:form.vendedor?"#1a2340":"#9baabf",minHeight:38}}>{form.vendedor||"Sin seleccionar"}</div>
+                  <button onClick={()=>setModalVendedor(true)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"9px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Elegir</button>
+                </div>
+              )}
+              {campo("Nombre de Fantasía",inp("nombreFantasia","Ej: LOI SUITES"),true)}
+              {campo("Razón Social",inp("razonSocial","Ej: LOITEGUI SA"),true)}
+              {campo("Dirección",inp("direccion","Dirección de instalación"),true)}
+              {campo("Correo",inp("correo","email@ejemplo.com"))}
+              {campo("Contacto",inp("contacto","Nombre - Cargo - Tel"))}
+            </div>
+            <p style={{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>💧 Condiciones Comerciales</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              {campo("Modelo AQA",sel("modelo",MODELOS_ALL))}
+              {campo("Valor / Acuerdo",inp("valor","Ej: $350.000"))}
+              {campo("Instalación",inp("instalacion","Ej: Bonificada 100%"))}
+              {campo("Insumos",inp("insumos","Ej: 200 botellas"))}
+              {campo("Contrato",inp("contrato","Ej: 24 meses"))}
+              {campo("Ajuste",sel("ajuste",AJUSTES))}
+              {campo("Observaciones",<textarea value={form.observaciones} onChange={e=>setF("observaciones",e.target.value)} rows={2} style={{...SS,resize:"vertical"}}/>,true)}
+            </div>
+            <p style={{margin:"0 0 6px",fontSize:11,color:"#9baabf"}}>El asesor de Atención al Cliente se asigna después desde cada cierre.</p>
+            <button onClick={guardar} style={{width:"100%",background:"#1a5c3a",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:8}}>✔ Guardar Cierre</button>
+          </div>
+        </div>
+      )}
+
+      {cierres.length===0&&!showForm&&(
+        <div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",textAlign:"center",border:"1px solid #dce6f5"}}>
+          <p style={{margin:0,fontSize:13,color:"#6b7a99"}}>No hay cierres. Hacé clic en "+ Nuevo Cierre"</p>
+        </div>
+      )}
+
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {cierres.map(c=>{
+          const open=expandedId===c.id;
+          const sinAsesor=!c.asesor;
+          return (
+            <div key={c.id} style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${sinAsesor?"#EF9F27":"#2E75B6"}`}}>
+              <div onClick={()=>setExpandedId(open?null:c.id)} style={{padding:"12px 14px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                <div style={{minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <p style={{margin:0,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombreFantasia}</p>
+                    {sinAsesor&&<span style={{background:"#FAEEDA",color:"#633806",fontSize:10,padding:"1px 7px",borderRadius:5,fontWeight:500,whiteSpace:"nowrap"}}>Sin asesor</span>}
+                  </div>
+                  <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>{c.razonSocial} · {c.vendedor||"Sin vendedor"} · {c.modelo||"Modelo a definir"}</p>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  <span style={{background:"#e8f1fb",color:"#1F3864",fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}}>{c.fecha}</span>
+                  <span style={{fontSize:11,color:"#6b7a99"}}>{open?"▲":"▼"}</span>
+                </div>
+              </div>
+              {open&&(
+                <div style={{padding:"0 14px 14px",borderTop:"1px solid #dce6f5"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginTop:10}}>
+                    {[{l:"Clasificación",v:c.clasificacion},{l:"Vendedor",v:c.vendedor},{l:"Dirección",v:c.direccion},{l:"Correo",v:c.correo},{l:"Contacto",v:c.contacto},{l:"Modelo",v:c.modelo},{l:"Valor",v:c.valor},{l:"Instalación",v:c.instalacion},{l:"Insumos",v:c.insumos},{l:"Contrato",v:c.contrato},{l:"Ajuste",v:c.ajuste}].filter(x=>x.v).map(({l,v})=>(
+                      <div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}>
+                        <p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p>
+                        <p style={{margin:0,fontSize:12,fontWeight:500}}>{v}</p>
+                      </div>
+                    ))}
+                    <div style={{background:sinAsesor?"#fffbe6":"#f4f7fb",borderRadius:8,padding:"7px 10px",border:sinAsesor?"1px solid #f0d060":"none"}}>
+                      <p style={{margin:0,fontSize:10,color:"#6b7a99"}}>Asesor At. Cliente</p>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
+                        <p style={{margin:0,fontSize:12,fontWeight:500}}>{c.asesor||"Sin asignar"}</p>
+                        <button onClick={()=>setModalAsesor(c.id)} style={{fontSize:10,padding:"2px 8px",borderRadius:5,border:"1px solid #1F3864",background:"transparent",color:"#1F3864",cursor:"pointer"}}>{c.asesor?"Cambiar":"Asignar"}</button>
+                      </div>
+                    </div>
+                  </div>
+                  {c.observaciones&&(
+                    <div style={{background:"#fffbe6",borderRadius:8,padding:"7px 10px",border:"1px solid #f0d060",marginTop:8}}>
+                      <p style={{margin:0,fontSize:10,color:"#856404"}}>Observaciones iniciales</p>
+                      <p style={{margin:0,fontSize:12,fontWeight:500}}>{c.observaciones}</p>
+                    </div>
+                  )}
+                  <div style={{marginTop:12}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                      <p style={{margin:0,fontSize:12,fontWeight:600,color:"#1F3864"}}>Historial de seguimiento</p>
+                      <button onClick={()=>setModalSeg(c.id)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"5px 12px",fontSize:11,cursor:"pointer",fontWeight:500}}>+ Agregar actualización</button>
+                    </div>
+                    {(!c.historial||c.historial.length===0)
+                      ? <p style={{fontSize:12,color:"#9baabf",fontStyle:"italic",margin:0}}>Sin actualizaciones aún.</p>
+                      : <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                          {[...(c.historial||[])].reverse().map((h,i)=>(
+                            <div key={i} style={{background:"#f4f7fb",borderRadius:8,padding:"8px 12px",borderLeft:"3px solid #2E75B6"}}>
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                                <span style={{fontSize:11,fontWeight:600,color:"#1F3864"}}>{h.equipo} — {h.autor}</span>
+                                <span style={{fontSize:10,color:"#9baabf"}}>{h.fecha}</span>
+                              </div>
+                              <p style={{margin:0,fontSize:12,color:"#1a2340"}}>{h.texto}</p>
+                            </div>
+                          ))}
+                        </div>
+                    }
+                  </div>
+                  <button onClick={()=>eliminar(c.id)} style={{marginTop:12,fontSize:11,padding:"5px 14px",borderRadius:8,border:"1px solid #FCEBEB",background:"#FCEBEB",color:"#791F1F",cursor:"pointer",fontWeight:500}}>🗑 Eliminar cierre</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -739,189 +749,319 @@ function App() {
   const [expanded,setExpanded]=useState(null);
   const [instPendExtra,setInstPendExtra]=useState([]);
 
+  // Cargar clientes
   useEffect(()=>{
     (async()=>{
-      try{
+      try {
         const [rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff]=await Promise.all([
-          safeFetch(SHEET_URLS.cobBsAs),safeFetch(SHEET_URLS.cobInt),safeFetch(SHEET_URLS.cobHiel),
-          safeFetch(SHEET_URLS.baComodato),safeFetch(SHEET_URLS.intComodato),safeFetch(SHEET_URLS.hielComodato),safeFetch(SHEET_URLS.offComodato),
+          safeFetch(URLS.cobBsAs),safeFetch(URLS.cobInt),safeFetch(URLS.cobHiel),
+          safeFetch(URLS.baComodato),safeFetch(URLS.intComodato),safeFetch(URLS.hielComodato),safeFetch(URLS.offComodato),
         ]);
-        const {map:mapBsAs}=parseComodato(rComBsAs,"Buenos Aires");
-        const {map:mapInt}=parseComodato(rComInt,"Interior");
-        const {map:mapHiel}=parseComodato(rComHiel,"Hielogic");
-        const {map:mapOff,clientes:clientesOff}=parseComodato(rComOff,"AQA Office");
-        const comodatoMap={...mapBsAs,...mapInt,...mapHiel,...mapOff};
-        const enrich=(text,cartera)=>parseCob(text,cartera).map(c=>{const x=comodatoMap[c.id]||{};return{...c,asesorAtClte:x.asesorAtClte||"",fechaInstalacion:x.fechaInstalacion||""};});
-        const all=[
-          ...enrich(rCobBsAs,"Buenos Aires"),
-          ...enrich(rCobInt,"Interior"),
-          ...enrich(rCobHiel,"Hielogic"),
-          ...clientesOff,
-        ];
-        if(all.length>0)setClientes(all);
-      }catch(e){console.error(e);}
+        const {map:m1}=parseComodato(rComBsAs,"Buenos Aires");
+        const {map:m2}=parseComodato(rComInt,"Interior");
+        const {map:m3}=parseComodato(rComHiel,"Hielogic");
+        const {map:m4,clientes:offClientes}=parseComodato(rComOff,"AQA Office");
+        const cmap={...m1,...m2,...m3,...m4};
+        const enrich=(text,cartera)=>parseCob(text,cartera).map(c=>{
+          const x=cmap[c.id]||{};
+          return {...c,asesorAtClte:x.asesorAtClte||"",fechaInstalacion:x.fechaInstalacion||""};
+        });
+        const all=[...enrich(rCobBsAs,"Buenos Aires"),...enrich(rCobInt,"Interior"),...enrich(rCobHiel,"Hielogic"),...offClientes];
+        if(all.length>0) setClientes(all);
+      } catch(e){console.error(e);}
       setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
       setLoading(false);
     })();
   },[]);
 
+  // Cargar hoja logística
   useEffect(()=>{
-    if(tab!=="Atención al Cliente")return;
-    const key=`${logCartera}_${logHoja}`;
-    if(logData[key])return;
-    const urlKey=LOG_URL_MAP[key];
-    if(!urlKey)return;
-    setLoadingLog(true);
-    (async()=>{
-      try{const r=await safeFetch(SHEET_URLS[urlKey]);setLogData(p=>({...p,[key]:parseGeneric(r)}));}
-      catch{setLogData(p=>({...p,[key]:{headers:["Error al cargar"],rows:[]}}));}
-      setLoadingLog(false);
-    })();
+    if(tab!=="Atención al Cliente"||logHoja==="Comodato") return;
+    const carteras = logCartera==="Todos" ? ["Buenos Aires","Interior","Hielogic","AQA Office"] : [logCartera];
+    carteras.forEach(c=>{
+      const key=`${c}_${logHoja}`;
+      if(logData[key]) return;
+      const urlKey=LOG_URL_MAP[key];
+      if(!urlKey) return;
+      setLoadingLog(true);
+      safeFetch(URLS[urlKey]).then(r=>{
+        setLogData(p=>({...p,[key]:parseCSVText(r)}));
+        setLoadingLog(false);
+      }).catch(()=>{
+        setLogData(p=>({...p,[key]:{headers:["Error"],rows:[]}}));
+        setLoadingLog(false);
+      });
+    });
   },[tab,logCartera,logHoja]);
 
+  // Cargar administración
   useEffect(()=>{
-    if(tab!=="Administración"||admTab==="Generador de Contratos")return;
-    if(admData[admTab])return;
+    if(tab!=="Administración"||admTab==="Generador de Contratos") return;
+    if(admData[admTab]) return;
     setLoadingAdm(true);
     (async()=>{
-      try{
+      try {
         if(admTab==="Score Crediticio"){
-          const [r1,r2,r3]=await Promise.all([safeFetch(SHEET_URLS.scoreBsAs),safeFetch(SHEET_URLS.scoreInt),safeFetch(SHEET_URLS.scoreHiel)]);
-          setAdmData(p=>({...p,"Score Crediticio":{"Buenos Aires":parseGeneric(r1),"Interior":parseGeneric(r2),"Hielogic":parseGeneric(r3)}}));
-        }else if(admTab==="Intimaciones"){const r=await safeFetch(SHEET_URLS.intimaciones);setAdmData(p=>({...p,"Intimaciones":parseGeneric(r)}));}
-        else if(admTab==="Cartas Documento"){const r=await safeFetch(SHEET_URLS.cartasDoc);setAdmData(p=>({...p,"Cartas Documento":parseGeneric(r)}));}
-        else if(admTab==="Veraz"){const r=await safeFetch(SHEET_URLS.veraz);setAdmData(p=>({...p,"Veraz":parseGeneric(r)}));}
-      }catch{setAdmData(p=>({...p,[admTab]:{headers:["Error al cargar"],rows:[]}}));}
+          const [r1,r2,r3]=await Promise.all([safeFetch(URLS.scoreBsAs),safeFetch(URLS.scoreInt),safeFetch(URLS.scoreHiel)]);
+          setAdmData(p=>({...p,"Score Crediticio":{"Buenos Aires":parseCSVText(r1),"Interior":parseCSVText(r2),"Hielogic":parseCSVText(r3)}}));
+        } else {
+          const urlMap={"Intimaciones":URLS.intimaciones,"Cartas Documento":URLS.cartasDoc,"Veraz":URLS.veraz};
+          const r=await safeFetch(urlMap[admTab]);
+          setAdmData(p=>({...p,[admTab]:parseCSVText(r)}));
+        }
+      } catch { setAdmData(p=>({...p,[admTab]:{headers:["Error al cargar"],rows:[]}})); }
       setLoadingAdm(false);
     })();
   },[tab,admTab]);
 
-  const handleNuevoCierre=cierre=>{
-    const instRow={Asesor:cierre.asesor||"Sin asignar",Vendedor:cierre.vendedor||"—",Modelo:cierre.modelo||"A Definir",["Nombre de Fantasía - Sucursal"]:cierre.nombreFantasia,Solicitud:cierre.fecha,Documentación:"",Relevo:"",Estado:"Pendiente",Instalación:"",Área:"At. Cliente",Observaciones:cierre.observaciones||""};
-    setInstPendExtra(p=>[instRow,...p]);
+  const handleNuevoCierre=c=>{
+    setInstPendExtra(p=>[{Asesor:c.asesor||"Sin asignar",Vendedor:c.vendedor||"—",Modelo:c.modelo||"A Definir",["Nombre de Fantasía - Sucursal"]:c.nombreFantasia,Solicitud:c.fecha,Documentación:"",Relevo:"",Estado:"Pendiente",Instalación:"",Área:"At. Cliente",Observaciones:c.observaciones||""},...p]);
   };
 
   const cobradores=useMemo(()=>["Todos",...new Set(clientes.map(c=>c.asesorCob).filter(Boolean))]  ,[clientes]);
-  const stats=useMemo(()=>({total:clientes.length,inhab:clientes.filter(c=>c.estado==="inhabilitado").length,pend:clientes.filter(c=>c.estado==="pendiente").length,hab:clientes.filter(c=>c.estado==="habilitado").length,deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0)}),[clientes]);
+  const stats=useMemo(()=>({
+    total:clientes.length,
+    inhab:clientes.filter(c=>c.estado==="inhabilitado").length,
+    pend:clientes.filter(c=>c.estado==="pendiente").length,
+    hab:clientes.filter(c=>c.estado==="habilitado").length,
+    deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0),
+  }),[clientes]);
+
   const filteredAtClte=useMemo(()=>clientes.filter(c=>{
     const sq=q.toLowerCase();
-    const matchQ=(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq));
-    const matchAsesor=(fAtClte==="Todos"||c.asesorAtClte===fAtClte);
-    const matchCartera=(logCartera==="Todos"||c.cartera===logCartera);
-    return matchQ&&matchAsesor&&matchCartera;
+    return (c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq))
+      &&(fAtClte==="Todos"||c.asesorAtClte===fAtClte)
+      &&(logCartera==="Todos"||c.cartera===logCartera);
   }),[clientes,q,fAtClte,logCartera]);
-  const filteredCob=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))&&(fEstado==="todos"||c.estado===fEstado)&&(fCobrador==="Todos"||c.asesorCob===fCobrador);}),[clientes,q,fEstado,fCobrador]);
-  const resumen=useMemo(()=>{const r={};clientes.forEach(c=>{const k=c.asesorCob||"Sin asignar";if(!r[k])r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};r[k].total++;r[k][c.estado]=(r[k][c.estado]||0)+1;if(c.deuda>0)r[k].deuda+=c.deuda;});return Object.values(r).sort((a,b)=>b.deuda-a.deuda);},[clientes]);
-  const currentLogData=useMemo(()=>{const key=`${logCartera}_${logHoja}`;const base=logData[key]||{headers:[],rows:[]};if(logHoja==="Instalaciones Pendientes")return{...base,rows:[...instPendExtra,...base.rows]};return base;},[logData,logCartera,logHoja,instPendExtra]);
+
+  const filteredCob=useMemo(()=>clientes.filter(c=>{
+    const sq=q.toLowerCase();
+    return (c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))
+      &&(fEstado==="todos"||c.estado===fEstado)
+      &&(fCobrador==="Todos"||c.asesorCob===fCobrador);
+  }),[clientes,q,fEstado,fCobrador]);
+
+  const resumen=useMemo(()=>{
+    const r={};
+    clientes.forEach(c=>{
+      const k=c.asesorCob||"Sin asignar";
+      if(!r[k]) r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};
+      r[k].total++; r[k][c.estado]=(r[k][c.estado]||0)+1;
+      if(c.deuda>0) r[k].deuda+=c.deuda;
+    });
+    return Object.values(r).sort((a,b)=>b.deuda-a.deuda);
+  },[clientes]);
+
+  // Para hojas genéricas: combinar carteras si es "Todos"
+  const currentLogData=useMemo(()=>{
+    if(logHoja==="Comodato") return null;
+    const carteras=logCartera==="Todos"?["Buenos Aires","Interior","Hielogic","AQA Office"]:[logCartera];
+    let headers=[];
+    const rows=[];
+    carteras.forEach(c=>{
+      const key=`${c}_${logHoja}`;
+      const d=logData[key];
+      if(d&&d.headers&&d.headers.length>0){
+        if(headers.length===0) headers=d.headers;
+        // Filtrar por asesor si aplica
+        const fil=fAtClte==="Todos"?d.rows:d.rows.filter(r=>(r[d.headers[0]]||"").toLowerCase().includes(fAtClte.toLowerCase()));
+        rows.push(...fil);
+      }
+    });
+    return {headers,rows};
+  },[logData,logHoja,logCartera,fAtClte]);
 
   const SS={fontSize:13,padding:"8px 10px",borderRadius:8,border:"1px solid #dce6f5",background:"#fff",color:"#1a2340",outline:"none"};
 
-  const ClienteCard=({c})=>{
+  function ClienteCard({c}) {
     const av=avColor(c.asesorAtClte||c.asesorCob);
     const open=expanded?.id===c.id&&expanded?.n===c.nombre;
-    return React.createElement('div',{onClick:()=>setExpanded(open?null:{id:c.id,n:c.nombre}),style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"10px 14px",cursor:"pointer",borderLeft:`3px solid ${BCOL[c.estado]||"#ccc"}`}},
-      React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
-        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10,minWidth:0}},
-          React.createElement('div',{style:{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}},initials(c.asesorAtClte||c.asesorCob)),
-          React.createElement('div',{style:{minWidth:0}},
-            React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
-            React.createElement('p',{style:{margin:0,fontSize:11,color:"#6b7a99"}},`ID ${c.id} · ${c.modelo} · ${c.cartera}`)
-          )
-        ),
-        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
-          React.createElement(Badge,{estado:c.estado}),
-          React.createElement('span',{style:{fontSize:11,color:c.deuda>500000?"#791F1F":c.deuda>0?"#633806":"#6b7a99",fontWeight:c.deuda>500000?600:400,whiteSpace:"nowrap"}},fmt(c.deuda))
-        )
-      ),
-      open&&React.createElement('div',{style:{marginTop:10,paddingTop:10,borderTop:"1px solid #dce6f5",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6}},
-        ...[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"}].map(({l,v})=>
-          React.createElement('div',{key:l,style:{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}},
-            React.createElement('p',{style:{margin:0,fontSize:10,color:"#6b7a99"}},l),
-            React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:500}},v)
-          )
-        )
-      )
+    return (
+      <div onClick={()=>setExpanded(open?null:{id:c.id,n:c.nombre})} style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"10px 14px",cursor:"pointer",borderLeft:`3px solid ${BCOL[c.estado]||"#ccc"}`}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div>
+            <div style={{minWidth:0}}>
+              <p style={{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</p>
+              <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}</p>
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+            <Badge estado={c.estado}/>
+            <span style={{fontSize:11,color:c.deuda>500000?"#791F1F":c.deuda>0?"#633806":"#6b7a99",fontWeight:c.deuda>500000?600:400,whiteSpace:"nowrap"}}>{fmt(c.deuda)}</span>
+          </div>
+        </div>
+        {open&&(
+          <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #dce6f5",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6}}>
+            {[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"}].map(({l,v})=>(
+              <div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}>
+                <p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p>
+                <p style={{margin:0,fontSize:13,fontWeight:500}}>{v}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     );
-  };
+  }
 
-  if(loading)return React.createElement('div',{style:{padding:"3rem",textAlign:"center",color:"#6b7a99",fontSize:14}},"Cargando AQA Central...");
+  if(loading) return <div style={{padding:"3rem",textAlign:"center",color:"#6b7a99",fontSize:14}}>Cargando AQA Central...</div>;
 
-  return React.createElement('div',{style:{color:"#1a2340"}},
-    React.createElement('div',{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"1rem",flexWrap:"wrap",gap:8}},
-      React.createElement('div',null,
-        React.createElement('p',{style:{fontSize:20,fontWeight:600,margin:0}},"AQA Central"),
-        React.createElement('p',{style:{fontSize:12,color:"#6b7a99",margin:"2px 0 0"}},`${stats.total} clientes · actualizado ${lastUpdate}`)
-      ),
-      React.createElement('div',{style:{display:"flex",gap:5,flexWrap:"wrap"}},
-        React.createElement('span',{style:{background:"#FCEBEB",color:"#791F1F",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}},`${stats.inhab} inhabilitados`),
-        React.createElement('span',{style:{background:"#FAEEDA",color:"#633806",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}},`${stats.pend} fc. pendientes`),
-        React.createElement('span',{style:{background:"#EAF3DE",color:"#27500A",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}},`${stats.hab} habilitados`)
-      )
-    ),
-    React.createElement(TabBar,{tabs:MAIN_TABS,active:tab,onChange:t=>{setTab(t);setQ("");}}),
+  return (
+    <div style={{color:"#1a2340"}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"1rem",flexWrap:"wrap",gap:8}}>
+        <div>
+          <p style={{fontSize:20,fontWeight:600,margin:0}}>AQA Central</p>
+          <p style={{fontSize:12,color:"#6b7a99",margin:"2px 0 0"}}>{stats.total} clientes · actualizado {lastUpdate}</p>
+        </div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          <span style={{background:"#FCEBEB",color:"#791F1F",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}}>{stats.inhab} inhabilitados</span>
+          <span style={{background:"#FAEEDA",color:"#633806",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}}>{stats.pend} fc. pendientes</span>
+          <span style={{background:"#EAF3DE",color:"#27500A",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}}>{stats.hab} habilitados</span>
+        </div>
+      </div>
 
-    // Atención al Cliente
-    tab==="Atención al Cliente"&&React.createElement(React.Fragment,null,
-      React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,marginBottom:8}},
-        React.createElement('input',{placeholder:"Buscar nombre, ID, asesor...",value:q,onChange:e=>setQ(e.target.value),style:SS}),
-        React.createElement('select',{value:logHoja,onChange:e=>setLogHoja(e.target.value),style:SS},...LOG_HOJAS.map(o=>React.createElement('option',{key:o},o))),
-        React.createElement('select',{value:logCartera,onChange:e=>setLogCartera(e.target.value),style:SS},...["Todos","Buenos Aires","Interior","Hielogic","AQA Office"].map(o=>React.createElement('option',{key:o},o))),
-        React.createElement('select',{value:fAtClte,onChange:e=>setFAtClte(e.target.value),style:SS},...["Todos",...ASESORES_ATCLTE].map(o=>React.createElement('option',{key:o},o)))
-      ),
-      // Para hojas genéricas, filtrar por asesor si aplica
-      const asesorCol = currentLogData.headers && currentLogData.headers[0]; // primera col suele ser "Asesor"
-      const rowsFiltradas = (fAtClte==="Todos")
-        ? currentLogData.rows
-        : (currentLogData.rows||[]).filter(r=>(r[asesorCol]||"").toLowerCase().includes(fAtClte.toLowerCase()));
-      const dataFiltrada = {...currentLogData, rows: rowsFiltradas};
-      return logHoja!=="Comodato"&&(loadingLog
-        ?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando...")
-        :React.createElement(React.Fragment,null,
-          React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${dataFiltrada.rows.length} registros · ${logCartera==="Todos"?"Todas las carteras":logCartera} · ${logHoja}`),
-          React.createElement(GenericTable,{data:dataFiltrada,headerBg:"#1F3864"})
-        )
-      );
-      logHoja==="Comodato"&&React.createElement(React.Fragment,null,
-        React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${filteredAtClte.length} de ${clientes.length}`),
-        React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5}},...filteredAtClte.map((c,i)=>React.createElement(ClienteCard,{key:c.id+i,c})))
-      )
-    ),
+      <TabBar tabs={MAIN_TABS} active={tab} onChange={t=>{setTab(t);setQ("");}}/>
 
-    // Cobranzas
-    tab==="Cobranzas"&&React.createElement('div',null,
-      React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,marginBottom:12}},
-        React.createElement('input',{placeholder:"Buscar nombre, ID, cobrador...",value:q,onChange:e=>setQ(e.target.value),style:SS}),
-        React.createElement('select',{value:fEstado,onChange:e=>setFEstado(e.target.value),style:SS},React.createElement('option',{value:"todos"},"Todos los estados"),React.createElement('option',{value:"habilitado"},"Habilitado"),React.createElement('option',{value:"pendiente"},"Fc. Pendientes"),React.createElement('option',{value:"inhabilitado"},"Inhabilitado")),
-        React.createElement('select',{value:fCobrador,onChange:e=>setFCobrador(e.target.value),style:SS},...cobradores.map(c=>React.createElement('option',{key:c},c)))
-      ),
-      React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5",marginBottom:12}},
-        React.createElement('p',{style:{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}},"Deuda total cartera"),
-        React.createElement('p',{style:{margin:0,fontSize:24,fontWeight:600,color:"#791F1F"}},fmt(stats.deudaTotal)),
-        React.createElement('p',{style:{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}},`sobre ${stats.total} clientes · mostrando ${filteredCob.length}`)
-      ),
-      React.createElement('p',{style:{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}},"Detalle por cliente"),
-      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5,marginBottom:20}},...filteredCob.map((c,i)=>React.createElement(ClienteCard,{key:c.id+i,c}))),
-      React.createElement('p',{style:{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}},"Resumen por asesor de cobranzas"),
-      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},...resumen.map(r=>React.createElement('div',{key:r.cob,style:{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"12px 16px"}},React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},React.createElement('p',{style:{margin:0,fontSize:14,fontWeight:500}},r.cob),React.createElement('p',{style:{margin:0,fontSize:13,fontWeight:600,color:"#791F1F"}},fmt(r.deuda))),React.createElement('div',{style:{display:"flex",gap:5,flexWrap:"wrap"}},React.createElement('span',{style:{background:"#FCEBEB",color:"#791F1F",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.inhabilitado||0} inhab.`),React.createElement('span',{style:{background:"#FAEEDA",color:"#633806",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.pendiente||0} pend.`),React.createElement('span',{style:{background:"#EAF3DE",color:"#27500A",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.habilitado||0} hab.`),React.createElement('span',{style:{background:"#f4f7fb",color:"#6b7a99",fontSize:11,padding:"2px 8px",borderRadius:6}},`${r.total} total`)))))
-    ),
+      {/* ── Atención al Cliente ── */}
+      {tab==="Atención al Cliente"&&(
+        <div>
+          <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+            <input placeholder="Buscar nombre, ID, asesor..." value={q} onChange={e=>setQ(e.target.value)} style={{...SS,flex:1,minWidth:160}}/>
+            <select value={logHoja} onChange={e=>setLogHoja(e.target.value)} style={SS}>
+              {LOG_HOJAS.map(o=><option key={o}>{o}</option>)}
+            </select>
+            <select value={logCartera} onChange={e=>setLogCartera(e.target.value)} style={SS}>
+              {["Todos","Buenos Aires","Interior","Hielogic","AQA Office"].map(o=><option key={o}>{o}</option>)}
+            </select>
+            <select value={fAtClte} onChange={e=>setFAtClte(e.target.value)} style={SS}>
+              {["Todos",...ASESORES_ATCLTE].map(o=><option key={o}>{o}</option>)}
+            </select>
+          </div>
 
-    // Comercial
-    tab==="Comercial"&&React.createElement(Comercial,{onNuevoCierre:handleNuevoCierre}),
+          {logHoja!=="Comodato"&&(
+            loadingLog
+              ? <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>
+              : currentLogData&&(
+                <div>
+                  <p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{currentLogData.rows.length} registros · {logCartera==="Todos"?"Todas las carteras":logCartera} · {logHoja}</p>
+                  <GenericTable data={currentLogData} headerBg="#1F3864"/>
+                </div>
+              )
+          )}
 
-    // Logística
-    tab==="Logística"&&React.createElement('div',{style:{background:"#f4f7fb",borderRadius:12,padding:"1.25rem",border:"1px solid #dce6f5"}},React.createElement('p',{style:{margin:"0 0 4px",fontSize:14,fontWeight:500}},"Próximamente"),React.createElement('p',{style:{margin:0,fontSize:13,color:"#6b7a99"}},"Pedidos de CO2, botellas, tapas, relevos e instalaciones.")),
+          {logHoja==="Comodato"&&(
+            <div>
+              <p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{filteredAtClte.length} de {clientes.length}</p>
+              <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                {filteredAtClte.map((c,i)=><ClienteCard key={c.id+i} c={c}/>)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
-    // Administración
-    tab==="Administración"&&React.createElement('div',null,
-      React.createElement(TabBar,{tabs:ADM_TABS,active:admTab,onChange:setAdmTab,color:"#1F3864"}),
-      admTab==="Generador de Contratos"&&React.createElement(GeneradorContratos,null),
-      ["Intimaciones","Cartas Documento","Veraz"].includes(admTab)&&(loadingAdm?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando..."):admData[admTab]&&React.createElement('div',null,React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},React.createElement('span',{style:{background:ADM_COLORS[admTab]+"22",color:ADM_COLORS[admTab],borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}},`${(admData[admTab].rows||[]).length} registros · ${admTab}`),React.createElement('button',{onClick:()=>setAdmData(p=>{const n={...p};delete n[admTab];return n;}),style:{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}},"↻ Actualizar")),React.createElement(GenericTable,{data:admData[admTab],headerBg:ADM_COLORS[admTab]}))),
-      admTab==="Score Crediticio"&&React.createElement('div',null,React.createElement(TabBar,{tabs:["Buenos Aires","Interior","Hielogic"],active:scoreTab,onChange:setScoreTab,color:"#1a5c3a"}),loadingAdm?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando..."):admData["Score Crediticio"]?.[scoreTab]&&React.createElement('div',null,React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},React.createElement('span',{style:{background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}},`${(admData["Score Crediticio"][scoreTab].rows||[]).length} clientes · ${scoreTab}`),React.createElement('button',{onClick:()=>setAdmData(p=>{const n={...p};delete n["Score Crediticio"];return n;}),style:{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}},"↻ Actualizar")),React.createElement(ScoreTable,{data:admData["Score Crediticio"][scoreTab]})))
-    )
+      {/* ── Cobranzas ── */}
+      {tab==="Cobranzas"&&(
+        <div>
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+            <input placeholder="Buscar nombre, ID, cobrador..." value={q} onChange={e=>setQ(e.target.value)} style={{...SS,flex:1,minWidth:160}}/>
+            <select value={fEstado} onChange={e=>setFEstado(e.target.value)} style={SS}>
+              <option value="todos">Todos los estados</option>
+              <option value="habilitado">Habilitado</option>
+              <option value="pendiente">Fc. Pendientes</option>
+              <option value="inhabilitado">Inhabilitado</option>
+            </select>
+            <select value={fCobrador} onChange={e=>setFCobrador(e.target.value)} style={SS}>
+              {cobradores.map(c=><option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5",marginBottom:12}}>
+            <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Deuda total cartera</p>
+            <p style={{margin:0,fontSize:24,fontWeight:600,color:"#791F1F"}}>{fmt(stats.deudaTotal)}</p>
+            <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>sobre {stats.total} clientes · mostrando {filteredCob.length}</p>
+          </div>
+          <p style={{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Detalle por cliente</p>
+          <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:20}}>
+            {filteredCob.map((c,i)=><ClienteCard key={c.id+i} c={c}/>)}
+          </div>
+          <p style={{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Resumen por asesor</p>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {resumen.map(r=>(
+              <div key={r.cob} style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"12px 16px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <p style={{margin:0,fontSize:14,fontWeight:500}}>{r.cob}</p>
+                  <p style={{margin:0,fontSize:13,fontWeight:600,color:"#791F1F"}}>{fmt(r.deuda)}</p>
+                </div>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                  <span style={{background:"#FCEBEB",color:"#791F1F",fontSize:11,padding:"2px 8px",borderRadius:6}}>{r.inhabilitado||0} inhab.</span>
+                  <span style={{background:"#FAEEDA",color:"#633806",fontSize:11,padding:"2px 8px",borderRadius:6}}>{r.pendiente||0} pend.</span>
+                  <span style={{background:"#EAF3DE",color:"#27500A",fontSize:11,padding:"2px 8px",borderRadius:6}}>{r.habilitado||0} hab.</span>
+                  <span style={{background:"#f4f7fb",color:"#6b7a99",fontSize:11,padding:"2px 8px",borderRadius:6}}>{r.total} total</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Comercial ── */}
+      {tab==="Comercial"&&<Comercial onNuevoCierre={handleNuevoCierre}/>}
+
+      {/* ── Logística ── */}
+      {tab==="Logística"&&(
+        <div style={{background:"#f4f7fb",borderRadius:12,padding:"1.25rem",border:"1px solid #dce6f5"}}>
+          <p style={{margin:"0 0 4px",fontSize:14,fontWeight:500}}>Próximamente</p>
+          <p style={{margin:0,fontSize:13,color:"#6b7a99"}}>Pedidos de CO2, botellas, tapas, relevos e instalaciones.</p>
+        </div>
+      )}
+
+      {/* ── Administración ── */}
+      {tab==="Administración"&&(
+        <div>
+          <TabBar tabs={ADM_TABS} active={admTab} onChange={setAdmTab} color="#1F3864"/>
+
+          {admTab==="Generador de Contratos"&&<GeneradorContratos/>}
+
+          {["Intimaciones","Cartas Documento","Veraz"].includes(admTab)&&(
+            loadingAdm
+              ? <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>
+              : admData[admTab]&&(
+                <div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <span style={{background:ADM_COLORS[admTab]+"22",color:ADM_COLORS[admTab],borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}}>{(admData[admTab].rows||[]).length} registros · {admTab}</span>
+                    <button onClick={()=>setAdmData(p=>{const n={...p};delete n[admTab];return n;})} style={{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}}>↻ Actualizar</button>
+                  </div>
+                  <GenericTable data={admData[admTab]} headerBg={ADM_COLORS[admTab]}/>
+                </div>
+              )
+          )}
+
+          {admTab==="Score Crediticio"&&(
+            <div>
+              <TabBar tabs={["Buenos Aires","Interior","Hielogic"]} active={scoreTab} onChange={setScoreTab} color="#1a5c3a"/>
+              {loadingAdm
+                ? <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>
+                : admData["Score Crediticio"]?.[scoreTab]&&(
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                      <span style={{background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}}>{(admData["Score Crediticio"][scoreTab].rows||[]).length} clientes · {scoreTab}</span>
+                      <button onClick={()=>setAdmData(p=>{const n={...p};delete n["Score Crediticio"];return n;})} style={{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}}>↻ Actualizar</button>
+                    </div>
+                    <ScoreTable data={admData["Score Crediticio"][scoreTab]}/>
+                  </div>
+                )
+              }
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
