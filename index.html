@@ -84,10 +84,17 @@ const splitCSV = line => {
   cols.push(cur.trim()); return cols;
 };
 const parseGeneric = text => {
-  const lines=text.trim().split("\n");
+  // Normalizar saltos de línea y eliminar \r
+  const clean = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim();
+  const lines = clean.split("\n");
   if(lines.length<2) return {headers:[],rows:[]};
-  const headers=splitCSV(lines[0]).map(h=>h.replace(/"/g,"").trim());
-  const rows=lines.slice(1).map(line=>{const cols=splitCSV(line);const row={};headers.forEach((h,i)=>row[h]=cols[i]||"");return row;}).filter(r=>Object.values(r).some(v=>v));
+  const headers=splitCSV(lines[0]).map(h=>h.replace(/"/g,"").trim()).filter(h=>h);
+  const rows=lines.slice(1).map(line=>{
+    const cols=splitCSV(line);
+    const row={};
+    headers.forEach((h,i)=>row[h]=(cols[i]||"").replace(/\n/g," ").trim());
+    return row;
+  }).filter(r=>Object.values(r).some(v=>v&&v.trim()));
   return {headers,rows};
 };
 const parseNum = s => parseFloat((s||"").replace(/[^0-9,-]/g,"").replace(/\./g,"").replace(",","."))||0;
@@ -763,7 +770,13 @@ function App() {
 
   const cobradores=useMemo(()=>["Todos",...new Set(clientes.map(c=>c.asesorCob).filter(Boolean))]  ,[clientes]);
   const stats=useMemo(()=>({total:clientes.length,inhab:clientes.filter(c=>c.estado==="inhabilitado").length,pend:clientes.filter(c=>c.estado==="pendiente").length,hab:clientes.filter(c=>c.estado==="habilitado").length,deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0)}),[clientes]);
-  const filteredAtClte=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq))&&(fAtClte==="Todos"||c.asesorAtClte===fAtClte);}),[clientes,q,fAtClte]);
+  const filteredAtClte=useMemo(()=>clientes.filter(c=>{
+    const sq=q.toLowerCase();
+    const matchQ=(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq));
+    const matchAsesor=(fAtClte==="Todos"||c.asesorAtClte===fAtClte);
+    const matchCartera=(logCartera==="Buenos Aires"&&c.cartera==="Buenos Aires")||(logCartera==="Interior"&&c.cartera==="Interior")||(logCartera==="Hielogic"&&c.cartera==="Hielogic")||(logCartera==="AQA Office"&&c.cartera==="AQA Office");
+    return matchQ&&matchAsesor&&matchCartera;
+  }),[clientes,q,fAtClte,logCartera]);
   const filteredCob=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))&&(fEstado==="todos"||c.estado===fEstado)&&(fCobrador==="Todos"||c.asesorCob===fCobrador);}),[clientes,q,fEstado,fCobrador]);
   const resumen=useMemo(()=>{const r={};clientes.forEach(c=>{const k=c.asesorCob||"Sin asignar";if(!r[k])r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};r[k].total++;r[k][c.estado]=(r[k][c.estado]||0)+1;if(c.deuda>0)r[k].deuda+=c.deuda;});return Object.values(r).sort((a,b)=>b.deuda-a.deuda);},[clientes]);
   const currentLogData=useMemo(()=>{const key=`${logCartera}_${logHoja}`;const base=logData[key]||{headers:[],rows:[]};if(logHoja==="Instalaciones Pendientes")return{...base,rows:[...instPendExtra,...base.rows]};return base;},[logData,logCartera,logHoja,instPendExtra]);
