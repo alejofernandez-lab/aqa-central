@@ -683,16 +683,12 @@ FIRMA
 ACLARACIÓN
 DNI`;
 
-  // Generar .doc (RTF con extensión .doc, compatible con Word)
-  const rtf = `{\\rtf1\\ansi\\deff0
-{\\fonttbl{\\f0\\froman\\fcharset0 Times New Roman;}}
-{\\f0\\fs22 ${txt.replace(/\n/g,"\\par\n").replace(/[\\{}]/g,"\\$&")}}
-}`;
-  const blob = new Blob([rtf], {type:"application/msword"});
+  // Generar .txt limpio (Word lo abre perfectamente con Ctrl+V o doble clic)
+  const blob = new Blob([txt], {type:"text/plain;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Contrato_AQA_${(f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"")}_${f.dia}${(f.mes||"").slice(0,3)}2026.doc`;
+  a.download = `Contrato_AQA_${(f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"")}_${f.dia}${(f.mes||"").slice(0,3)}2026.txt`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -717,8 +713,8 @@ function GeneradorContratos() {
     sec(2,"Datos del Cliente",React.createElement(React.Fragment,null,campo("Razón Social",inp("razonSocial","El Bar de Juan S.R.L."),true),campo("CUIT",inp("cuit","30-12345678-9")),campo("Tipo de Sociedad",sel("tipoSociedad",SOCIEDADES)),campo("Nombre del Firmante",inp("firmante","Juan Pérez")),campo("DNI del Firmante",inp("dni","28.456.789")),campo("Dirección",inp("direccion","Av. Corrientes 1234"),true))),
     sec(3,"Equipo",React.createElement(React.Fragment,null,campo("Modelo",sel("modelo",MODELOS)),campo("Cant. Botellas",inp("botellas","6","number")),campo("Valor USD Reposición",sel("valorUsd",USD_OPTS),true))),
     sec(4,"Precio",React.createElement(React.Fragment,null,campo("Valor Mensual ($ sin IVA)",inp("mensual","350000","number")),campo("Tipo de Ajuste",sel("ajuste",AJUSTES)),campo("Costo Instalación ($ sin IVA)",inp("instalacion","0","number")))),
-    React.createElement('button',{onClick:generar,style:{width:"100%",background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:4}},"⬇ Descargar Contrato (.doc)"),
-    ok&&React.createElement('div',{style:{marginTop:10,padding:"10px 14px",background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,fontSize:13,fontWeight:500}},"✔ Contrato descargado. Abrilo con Word para ver el formato completo.")
+    React.createElement('button',{onClick:generar,style:{width:"100%",background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:4}},"⬇ Descargar Contrato (.txt)"),
+    ok&&React.createElement('div',{style:{marginTop:10,padding:"10px 14px",background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,fontSize:13,fontWeight:500}},"✔ Descargado. Abrilo con Word — el texto ya viene formateado y listo para usar.")
   );
 }
 
@@ -872,7 +868,19 @@ function App() {
         React.createElement('select',{value:logCartera,onChange:e=>setLogCartera(e.target.value),style:SS},...["Todos","Buenos Aires","Interior","Hielogic","AQA Office"].map(o=>React.createElement('option',{key:o},o))),
         React.createElement('select',{value:fAtClte,onChange:e=>setFAtClte(e.target.value),style:SS},...["Todos",...ASESORES_ATCLTE].map(o=>React.createElement('option',{key:o},o)))
       ),
-      logHoja!=="Comodato"&&(loadingLog?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando..."):React.createElement(React.Fragment,null,React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${currentLogData.rows.length} registros · ${logCartera} · ${logHoja}`),React.createElement(GenericTable,{data:currentLogData,headerBg:"#1F3864"}))),
+      // Para hojas genéricas, filtrar por asesor si aplica
+      const asesorCol = currentLogData.headers && currentLogData.headers[0]; // primera col suele ser "Asesor"
+      const rowsFiltradas = (fAtClte==="Todos")
+        ? currentLogData.rows
+        : (currentLogData.rows||[]).filter(r=>(r[asesorCol]||"").toLowerCase().includes(fAtClte.toLowerCase()));
+      const dataFiltrada = {...currentLogData, rows: rowsFiltradas};
+      return logHoja!=="Comodato"&&(loadingLog
+        ?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando...")
+        :React.createElement(React.Fragment,null,
+          React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${dataFiltrada.rows.length} registros · ${logCartera==="Todos"?"Todas las carteras":logCartera} · ${logHoja}`),
+          React.createElement(GenericTable,{data:dataFiltrada,headerBg:"#1F3864"})
+        )
+      );
       logHoja==="Comodato"&&React.createElement(React.Fragment,null,
         React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${filteredAtClte.length} de ${clientes.length}`),
         React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5}},...filteredAtClte.map((c,i)=>React.createElement(ClienteCard,{key:c.id+i,c})))
