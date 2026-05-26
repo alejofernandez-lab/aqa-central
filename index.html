@@ -731,7 +731,7 @@ function App() {
   const [admTab,setAdmTab]=useState("Generador de Contratos");
   const [scoreTab,setScoreTab]=useState("Buenos Aires");
   const [logHoja,setLogHoja]=useState("Comodato");
-  const [logCartera,setLogCartera]=useState("Buenos Aires");
+  const [logCartera,setLogCartera]=useState("Todos");
   const [logData,setLogData]=useState({});
   const [loadingLog,setLoadingLog]=useState(false);
   const [admData,setAdmData]=useState({});
@@ -811,7 +811,7 @@ function App() {
     const sq=q.toLowerCase();
     const matchQ=(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq));
     const matchAsesor=(fAtClte==="Todos"||c.asesorAtClte===fAtClte);
-    const matchCartera=(logCartera==="Buenos Aires"&&c.cartera==="Buenos Aires")||(logCartera==="Interior"&&c.cartera==="Interior")||(logCartera==="Hielogic"&&c.cartera==="Hielogic")||(logCartera==="AQA Office"&&c.cartera==="AQA Office");
+    const matchCartera=(logCartera==="Todos"||c.cartera===logCartera);
     return matchQ&&matchAsesor&&matchCartera;
   }),[clientes,q,fAtClte,logCartera]);
   const filteredCob=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))&&(fEstado==="todos"||c.estado===fEstado)&&(fCobrador==="Todos"||c.asesorCob===fCobrador);}),[clientes,q,fEstado,fCobrador]);
@@ -869,7 +869,7 @@ function App() {
       React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:6,marginBottom:8}},
         React.createElement('input',{placeholder:"Buscar nombre, ID, asesor...",value:q,onChange:e=>setQ(e.target.value),style:SS}),
         React.createElement('select',{value:logHoja,onChange:e=>setLogHoja(e.target.value),style:SS},...LOG_HOJAS.map(o=>React.createElement('option',{key:o},o))),
-        React.createElement('select',{value:logCartera,onChange:e=>setLogCartera(e.target.value),style:SS},...["Buenos Aires","Interior","Hielogic","AQA Office"].map(o=>React.createElement('option',{key:o},o))),
+        React.createElement('select',{value:logCartera,onChange:e=>setLogCartera(e.target.value),style:SS},...["Todos","Buenos Aires","Interior","Hielogic","AQA Office"].map(o=>React.createElement('option',{key:o},o))),
         React.createElement('select',{value:fAtClte,onChange:e=>setFAtClte(e.target.value),style:SS},...["Todos",...ASESORES_ATCLTE].map(o=>React.createElement('option',{key:o},o)))
       ),
       logHoja!=="Comodato"&&(loadingLog?React.createElement('div',{style:{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}},"Cargando..."):React.createElement(React.Fragment,null,React.createElement('p',{style:{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}},`${currentLogData.rows.length} registros · ${logCartera} · ${logHoja}`),React.createElement(GenericTable,{data:currentLogData,headerBg:"#1F3864"}))),
