@@ -80,19 +80,33 @@ const SOCIEDADES=["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributis
 // ── Helpers ───────────────────────────────────────────────────────────
 const splitCSV = line => {
   const cols=[]; let cur="",inQ=false;
-  for(let ch of line){if(ch==='"'){inQ=!inQ;continue;}if(ch===','&&!inQ){cols.push(cur.trim());cur="";continue;}cur+=ch;}
+  for(let ch of line){
+    if(ch==='"'){inQ=!inQ;continue;}
+    if(ch===','&&!inQ){cols.push(cur.trim());cur="";continue;}
+    if((ch==='\n'||ch==='\r')&&inQ){cur+=' ';continue;} // salto de línea dentro de celda
+    cur+=ch;
+  }
   cols.push(cur.trim()); return cols;
 };
+
 const parseGeneric = text => {
-  // Normalizar saltos de línea y eliminar \r
-  const clean = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim();
-  const lines = clean.split("\n");
-  if(lines.length<2) return {headers:[],rows:[]};
-  const headers=splitCSV(lines[0]).map(h=>h.replace(/"/g,"").trim()).filter(h=>h);
-  const rows=lines.slice(1).map(line=>{
+  // Reagrupar líneas respetando comillas (celdas con saltos de línea internos)
+  const clean = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+  const logicalLines = [];
+  let current = "", inQ = false;
+  for(let i=0;i<clean.length;i++){
+    const ch=clean[i];
+    if(ch==='"'){inQ=!inQ;current+=ch;}
+    else if(ch==='\n'&&!inQ){logicalLines.push(current);current="";}
+    else{current+=ch;}
+  }
+  if(current) logicalLines.push(current);
+  if(logicalLines.length<2) return {headers:[],rows:[]};
+  const headers=splitCSV(logicalLines[0]).map(h=>h.replace(/"/g,"").trim()).filter(h=>h);
+  const rows=logicalLines.slice(1).map(line=>{
     const cols=splitCSV(line);
     const row={};
-    headers.forEach((h,i)=>row[h]=(cols[i]||"").replace(/\n/g," ").trim());
+    headers.forEach((h,i)=>row[h]=(cols[i]||"").trim());
     return row;
   }).filter(r=>Object.values(r).some(v=>v&&v.trim()));
   return {headers,rows};
@@ -115,12 +129,26 @@ const parseCob = (text,cartera) => {
     return{id:id.trim(),nombre:nombre.trim(),modelo:modelo||"",asesorCob:asesorCob||"",abono:parseNum(abono),estado:parseEstado(colF,colG),deuda:parseNum(deudaRaw),fc:parseInt(fcRaw)||0,mens:parseInt(mensRaw)||0,cartera,asesorAtClte:"",fechaInstalacion:""};
   }).filter(Boolean);
 };
-const parseComodato = text => {
-  const lines=text.trim().split("\n");
-  if(lines.length<2)return{};
+  // Parsea Comodato para extraer asesor At. Cliente (col A), fecha instalación (col I), nombre fantasía (col D), ID Persat (col E)
+const parseComodato = (text, cartera) => {
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");
+  if(lines.length<2)return{map:{},clientes:[]};
   const map={};
-  lines.slice(1).forEach(line=>{const c=splitCSV(line);const asesor=c[0]||"";const idPersat=(c[4]||"").trim();const fechaIns=c[8]||"";if(idPersat)map[idPersat]={asesorAtClte:asesor,fechaInstalacion:fechaIns};});
-  return map;
+  const clientes=[];
+  lines.slice(1).forEach(line=>{
+    const c=splitCSV(line);
+    const asesor=(c[0]||"").trim();
+    const modelo=(c[2]||"").trim();
+    const nombreFantasia=(c[3]||"").trim();
+    const idPersat=(c[4]||"").trim();
+    const razonSocial=(c[5]||"").trim();
+    const fechaIns=(c[8]||"").trim();
+    if(idPersat) map[idPersat]={asesorAtClte:asesor,fechaInstalacion:fechaIns};
+    if(nombreFantasia&&cartera==="AQA Office"){
+      clientes.push({id:idPersat||nombreFantasia,nombre:nombreFantasia,modelo,asesorCob:"—",asesorAtClte:asesor,abono:0,estado:"habilitado",deuda:0,fc:0,mens:0,cartera,fechaInstalacion:fechaIns,razonSocial});
+    }
+  });
+  return{map,clientes};
 };
 const safeFetch = url => fetch(url).then(r=>{if(!r.ok)throw new Error();return r.text();});
 const fmt = n => n<=0?"Sin deuda":"$"+Math.round(n).toLocaleString("es-AR");
@@ -722,9 +750,18 @@ function App() {
           safeFetch(SHEET_URLS.cobBsAs),safeFetch(SHEET_URLS.cobInt),safeFetch(SHEET_URLS.cobHiel),
           safeFetch(SHEET_URLS.baComodato),safeFetch(SHEET_URLS.intComodato),safeFetch(SHEET_URLS.hielComodato),safeFetch(SHEET_URLS.offComodato),
         ]);
-        const comodatoMap={...parseComodato(rComBsAs),...parseComodato(rComInt),...parseComodato(rComHiel),...parseComodato(rComOff)};
+        const {map:mapBsAs}=parseComodato(rComBsAs,"Buenos Aires");
+        const {map:mapInt}=parseComodato(rComInt,"Interior");
+        const {map:mapHiel}=parseComodato(rComHiel,"Hielogic");
+        const {map:mapOff,clientes:clientesOff}=parseComodato(rComOff,"AQA Office");
+        const comodatoMap={...mapBsAs,...mapInt,...mapHiel,...mapOff};
         const enrich=(text,cartera)=>parseCob(text,cartera).map(c=>{const x=comodatoMap[c.id]||{};return{...c,asesorAtClte:x.asesorAtClte||"",fechaInstalacion:x.fechaInstalacion||""};});
-        const all=[...enrich(rCobBsAs,"Buenos Aires"),...enrich(rCobInt,"Interior"),...enrich(rCobHiel,"Hielogic")];
+        const all=[
+          ...enrich(rCobBsAs,"Buenos Aires"),
+          ...enrich(rCobInt,"Interior"),
+          ...enrich(rCobHiel,"Hielogic"),
+          ...clientesOff,
+        ];
         if(all.length>0)setClientes(all);
       }catch(e){console.error(e);}
       setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
