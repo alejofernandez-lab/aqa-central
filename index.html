@@ -273,12 +273,6 @@ function parseComodato(text, cartera) {
   if (lines.length < 2) return { map:{}, clientes:[] };
   const map = {}, clientes = [];
 
-  // Índices según cartera
-  // BsAs:    A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8  → asesor=0, nombre=3, id=4, fecha=8
-  // Interior: A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11 → asesor=0, nombre=3, id=4, fecha=11
-  // Hielogic: A=0,B=1,C=2(cubo),D=3(modelo),E=4,F=5,G=6,H=7,I=8,J=9 → asesor=0, nombre=4, id=5, fecha=9
-  // Office:  A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11 → asesor=0, nombre=3, id=4, fecha=11
-
   const cfg = {
     "Buenos Aires": { asesor:0, modelo:2, nombre:3, id:4, fecha:8 },
     "Interior":     { asesor:0, modelo:2, nombre:3, id:4, fecha:11 },
@@ -295,9 +289,15 @@ function parseComodato(text, cartera) {
     const idPersat = (c[idx.id]||"").trim();
     const fechaIns = (c[idx.fecha]||"").trim();
     if (idPersat) map[idPersat] = { asesorAtClte:asesor, fechaInstalacion:fechaIns };
-    if (nombre && cartera === "AQA Office") {
-      clientes.push({ id:idPersat||nombre, nombre, modelo, asesorCob:"—", asesorAtClte:asesor,
-        abono:0, estado:"habilitado", deuda:0, fc:0, mens:0, cartera, fechaInstalacion:fechaIns });
+    // Agregar a clientes para todas las carteras (no solo Office)
+    if (nombre) {
+      clientes.push({
+        id: idPersat||nombre, nombre, modelo,
+        asesorCob:"—", asesorAtClte:asesor,
+        abono:0, estado:"habilitado", deuda:0, fc:0, mens:0,
+        cartera, fechaInstalacion:fechaIns,
+        _soloComodato: true // flag para saber que viene del comodato
+      });
     }
   });
   return { map, clientes };
