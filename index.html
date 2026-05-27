@@ -736,13 +736,31 @@ function App() {
           safeFetch(URLS.cobBsAs),safeFetch(URLS.cobInt),safeFetch(URLS.cobHiel),
           safeFetch(URLS.baComodato),safeFetch(URLS.intComodato),safeFetch(URLS.hielComodato),safeFetch(URLS.offComodato),
         ]);
-        const {map:m1}=parseComodato(rComBsAs,"Buenos Aires");
-        const {map:m2}=parseComodato(rComInt,"Interior");
-        const {map:m3}=parseComodato(rComHiel,"Hielogic");
-        const {map:m4,clientes:offClientes}=parseComodato(rComOff,"AQA Office");
+        const {map:m1, clientes:c1}=parseComodato(rComBsAs,"Buenos Aires");
+        const {map:m2, clientes:c2}=parseComodato(rComInt,"Interior");
+        const {map:m3, clientes:c3}=parseComodato(rComHiel,"Hielogic");
+        const {map:m4, clientes:c4}=parseComodato(rComOff,"AQA Office");
         const cmap={...m1,...m2,...m3,...m4};
-        const enrich=(text,cartera)=>parseCob(text,cartera).map(c=>{const x=cmap[c.id]||{};return{...c,asesorAtClte:x.asesorAtClte||"",fechaInstalacion:x.fechaInstalacion||""};});
-        const all=[...enrich(rCobBsAs,"Buenos Aires"),...enrich(rCobInt,"Interior"),...enrich(rCobHiel,"Hielogic"),...offClientes];
+
+        // Clientes de cobranzas (con deuda, estado, etc.)
+        const cobClientes = [
+          ...parseCob(rCobBsAs,"Buenos Aires"),
+          ...parseCob(rCobInt,"Interior"),
+          ...parseCob(rCobHiel,"Hielogic"),
+        ].map(c=>{
+          const x=cmap[c.id]||{};
+          return {...c, asesorAtClte:x.asesorAtClte||"", fechaInstalacion:x.fechaInstalacion||""};
+        });
+
+        // IDs que ya están en cobranzas
+        const cobIds = new Set(cobClientes.map(c=>c.id));
+
+        // Clientes del comodato que NO están en cobranzas (instalaciones recientes)
+        const soloComodato = [...c1,...c2,...c3,...c4].filter(c=>!cobIds.has(c.id));
+
+        const all = [...cobClientes, ...soloComodato];
+        if(all.length>0) setClientes(all);
+        else throw new Error();
         if(all.length>0) setClientes(all);
       } catch(e){console.error(e);}
       setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
