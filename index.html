@@ -7,20 +7,42 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, doc, addDoc, onSnapshot, query, orderBy, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCzsslw0LQejd8-3WRdFAscWXz1VtVICWo",
+    authDomain: "aqa-central.firebaseapp.com",
+    projectId: "aqa-central",
+    storageBucket: "aqa-central.firebasestorage.app",
+    messagingSenderId: "205651648531",
+    appId: "1:205651648531:web:ef717fc2b8e9ba08501fe6"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window._firebase = {
+    db,
+    collection, doc, addDoc, onSnapshot, query, orderBy, setDoc, getDocs
+  };
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f7fb;color:#1a2340;min-height:100vh}
 input,select,textarea{font-family:inherit}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
-.modal{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.18)}
+.modal{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:460px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.18)}
 </style>
 </head>
 <body>
 <div id="root" style="max-width:960px;margin:0 auto;padding:16px"></div>
 <script type="text/babel">
-const { useState, useMemo, useEffect } = React;
+const { useState, useMemo, useEffect, useRef } = React;
 
-// ── URLs ──────────────────────────────────────────────────────────────
+// ── URLs Sheets ───────────────────────────────────────────────────────
 const URLS = {
   cobBsAs:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=0&single=true&output=csv",
   cobInt:     "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=467657686&single=true&output=csv",
@@ -78,6 +100,115 @@ const EQUIPOS_SEG = {
 const BCOL = {habilitado:"#639922",inhabilitado:"#E24B4A",pendiente:"#EF9F27"};
 const PAL = [{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
 
+// ── Firebase hook ─────────────────────────────────────────────────────
+function useFirebase() {
+  const [fb, setFb] = useState(window._firebase || null);
+  useEffect(() => {
+    if (window._firebase) { setFb(window._firebase); return; }
+    const handler = () => setFb(window._firebase);
+    window.addEventListener("firebase-ready", handler);
+    return () => window.removeEventListener("firebase-ready", handler);
+  }, []);
+  return fb;
+}
+
+// ── Chat de cliente (Firebase) ────────────────────────────────────────
+function ClienteChat({ clienteId, clienteNombre, onClose }) {
+  const fb = useFirebase();
+  const [mensajes, setMensajes] = useState([]);
+  const [equipo, setEquipo] = useState("");
+  const [autor, setAutor] = useState("");
+  const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const bottomRef = useRef(null);
+  const SS = {fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+
+  useEffect(() => {
+    if (!fb) return;
+    const { db, collection, query, orderBy, onSnapshot } = fb;
+    const q = query(collection(db, `chats/${clienteId}/mensajes`), orderBy("ts", "asc"));
+    const unsub = onSnapshot(q, snap => {
+      setMensajes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [fb, clienteId]);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [mensajes]);
+
+  const enviar = async () => {
+    if (!equipo || !autor || !texto.trim()) { alert("Completá equipo, autor y mensaje"); return; }
+    if (!fb) { alert("Firebase no disponible"); return; }
+    setEnviando(true);
+    const { db, collection, addDoc } = fb;
+    await addDoc(collection(db, `chats/${clienteId}/mensajes`), {
+      equipo, autor, texto: texto.trim(),
+      ts: Date.now(),
+      fecha: new Date().toLocaleString("es-AR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})
+    });
+    setTexto("");
+    setEnviando(false);
+  };
+
+  const equipoColors = {"Comercial":"#2E75B6","Atención al Cliente":"#1a5c3a","Logística":"#8a3a00","Cobranzas":"#791F1F"};
+
+  return (
+    <div className="overlay" onClick={e => { if(e.target.className==="overlay") onClose(); }}>
+      <div className="modal" style={{maxWidth:560}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div>
+            <p style={{margin:0,fontSize:15,fontWeight:600}}>💬 {clienteNombre}</p>
+            <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>Historial compartido del cliente</p>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+        </div>
+
+        {/* Mensajes */}
+        <div style={{height:320,overflowY:"auto",background:"#f4f7fb",borderRadius:10,padding:"10px",marginBottom:12,display:"flex",flexDirection:"column",gap:8}}>
+          {!fb && <p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Conectando a Firebase...</p>}
+          {fb && mensajes.length === 0 && <p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Sin mensajes aún. Sé el primero en escribir.</p>}
+          {mensajes.map(m => (
+            <div key={m.id} style={{background:"#fff",borderRadius:10,padding:"8px 12px",borderLeft:`3px solid ${equipoColors[m.equipo]||"#ccc"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                <span style={{fontSize:11,fontWeight:600,color:equipoColors[m.equipo]||"#1a2340"}}>{m.equipo} — {m.autor}</span>
+                <span style={{fontSize:10,color:"#9baabf"}}>{m.fecha}</span>
+              </div>
+              <p style={{margin:0,fontSize:13,color:"#1a2340"}}>{m.texto}</p>
+            </div>
+          ))}
+          <div ref={bottomRef}/>
+        </div>
+
+        {/* Formulario */}
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:4}}>Equipo</label>
+              <select value={equipo} onChange={e=>{setEquipo(e.target.value);setAutor("");}} style={SS}>
+                <option value="">Seleccionar...</option>
+                {Object.keys(EQUIPOS_SEG).map(k=><option key={k}>{k}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:4}}>Quién escribe</label>
+              <select value={autor} onChange={e=>setAutor(e.target.value)} style={SS} disabled={!equipo}>
+                <option value="">Seleccionar...</option>
+                {equipo && EQUIPOS_SEG[equipo].map(a=><option key={a}>{a}</option>)}
+              </select>
+            </div>
+          </div>
+          <textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Escribí la actualización..." rows={3}
+            style={{...SS,resize:"none"}}
+            onKeyDown={e=>{ if(e.key==="Enter"&&e.ctrlKey) enviar(); }}
+          />
+          <button onClick={enviar} disabled={enviando} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:enviando?"not-allowed":"pointer",opacity:enviando?.7:1}}>
+            {enviando?"Enviando...":"Enviar (Ctrl+Enter)"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────
 function splitLine(line) {
   const cols = []; let cur = "", inQ = false;
@@ -93,7 +224,6 @@ function splitLine(line) {
 
 function parseCSVText(text) {
   const norm = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
-  // Reagrupar líneas lógicas (una celda puede tener \n adentro si está entre comillas)
   const logical = [];
   let cur = "", inQ = false;
   for (let i = 0; i < norm.length; i++) {
@@ -108,7 +238,7 @@ function parseCSVText(text) {
   const rows = logical.slice(1).map(line => {
     const cols = splitLine(line);
     const row = {};
-    headers.forEach((h, i) => { row[h] = (cols[i] || "").replace(/"/g,"").replace(/\n/g," ").trim(); });
+    headers.forEach((h, i) => { row[h] = (cols[i]||"").replace(/"/g,"").replace(/\n/g," ").trim(); });
     return row;
   }).filter(r => Object.values(r).some(v => v));
   return { headers, rows };
@@ -125,8 +255,7 @@ function parseEstado(f, g) {
 }
 
 function parseCob(text, cartera) {
-  const norm = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim();
-  const lines = norm.split("\n");
+  const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");
   if (lines.length < 2) return [];
   return lines.slice(1).map(line => {
     const c = splitLine(line);
@@ -140,8 +269,7 @@ function parseCob(text, cartera) {
 }
 
 function parseComodato(text, cartera) {
-  const norm = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim();
-  const lines = norm.split("\n");
+  const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");
   if (lines.length < 2) return { map:{}, clientes:[] };
   const map = {}, clientes = [];
   lines.slice(1).forEach(line => {
@@ -164,7 +292,6 @@ const safeFetch = url => fetch(url).then(r => { if(!r.ok) throw new Error(); ret
 const fmt = n => n<=0 ? "Sin deuda" : "$"+Math.round(n).toLocaleString("es-AR");
 const avColor = name => PAL[(name||"").split("").reduce((a,c)=>a+c.charCodeAt(0),0)%PAL.length];
 const initials = name => (name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
-const nowStr = () => new Date().toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
 
 const numLetras = n => {
   if(!n||n===0) return "cero";
@@ -181,7 +308,7 @@ const numLetras = n => {
   return r2===0?ms:ms+" "+numLetras(r2);
 };
 
-// ── Componentes base ──────────────────────────────────────────────────
+// ── UI Components ─────────────────────────────────────────────────────
 function Badge({estado}) {
   const M={habilitado:{bg:"#EAF3DE",c:"#27500A",t:"Habilitado"},inhabilitado:{bg:"#FCEBEB",c:"#791F1F",t:"Inhabilitado"},pendiente:{bg:"#FAEEDA",c:"#633806",t:"Fc. Pendientes"}};
   const s=M[estado]||M.habilitado;
@@ -203,16 +330,12 @@ function GenericTable({data, headerBg="#1F3864"}) {
   return (
     <div style={{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-        <thead>
-          <tr>{data.headers.map(h=><th key={h} style={{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>)}</tr>
-        </thead>
-        <tbody>
-          {data.rows.map((row,i)=>(
-            <tr key={i} style={{background:i%2===0?"#fff":"#f4f7fb"}}>
-              {data.headers.map(h=><td key={h} style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",whiteSpace:"nowrap",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis"}}>{row[h]||"—"}</td>)}
-            </tr>
-          ))}
-        </tbody>
+        <thead><tr>{data.headers.map(h=><th key={h} style={{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+        <tbody>{data.rows.map((row,i)=>(
+          <tr key={i} style={{background:i%2===0?"#fff":"#f4f7fb"}}>
+            {data.headers.map(h=><td key={h} style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",whiteSpace:"nowrap",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis"}}>{row[h]||"—"}</td>)}
+          </tr>
+        ))}</tbody>
       </table>
     </div>
   );
@@ -224,30 +347,27 @@ function ScoreTable({data}) {
     <div style={{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
         <thead><tr>{(data.headers||[]).map(h=><th key={h} style={{background:"#1a5c3a",color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
-        <tbody>
-          {(data.rows||[]).map((row,i)=>{
-            const ok=pn(row["SCORE"])>=600||pn(row["FIRMANTE"])>=600;
-            return (
-              <tr key={i} style={{background:ok?"#f0faf0":"#fff7ee"}}>
-                <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",fontWeight:500}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:ok?"#2e9e4f":"#d97706",flexShrink:0}}/>
-                    {row["CLIENTE"]||"—"}
-                  </div>
-                </td>
-                <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:pn(row["SCORE"])>=600?"#1a5c3a":"#c05a00"}}>{row["SCORE"]||"—"}</td>
-                <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:pn(row["FIRMANTE"])>=600?"#1a5c3a":"#c05a00"}}>{row["FIRMANTE"]||"—"}</td>
-                <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",color:"#6b7a99",maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row["COMENTARIOS"]||"—"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
+        <tbody>{(data.rows||[]).map((row,i)=>{
+          const ok=pn(row["SCORE"])>=600||pn(row["FIRMANTE"])>=600;
+          return (
+            <tr key={i} style={{background:ok?"#f0faf0":"#fff7ee"}}>
+              <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",fontWeight:500}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:ok?"#2e9e4f":"#d97706",flexShrink:0}}/>
+                  {row["CLIENTE"]||"—"}
+                </div>
+              </td>
+              <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:pn(row["SCORE"])>=600?"#1a5c3a":"#c05a00"}}>{row["SCORE"]||"—"}</td>
+              <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:pn(row["FIRMANTE"])>=600?"#1a5c3a":"#c05a00"}}>{row["FIRMANTE"]||"—"}</td>
+              <td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",color:"#6b7a99",maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row["COMENTARIOS"]||"—"}</td>
+            </tr>
+          );
+        })}</tbody>
       </table>
     </div>
   );
 }
 
-// ── Modales ───────────────────────────────────────────────────────────
 function ModalLista({titulo, items, onSelect, onClose}) {
   return (
     <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}>
@@ -257,54 +377,7 @@ function ModalLista({titulo, items, onSelect, onClose}) {
           <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {items.map(v=>(
-            <button key={v} onClick={()=>{onSelect(v);onClose();}} style={{background:"#f4f7fb",border:"1px solid #dce6f5",borderRadius:8,padding:"10px 14px",fontSize:13,cursor:"pointer",textAlign:"left",color:"#1a2340"}}>{v}</button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ModalSeguimiento({onClose, onGuardar}) {
-  const [equipo,setEquipo]=useState("");
-  const [autor,setAutor]=useState("");
-  const [texto,setTexto]=useState("");
-  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
-  const guardar=()=>{
-    if(!equipo||!autor||!texto.trim()){alert("Completá todos los campos");return;}
-    onGuardar({equipo,autor,texto,fecha:nowStr()});
-    onClose();
-  };
-  return (
-    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}>
-      <div className="modal">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <p style={{fontSize:15,fontWeight:600}}>Nueva actualización</p>
-          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div>
-            <label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:5}}>Equipo</label>
-            <select value={equipo} onChange={e=>{setEquipo(e.target.value);setAutor("");}} style={SS}>
-              <option value="">Seleccionar equipo...</option>
-              {Object.keys(EQUIPOS_SEG).map(k=><option key={k}>{k}</option>)}
-            </select>
-          </div>
-          {equipo&&(
-            <div>
-              <label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:5}}>Quién escribe</label>
-              <select value={autor} onChange={e=>setAutor(e.target.value)} style={SS}>
-                <option value="">Seleccionar...</option>
-                {EQUIPOS_SEG[equipo].map(a=><option key={a}>{a}</option>)}
-              </select>
-            </div>
-          )}
-          <div>
-            <label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:5}}>Actualización</label>
-            <textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Escribí la actualización..." rows={4} style={{...SS,resize:"vertical"}}/>
-          </div>
-          <button onClick={guardar} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:"pointer"}}>✔ Guardar</button>
+          {items.map(v=><button key={v} onClick={()=>{onSelect(v);onClose();}} style={{background:"#f4f7fb",border:"1px solid #dce6f5",borderRadius:8,padding:"10px 14px",fontSize:13,cursor:"pointer",textAlign:"left",color:"#1a2340"}}>{v}</button>)}
         </div>
       </div>
     </div>
@@ -338,162 +411,66 @@ Aclaración: Ignacio Musmanno   DNI: 37.988.431
 Carácter: apoderado
 
 
-ANEXO I
-Términos y Condiciones de la Oferta
+ANEXO I — Términos y Condiciones de la Oferta
 
-Entre, por una parte, FADEFIL S.A., CUIT 30-71295020-6, representado en este acto por el Sr. Ignacio Musmanno con DNI 37.988.431, en su carácter de apoderado, con domicilio constituido en la calle Camarones N°1975, de la Ciudad Autónoma de Buenos Aires (el "Locador" y/o Fadefil); y por la otra parte ${f.razonSocial} CUIT ${f.cuit}, representado en este acto por el Sr. ${f.firmante} DNI ${f.dni}, en su carácter de Representante (el "Locatario"), con domicilio constituido en ${f.direccion}.
+Entre, por una parte, FADEFIL S.A., CUIT 30-71295020-6, con domicilio en Camarones N°1975, CABA (el "Locador"); y por la otra parte ${f.razonSocial} CUIT ${f.cuit}, representado por el Sr. ${f.firmante} DNI ${f.dni}, con domicilio en ${f.direccion}.
 
 CONSIDERANDO:
-
-    - Que el Locador es una sociedad anónima constituida de conformidad con las leyes de la República Argentina, que brinda servicios profesionales de instalación y mantenimiento de dispensadores y purificadores de agua potable, que se conectan a la red de agua corriente.
-    - Que el Locatario es una ${f.tipoSociedad} para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" que incluye la provisión de 2 (dos) cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una.
+    - Que el Locador brinda servicios profesionales de instalación y mantenimiento de dispensadores y purificadores de agua potable.
+    - Que el Locatario es una ${f.tipoSociedad} que requiere contratar el servicio de entrega en comodato de un equipo "AQA" que incluye 2 (dos) cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables de 500 ml.
 
 PRIMERA. OBJETO
-
-    1.1. El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de la máquina ${f.modelo} de marca "AQA" (la "Máquina") que incluye la provisión de 2 (dos) cilindros CO2 rotativos y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml (los "Equipos").
-
-    1.2. La Máquina será instalada en el inmueble sito en ${f.direccion} (el "Inmueble") para el uso y goce del Locatario.
-
-    1.3. El Servicio será prestado únicamente dentro de las instalaciones del Inmueble, mediante la instalación de la Máquina por personal de Fadefil.
-
-    1.4. El Locador asistirá al Inmueble cada noventa (90) días para revisión, mantenimiento, cambio de filtros y/o reposición de la Máquina, previa coordinación de fecha y hora.
-
-    1.5. En caso de reparación que implique traslado, Fadefil proveerá un equipo de reemplazo durante todo el tiempo que demore la reparación.
-
-    1.6. El servicio de mantenimiento incluye: a) soporte técnico telefónico permanente dentro de las 24hs; b) servicio técnico presencial; c) mantenimiento trimestral con control de calidad del agua; d) cambio de filtros a criterio del Locador; e) cambio de equipo si necesario con mano de obra incluida; f) capacitación inicial al personal del Locatario; g) reparaciones sin costo adicional ante desperfectos por uso adecuado.
-
-    1.7. Fadefil podrá modificar o reemplazar la Máquina instalada en el Inmueble con comunicación fehaciente previa.
+    1.1. Entrega en comodato y mantenimiento de la máquina ${f.modelo} de marca "AQA", 2 cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de 500 ml. Instalación en: ${f.direccion}.
+    1.2. La Máquina es de titularidad exclusiva de Fadefil y será instalada en ${f.direccion}.
+    1.3. El Locador asistirá cada 90 días para revisión y mantenimiento.
+    1.4. El servicio incluye soporte técnico 24hs, mantenimiento trimestral, cambio de filtros, capacitación y reparaciones sin costo por uso adecuado.
 
 SEGUNDA. PLAZO
-
-    2.1. La relación contractual entrará en vigencia a partir de la instalación de la Máquina y se mantendrá vigente por el plazo de 12 (doce) meses (el "Plazo de Vigencia Inicial").
-
-    2.2. El Plazo de Vigencia Inicial se renovará automáticamente por períodos de 24 (veinticuatro) meses (la "Prórroga"), salvo que alguna de las Partes notifique su voluntad de no renovar con 30 (treinta) días de antelación.
-
-    2.3. Finalizado el Plazo de Vigencia Inicial o de la Prórroga, la Relación Comercial concluirá de pleno derecho, sin necesidad de interpelación judicial y/o extrajudicial alguna.
-
-    2.4. El contrato de comodato es accesorio y complementario a la presente; en consecuencia, el Plazo del Comodato finalizará indefectiblemente en la misma fecha de terminación y/o rescisión de la presente.
+    2.1. Vigencia desde la instalación por 12 (doce) meses, renovable por períodos de 24 (veinticuatro) meses con preaviso de 30 días.
 
 TERCERA. PRECIO
-
-    3.1. Las Partes convienen, por la prestación del servicio, la suma mensual de $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA (el "Precio").
-
-    3.2. El Precio será actualizado en forma ${ajAdj}, conforme la variación del IPC acumulada durante el ${ajPer} inmediato posterior al último mes actualizado. Para la primera actualización se tomará como base $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.
-
-    3.3. En caso de que el Locatario solicite un cambio de Máquina por un modelo distinto, previa conformidad del Locador, se actualizará automáticamente el Precio.
-
-    3.4. El costo de la instalación inicial asciende a la suma total de $${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA (el "Costo de instalación").
-
-    3.5. El Locatario declara conocer el Valor de Reposición de los Equipos:
-        Máquina "AQA" ${f.modelo}: USD ${usd.value} (dólares estadounidenses ${usd.letras}) + IVA.
-        Cilindros de CO2: USD 350 (dólares estadounidenses trescientos cincuenta) + IVA.
-
-    3.6. Ante la pérdida, robo, hurto o destrucción de la Máquina, el Locatario abonará el Valor de Reposición dentro de los 10 (diez) días hábiles de intimación fehaciente.
-
-    3.7. El costo de reposición de botellas asciende a USD 2 (dos) más IVA por unidad, y USD 0,20 (veinte centavos) más IVA por tapa. El importe se determinará conforme la cotización oficial del dólar del Banco Nación vigente a la fecha de emisión de la factura.
+    3.1. Suma mensual de $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.
+    3.2. Ajuste ${ajAdj} por IPC. Base: $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.
+    3.3. Costo de instalación: $${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA.
+    3.4. Valor Reposición — Máquina ${f.modelo}: USD ${usd.value} (${usd.letras}) + IVA. CO2: USD 350 + IVA. Botellas: USD 2 c/u + IVA.
+    3.5. Ante pérdida o destrucción, el Locatario abonará el Valor de Reposición dentro de los 10 días hábiles de intimación fehaciente.
+    3.6. Botellas: USD 2 + IVA c/u. Tapas: USD 0,20 + IVA c/u.
 
 CUARTA. FACTURACIÓN Y PAGO
+    4.1. Facturación mensual adelantada en formato electrónico.
+    4.2. Pago dentro de los 5 días corridos desde la emisión. Banco Credicoop CBU: 1910043855004300999628.
 
-    4.1. Fadefil facturará mensualmente por mes adelantado, en formato electrónico.
-
-    4.2. La Factura será abonada dentro de los 5 (cinco) días corridos desde su emisión, mediante transferencia bancaria. Banco Credicoop CBU: 1910043855004300999628.
-
-QUINTA. PERSONAL. AUTONOMÍA DE LAS PARTES.
-
-    5.1. Las Partes son independientes entre sí. Esta Oferta no constituye sociedad de hecho, ni relación de dependencia entre las mismas.
-
-    5.2. Las Partes acuerdan que no podrán generarse obligaciones respecto del personal y/o contratistas de la otra Parte. Cada Parte asume plena responsabilidad frente a terceros y a su propio personal de las obligaciones civiles, penales, laborales, previsionales y administrativas por las actividades desarrolladas.
+QUINTA. AUTONOMÍA DE LAS PARTES
+    Las Partes son independientes. No existe relación de dependencia. Cada Parte asume responsabilidad frente a terceros y su personal.
 
 SEXTA. MARCAS
-
-    6.1. El presente no autoriza al Locatario a utilizar las marcas de titularidad exclusiva de Fadefil (las "Marcas").
-
-    6.2. Las Marcas son y seguirán siendo de irrestricta propiedad de Fadefil, bajo la protección de la legislación nacional e internacional sobre propiedad intelectual.
-
-    6.3. Fadefil autoriza al Locatario a incluir en los menús y redes sociales el logo de la marca "AQA" únicamente para la promoción del servicio y durante la vigencia de la presente.
-
-    6.4. El incumplimiento de esta cláusula habilitará a Fadefil a iniciar las acciones legales que correspondan, incluyendo daños y perjuicios, denuncias penales y medidas cautelares.
+    6.1. El Locatario no podrá usar las marcas de Fadefil sin autorización expresa.
+    6.2. Fadefil autoriza el uso del logo "AQA" en menús y redes sociales únicamente para promoción del servicio durante la vigencia.
 
 SÉPTIMA. OBLIGACIONES DE LAS PARTES
+    7.1. Fadefil prestará el servicio con máxima diligencia.
+    7.2. El Locatario garantiza estructura eléctrica y conexión de agua adecuadas.
+    7.3. El Locatario no podrá ceder ni trasladar los Equipos sin autorización escrita de Fadefil.
+    7.4. El Locatario implementará protector de tensión y cerrará llaves de paso ante ausencias mayores a 2 días.
+    7.5. El Locatario utilizará las botellas únicamente para servir agua del Equipo.
 
-    7.1. Fadefil realizará la prestación de los Servicios con máxima diligencia y eficiencia.
+OCTAVA. RESPONSABILIDAD
+    Cada Parte es responsable exclusiva por los daños imputables a su acción u omisión.
 
-    7.2. Fadefil declara y garantiza contar con la capacidad técnica y económica para cumplir con el Servicio.
+NOVENA. MORA. RESCISIÓN
+    9.1. La mora opera automáticamente. Intereses: 1,5 veces la tasa activa del BNA.
+    9.2. Rescisión sin causa: preaviso de 15 días. Penalidades: 50% mensualidades pendientes (primeros 6 meses); 25% (meses 7-12); 50%+25% (Prórroga año 2-3); 25% (Prórroga año 3+).
+    9.3. Ante terminación: devolución de Equipos en 5 días. Prohibido uso de marca AQA.
 
-    7.3. El Locatario garantiza que posee estructura eléctrica y conexión de agua adecuada para la instalación de los Equipos.
+DÉCIMA A DÉCIMA SEXTA
+    Confidencialidad (2 años post terminación). Cesión prohibida sin conformidad escrita. No exclusividad de Fadefil. Locatario no podrá contratar servicios similares con terceros.
 
-    7.4. El Locatario reconoce que la Máquina es de exclusiva propiedad de Fadefil y deberá devolverla en caso de rescisión o terminación de la presente.
+DOMICILIOS
+    Fadefil: Camarones N°1975, CABA.
+    Locatario: ${f.direccion}.
 
-    7.5. El Locatario se obliga a utilizar los Equipos únicamente en el Inmueble y a no ceder, transferir ni trasladar los Equipos sin autorización escrita previa de Fadefil.
-
-    7.6. El Locatario se obliga a notificar fehacientemente a Fadefil cualquier medida judicial o extrajudicial que afectare a los Equipos dentro de las 24 (veinticuatro) horas de ocurrida la misma.
-
-    7.7. El Locatario implementará un protector de tensión y deberá cerrar las llaves de paso y desenchufar la Máquina ante ausencias superiores a 2 (dos) días corridos.
-
-    7.8. El Locatario se compromete a realizar la correcta limpieza y sanitizado de botellas, operar la Máquina bajo personal capacitado y proveerla con agua potable de red.
-
-    7.9. El Locatario deberá poseer todas las habilitaciones exigidas por las leyes vigentes para el desarrollo de su actividad y para operar tubos sometidos a presión.
-
-    7.10. El Locatario deberá utilizar las botellas de AQA únicamente para servir agua del Equipo.
-
-OCTAVA. RESPONSABILIDAD DE LAS PARTES
-
-    8.1. Cada Parte será responsable exclusiva por los daños ocasionados que le sean imputables por su acción u omisión.
-
-    8.2. Las Partes se garantizan recíprocamente indemnidad total por los daños y perjuicios que ocasionen a terceros.
-
-NOVENA. MORA. INCUMPLIMIENTO. RESCISIÓN. RESOLUCIÓN ANTICIPADA
-
-    9.1. La mora se producirá en forma automática y de pleno derecho, sin necesidad de intimación previa.
-
-    9.2. En caso de mora en los pagos, se devengará un interés equivalente a una vez y media la tasa activa del Banco de la Nación Argentina para el descuento de documentos comerciales, en forma mensual.
-
-    9.3. Dentro de los primeros 30 (treinta) días corridos desde la aceptación, las Partes podrán resolver la Relación Comercial con preaviso de 15 (quince) días corridos, sin indemnización. El Locatario deberá abonar el monto proporcional al servicio prestado y restituir los Equipos.
-
-    Sin expresión de causa:
-        - Fadefil podrá terminar la Relación Comercial en cualquier momento con preaviso de 15 días corridos.
-        - El Locatario podrá rescindir con preaviso de 15 días corridos abonando el Precio hasta la fecha de terminación. Si rescinde dentro de los primeros 6 meses, abonará el 50% de las mensualidades pendientes del primer año. Entre el mes 7 y 12, el 25% de las mensualidades pendientes del primer año.
-        - A partir del mes 13 hasta el 24 de la Prórroga: 50% de mensualidades pendientes del segundo año + 25% del tercer año.
-        - A partir del mes 25: 25% de las mensualidades pendientes hasta el vencimiento de la Prórroga.
-
-    Incumplimiento: si persistiera luego de 15 días corridos de intimación fehaciente, la parte cumplidora podrá rescindir de pleno derecho, quedando a salvo su derecho de reclamar daños y perjuicios.
-
-    9.4. Producida la terminación, el Locatario deberá restituir los Equipos dentro de los 5 (cinco) días en el domicilio de Fadefil. Queda prohibida la utilización de la marca AQA una vez rescindido el contrato.
-
-    9.5. Toda obligación que subsista a la extinción o rescisión de la presente se mantendrá plenamente vigente hasta su total cumplimiento.
-
-DÉCIMA. CONFIDENCIALIDAD
-
-Las Partes mantendrán confidencialidad de la información durante la vigencia de la presente y hasta 2 (dos) años contados a partir de la terminación de la Relación Comercial.
-
-DÉCIMA PRIMERA. ANEXOS Y SELLADOS
-
-    11.1. Los anexos mencionados en el presente forman parte integrante del mismo.
-    11.2. De corresponder el pago del impuesto de sellos, el mismo será soportado por las Partes por mitades.
-
-DÉCIMA SEGUNDA. CESIÓN
-
-El Locatario no podrá ceder ni transferir en todo o en parte la relación que surja de la presente Oferta, ni sus derechos y obligaciones, sin previa conformidad escrita de la Locadora.
-
-DÉCIMA TERCERA. NULIDAD PARCIAL. ACUERDO COMPLETO.
-
-    13.1. Si se considerara que cualquier disposición de esta Oferta es ilegal o inejecutable, dicha estipulación no afectará las restantes disposiciones.
-    13.2. La presente Oferta constituye el acuerdo principal entre las Partes y sustituye todo acuerdo anterior en relación al Servicio.
-
-DÉCIMA CUARTA. NO EXCLUSIVIDAD DE FADEFIL.
-
-    14.1. La presente Oferta no implica exclusividad para Fadefil.
-    14.2. El Locatario no podrá contratar el objeto del Servicio y/o tareas similares con otro u otros proveedores.
-
-DÉCIMA QUINTA. DOMICILIOS
-
-    - Fadefil: Camarones N°1975, Ciudad Autónoma de Buenos Aires.
-    - El Locatario: ${f.direccion}.
-
-DÉCIMA SEXTA. LEGISLACIÓN Y JURISDICCIÓN
-
-    16.1. La presente Oferta se regirá por las leyes de la República Argentina.
-    16.2. Toda controversia se resolverá por los Tribunales Nacionales Ordinarios con asiento en la Ciudad Autónoma de Buenos Aires.
+JURISDICCIÓN
+    Ley argentina. Tribunales Nacionales Ordinarios, CABA.
 
 
 ════════════════════════════════════════════════════
@@ -502,25 +479,18 @@ CARTA DE ACEPTACIÓN
 
 Ciudad Autónoma de Buenos Aires, ___ de ________ de 2026
 
-Sres. Fadefil S.A.
-Camarones 1975 CABA
+Sres. Fadefil S.A. — Camarones 1975, CABA
 At.: Sr. Ignacio Musmanno
 
-Re: Aceptación de Oferta de prestación de servicios N°${f.nro}/26
+Re: Aceptación de Oferta N°${f.nro}/26
 
-De nuestra consideración:
-
-Por la presente nos dirigimos a Uds. a fin de notificarles nuestra decisión de aceptar vuestra "Oferta de prestación de servicios N°${f.nro}/26" de fecha ${f.dia} de ${f.mes} de 2026.
-
-Los saludo atentamente.
+Por la presente aceptamos vuestra "Oferta de prestación de servicios N°${f.nro}/26" de fecha ${f.dia} de ${f.mes} de 2026.
 
 _________________
-FIRMA
-ACLARACIÓN
-DNI`;
-  const blob = new Blob([txt],{type:"text/plain;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+FIRMA / ACLARACIÓN / DNI`;
+  const blob=new Blob([txt],{type:"text/plain;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
   a.href=url; a.download=`Contrato_AQA_${(f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"")}_${f.dia}${(f.mes||"").slice(0,3)}2026.txt`;
   a.click(); URL.revokeObjectURL(url);
 }
@@ -558,10 +528,11 @@ function GeneradorContratos() {
   );
 }
 
-// ── Comercial ─────────────────────────────────────────────────────────
-const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",fecha:""};
+// ── Comercial (Firebase) ──────────────────────────────────────────────
+const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:""};
 
 function Comercial({onNuevoCierre}) {
+  const fb = useFirebase();
   const [cierres,setCierres]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showForm,setShowForm]=useState(false);
@@ -569,45 +540,58 @@ function Comercial({onNuevoCierre}) {
   const [expandedId,setExpandedId]=useState(null);
   const [modalVendedor,setModalVendedor]=useState(false);
   const [modalAsesor,setModalAsesor]=useState(null);
-  const [modalSeg,setModalSeg]=useState(null);
+  const [chatCierreId,setChatCierreId]=useState(null);
   const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
   const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
 
   useEffect(()=>{
-    try { const s=localStorage.getItem("aqa_cierres"); if(s) setCierres(JSON.parse(s)); } catch(e){}
-    setLoading(false);
-  },[]);
+    if(!fb) return;
+    const { db, collection, query, orderBy, onSnapshot } = fb;
+    const q = query(collection(db,"cierres"), orderBy("ts","desc"));
+    const unsub = onSnapshot(q, snap => {
+      setCierres(snap.docs.map(d=>({id:d.id,...d.data()})));
+      setLoading(false);
+    });
+    return ()=>unsub();
+  },[fb]);
 
-  const save=n=>{try{localStorage.setItem("aqa_cierres",JSON.stringify(n));}catch(e){} setCierres(n);};
+  useEffect(()=>{ if(fb&&loading) setLoading(false); },[fb]);
 
-  const guardar=()=>{
+  const guardar=async()=>{
     if(!form.nombreFantasia||!form.razonSocial){alert("Completá Nombre de Fantasía y Razón Social");return;}
-    const nuevo={...form,id:Date.now().toString(),fecha:new Date().toLocaleDateString("es-AR"),historial:[]};
-    save([nuevo,...cierres]);
-    onNuevoCierre(nuevo);
+    if(!fb){alert("Firebase no disponible");return;}
+    const { db, collection, addDoc } = fb;
+    const nuevo = {...form, ts:Date.now(), fecha:new Date().toLocaleDateString("es-AR")};
+    const ref = await addDoc(collection(db,"cierres"), nuevo);
+    onNuevoCierre({...nuevo, id:ref.id});
     setForm(CIERRE_VACIO); setShowForm(false);
   };
 
-  const asignarAsesor=(id,a)=>save(cierres.map(c=>c.id===id?{...c,asesor:a}:c));
-  const agregarSeg=(id,e)=>save(cierres.map(c=>c.id===id?{...c,historial:[...(c.historial||[]),e]}:c));
-  const eliminar=id=>save(cierres.filter(c=>c.id!==id));
+  const asignarAsesor=async(id,a)=>{
+    if(!fb) return;
+    const { db, doc, setDoc } = fb;
+    await setDoc(doc(db,"cierres",id), {asesor:a}, {merge:true});
+  };
 
   const inp=(k,ph,type="text")=><input type={type} value={form[k]} onChange={e=>setF(k,e.target.value)} placeholder={ph} style={SS}/>;
   const sel=(k,opts,ph="Seleccionar...")=><select value={form[k]} onChange={e=>setF(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}</select>;
   const campo=(label,child,full=false)=><div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</label>{child}</div>;
 
-  if(loading) return <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>;
+  if(loading||!fb) return <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>{!fb?"Conectando a Firebase...":"Cargando cierres..."}</div>;
 
   return (
     <div>
       {modalVendedor&&<ModalLista titulo="Seleccionar Vendedor" items={VENDEDORES} onSelect={v=>setF("vendedor",v)} onClose={()=>setModalVendedor(false)}/>}
       {modalAsesor&&<ModalLista titulo="Asignar Asesor At. Cliente" items={ASESORES_ATCLTE} onSelect={a=>asignarAsesor(modalAsesor,a)} onClose={()=>setModalAsesor(null)}/>}
-      {modalSeg&&<ModalSeguimiento onClose={()=>setModalSeg(null)} onGuardar={e=>agregarSeg(modalSeg,e)}/>}
+      {chatCierreId&&(() => {
+        const c = cierres.find(x=>x.id===chatCierreId);
+        return c ? <ClienteChat clienteId={`cierre_${chatCierreId}`} clienteNombre={c.nombreFantasia} onClose={()=>setChatCierreId(null)}/> : null;
+      })()}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div>
           <p style={{margin:0,fontSize:14,fontWeight:600}}>Comercial</p>
-          <p style={{margin:0,fontSize:12,color:"#6b7a99"}}>{cierres.length} cierres</p>
+          <p style={{margin:0,fontSize:12,color:"#6b7a99"}}>{cierres.length} cierres · tiempo real 🟢</p>
         </div>
         <button onClick={()=>setShowForm(p=>!p)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:600,cursor:"pointer"}}>
           {showForm?"✕ Cancelar":"+ Nuevo Cierre"}
@@ -670,6 +654,7 @@ function Comercial({onNuevoCierre}) {
                   <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>{c.razonSocial} · {c.vendedor||"Sin vendedor"} · {c.modelo||"Modelo a definir"}</p>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  <button onClick={e=>{e.stopPropagation();setChatCierreId(c.id);}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬 Chat</button>
                   <span style={{background:"#e8f1fb",color:"#1F3864",fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}}>{c.fecha}</span>
                   <span style={{fontSize:11,color:"#6b7a99"}}>{open?"▲":"▼"}</span>
                 </div>
@@ -697,27 +682,6 @@ function Comercial({onNuevoCierre}) {
                       <p style={{margin:0,fontSize:12,fontWeight:500}}>{c.observaciones}</p>
                     </div>
                   )}
-                  <div style={{marginTop:12}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                      <p style={{margin:0,fontSize:12,fontWeight:600,color:"#1F3864"}}>Historial de seguimiento</p>
-                      <button onClick={()=>setModalSeg(c.id)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"5px 12px",fontSize:11,cursor:"pointer",fontWeight:500}}>+ Agregar actualización</button>
-                    </div>
-                    {(!c.historial||c.historial.length===0)
-                      ? <p style={{fontSize:12,color:"#9baabf",fontStyle:"italic",margin:0}}>Sin actualizaciones aún.</p>
-                      : <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                          {[...(c.historial||[])].reverse().map((h,i)=>(
-                            <div key={i} style={{background:"#f4f7fb",borderRadius:8,padding:"8px 12px",borderLeft:"3px solid #2E75B6"}}>
-                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                                <span style={{fontSize:11,fontWeight:600,color:"#1F3864"}}>{h.equipo} — {h.autor}</span>
-                                <span style={{fontSize:10,color:"#9baabf"}}>{h.fecha}</span>
-                              </div>
-                              <p style={{margin:0,fontSize:12,color:"#1a2340"}}>{h.texto}</p>
-                            </div>
-                          ))}
-                        </div>
-                    }
-                  </div>
-                  <button onClick={()=>eliminar(c.id)} style={{marginTop:12,fontSize:11,padding:"5px 14px",borderRadius:8,border:"1px solid #FCEBEB",background:"#FCEBEB",color:"#791F1F",cursor:"pointer",fontWeight:500}}>🗑 Eliminar cierre</button>
                 </div>
               )}
             </div>
@@ -748,8 +712,8 @@ function App() {
   const [fAtClte,setFAtClte]=useState("Todos");
   const [expanded,setExpanded]=useState(null);
   const [instPendExtra,setInstPendExtra]=useState([]);
+  const [chatCliente,setChatCliente]=useState(null); // {id, nombre}
 
-  // Cargar clientes
   useEffect(()=>{
     (async()=>{
       try {
@@ -762,10 +726,7 @@ function App() {
         const {map:m3}=parseComodato(rComHiel,"Hielogic");
         const {map:m4,clientes:offClientes}=parseComodato(rComOff,"AQA Office");
         const cmap={...m1,...m2,...m3,...m4};
-        const enrich=(text,cartera)=>parseCob(text,cartera).map(c=>{
-          const x=cmap[c.id]||{};
-          return {...c,asesorAtClte:x.asesorAtClte||"",fechaInstalacion:x.fechaInstalacion||""};
-        });
+        const enrich=(text,cartera)=>parseCob(text,cartera).map(c=>{const x=cmap[c.id]||{};return{...c,asesorAtClte:x.asesorAtClte||"",fechaInstalacion:x.fechaInstalacion||""};});
         const all=[...enrich(rCobBsAs,"Buenos Aires"),...enrich(rCobInt,"Interior"),...enrich(rCobHiel,"Hielogic"),...offClientes];
         if(all.length>0) setClientes(all);
       } catch(e){console.error(e);}
@@ -774,10 +735,9 @@ function App() {
     })();
   },[]);
 
-  // Cargar hoja logística
   useEffect(()=>{
     if(tab!=="Atención al Cliente"||logHoja==="Comodato") return;
-    const carteras = logCartera==="Todos" ? ["Buenos Aires","Interior","Hielogic","AQA Office"] : [logCartera];
+    const carteras=logCartera==="Todos"?["Buenos Aires","Interior","Hielogic","AQA Office"]:[logCartera];
     carteras.forEach(c=>{
       const key=`${c}_${logHoja}`;
       if(logData[key]) return;
@@ -794,7 +754,6 @@ function App() {
     });
   },[tab,logCartera,logHoja]);
 
-  // Cargar administración
   useEffect(()=>{
     if(tab!=="Administración"||admTab==="Generador de Contratos") return;
     if(admData[admTab]) return;
@@ -819,51 +778,18 @@ function App() {
   };
 
   const cobradores=useMemo(()=>["Todos",...new Set(clientes.map(c=>c.asesorCob).filter(Boolean))]  ,[clientes]);
-  const stats=useMemo(()=>({
-    total:clientes.length,
-    inhab:clientes.filter(c=>c.estado==="inhabilitado").length,
-    pend:clientes.filter(c=>c.estado==="pendiente").length,
-    hab:clientes.filter(c=>c.estado==="habilitado").length,
-    deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0),
-  }),[clientes]);
-
-  const filteredAtClte=useMemo(()=>clientes.filter(c=>{
-    const sq=q.toLowerCase();
-    return (c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq))
-      &&(fAtClte==="Todos"||c.asesorAtClte===fAtClte)
-      &&(logCartera==="Todos"||c.cartera===logCartera);
-  }),[clientes,q,fAtClte,logCartera]);
-
-  const filteredCob=useMemo(()=>clientes.filter(c=>{
-    const sq=q.toLowerCase();
-    return (c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))
-      &&(fEstado==="todos"||c.estado===fEstado)
-      &&(fCobrador==="Todos"||c.asesorCob===fCobrador);
-  }),[clientes,q,fEstado,fCobrador]);
-
-  const resumen=useMemo(()=>{
-    const r={};
-    clientes.forEach(c=>{
-      const k=c.asesorCob||"Sin asignar";
-      if(!r[k]) r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};
-      r[k].total++; r[k][c.estado]=(r[k][c.estado]||0)+1;
-      if(c.deuda>0) r[k].deuda+=c.deuda;
-    });
-    return Object.values(r).sort((a,b)=>b.deuda-a.deuda);
-  },[clientes]);
-
-  // Para hojas genéricas: combinar carteras si es "Todos"
+  const stats=useMemo(()=>({total:clientes.length,inhab:clientes.filter(c=>c.estado==="inhabilitado").length,pend:clientes.filter(c=>c.estado==="pendiente").length,hab:clientes.filter(c=>c.estado==="habilitado").length,deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0)}),[clientes]);
+  const filteredAtClte=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq))&&(fAtClte==="Todos"||c.asesorAtClte===fAtClte)&&(logCartera==="Todos"||c.cartera===logCartera);}),[clientes,q,fAtClte,logCartera]);
+  const filteredCob=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))&&(fEstado==="todos"||c.estado===fEstado)&&(fCobrador==="Todos"||c.asesorCob===fCobrador);}),[clientes,q,fEstado,fCobrador]);
+  const resumen=useMemo(()=>{const r={};clientes.forEach(c=>{const k=c.asesorCob||"Sin asignar";if(!r[k])r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};r[k].total++;r[k][c.estado]=(r[k][c.estado]||0)+1;if(c.deuda>0)r[k].deuda+=c.deuda;});return Object.values(r).sort((a,b)=>b.deuda-a.deuda);},[clientes]);
   const currentLogData=useMemo(()=>{
     if(logHoja==="Comodato") return null;
     const carteras=logCartera==="Todos"?["Buenos Aires","Interior","Hielogic","AQA Office"]:[logCartera];
-    let headers=[];
-    const rows=[];
+    let headers=[];const rows=[];
     carteras.forEach(c=>{
-      const key=`${c}_${logHoja}`;
-      const d=logData[key];
+      const key=`${c}_${logHoja}`;const d=logData[key];
       if(d&&d.headers&&d.headers.length>0){
         if(headers.length===0) headers=d.headers;
-        // Filtrar por asesor si aplica
         const fil=fAtClte==="Todos"?d.rows:d.rows.filter(r=>(r[d.headers[0]]||"").toLowerCase().includes(fAtClte.toLowerCase()));
         rows.push(...fil);
       }
@@ -876,9 +802,10 @@ function App() {
   function ClienteCard({c}) {
     const av=avColor(c.asesorAtClte||c.asesorCob);
     const open=expanded?.id===c.id&&expanded?.n===c.nombre;
+    const chatId = `cliente_${c.id}`;
     return (
-      <div onClick={()=>setExpanded(open?null:{id:c.id,n:c.nombre})} style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"10px 14px",cursor:"pointer",borderLeft:`3px solid ${BCOL[c.estado]||"#ccc"}`}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+      <div style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${BCOL[c.estado]||"#ccc"}`}}>
+        <div onClick={()=>setExpanded(open?null:{id:c.id,n:c.nombre})} style={{padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
           <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
             <div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div>
             <div style={{minWidth:0}}>
@@ -887,18 +814,21 @@ function App() {
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+            <button onClick={e=>{e.stopPropagation();setChatCliente({id:chatId,nombre:c.nombre});}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬</button>
             <Badge estado={c.estado}/>
             <span style={{fontSize:11,color:c.deuda>500000?"#791F1F":c.deuda>0?"#633806":"#6b7a99",fontWeight:c.deuda>500000?600:400,whiteSpace:"nowrap"}}>{fmt(c.deuda)}</span>
           </div>
         </div>
         {open&&(
-          <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #dce6f5",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6}}>
-            {[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"}].map(({l,v})=>(
-              <div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}>
-                <p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p>
-                <p style={{margin:0,fontSize:13,fontWeight:500}}>{v}</p>
-              </div>
-            ))}
+          <div style={{padding:"0 14px 12px",borderTop:"1px solid #dce6f5"}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6,marginTop:10}}>
+              {[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"}].map(({l,v})=>(
+                <div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}>
+                  <p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p>
+                  <p style={{margin:0,fontSize:13,fontWeight:500}}>{v}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -909,7 +839,8 @@ function App() {
 
   return (
     <div style={{color:"#1a2340"}}>
-      {/* Header */}
+      {chatCliente&&<ClienteChat clienteId={chatCliente.id} clienteNombre={chatCliente.nombre} onClose={()=>setChatCliente(null)}/>}
+
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"1rem",flexWrap:"wrap",gap:8}}>
         <div>
           <p style={{fontSize:20,fontWeight:600,margin:0}}>AQA Central</p>
@@ -924,33 +855,23 @@ function App() {
 
       <TabBar tabs={MAIN_TABS} active={tab} onChange={t=>{setTab(t);setQ("");}}/>
 
-      {/* ── Atención al Cliente ── */}
+      {/* Atención al Cliente */}
       {tab==="Atención al Cliente"&&(
         <div>
           <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
             <input placeholder="Buscar nombre, ID, asesor..." value={q} onChange={e=>setQ(e.target.value)} style={{...SS,flex:1,minWidth:160}}/>
-            <select value={logHoja} onChange={e=>setLogHoja(e.target.value)} style={SS}>
-              {LOG_HOJAS.map(o=><option key={o}>{o}</option>)}
-            </select>
-            <select value={logCartera} onChange={e=>setLogCartera(e.target.value)} style={SS}>
-              {["Todos","Buenos Aires","Interior","Hielogic","AQA Office"].map(o=><option key={o}>{o}</option>)}
-            </select>
-            <select value={fAtClte} onChange={e=>setFAtClte(e.target.value)} style={SS}>
-              {["Todos",...ASESORES_ATCLTE].map(o=><option key={o}>{o}</option>)}
-            </select>
+            <select value={logHoja} onChange={e=>setLogHoja(e.target.value)} style={SS}>{LOG_HOJAS.map(o=><option key={o}>{o}</option>)}</select>
+            <select value={logCartera} onChange={e=>setLogCartera(e.target.value)} style={SS}>{["Todos","Buenos Aires","Interior","Hielogic","AQA Office"].map(o=><option key={o}>{o}</option>)}</select>
+            <select value={fAtClte} onChange={e=>setFAtClte(e.target.value)} style={SS}>{["Todos",...ASESORES_ATCLTE].map(o=><option key={o}>{o}</option>)}</select>
           </div>
-
           {logHoja!=="Comodato"&&(
             loadingLog
               ? <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>
-              : currentLogData&&(
-                <div>
+              : currentLogData&&<div>
                   <p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{currentLogData.rows.length} registros · {logCartera==="Todos"?"Todas las carteras":logCartera} · {logHoja}</p>
                   <GenericTable data={currentLogData} headerBg="#1F3864"/>
                 </div>
-              )
           )}
-
           {logHoja==="Comodato"&&(
             <div>
               <p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{filteredAtClte.length} de {clientes.length}</p>
@@ -962,7 +883,7 @@ function App() {
         </div>
       )}
 
-      {/* ── Cobranzas ── */}
+      {/* Cobranzas */}
       {tab==="Cobranzas"&&(
         <div>
           <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
@@ -973,9 +894,7 @@ function App() {
               <option value="pendiente">Fc. Pendientes</option>
               <option value="inhabilitado">Inhabilitado</option>
             </select>
-            <select value={fCobrador} onChange={e=>setFCobrador(e.target.value)} style={SS}>
-              {cobradores.map(c=><option key={c}>{c}</option>)}
-            </select>
+            <select value={fCobrador} onChange={e=>setFCobrador(e.target.value)} style={SS}>{cobradores.map(c=><option key={c}>{c}</option>)}</select>
           </div>
           <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5",marginBottom:12}}>
             <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Deuda total cartera</p>
@@ -1006,10 +925,8 @@ function App() {
         </div>
       )}
 
-      {/* ── Comercial ── */}
       {tab==="Comercial"&&<Comercial onNuevoCierre={handleNuevoCierre}/>}
 
-      {/* ── Logística ── */}
       {tab==="Logística"&&(
         <div style={{background:"#f4f7fb",borderRadius:12,padding:"1.25rem",border:"1px solid #dce6f5"}}>
           <p style={{margin:"0 0 4px",fontSize:14,fontWeight:500}}>Próximamente</p>
@@ -1017,13 +934,10 @@ function App() {
         </div>
       )}
 
-      {/* ── Administración ── */}
       {tab==="Administración"&&(
         <div>
           <TabBar tabs={ADM_TABS} active={admTab} onChange={setAdmTab} color="#1F3864"/>
-
           {admTab==="Generador de Contratos"&&<GeneradorContratos/>}
-
           {["Intimaciones","Cartas Documento","Veraz"].includes(admTab)&&(
             loadingAdm
               ? <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>
@@ -1037,7 +951,6 @@ function App() {
                 </div>
               )
           )}
-
           {admTab==="Score Crediticio"&&(
             <div>
               <TabBar tabs={["Buenos Aires","Interior","Hielogic"]} active={scoreTab} onChange={setScoreTab} color="#1a5c3a"/>
