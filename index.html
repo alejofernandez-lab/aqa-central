@@ -9,7 +9,8 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, doc, addDoc, onSnapshot, query, orderBy, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, doc, addDoc, onSnapshot, query, orderBy, setDoc, getDocs, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCzsslw0LQejd8-3WRdFAscWXz1VtVICWo",
@@ -22,11 +23,10 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
 
-  window._firebase = {
-    db,
-    collection, doc, addDoc, onSnapshot, query, orderBy, setDoc, getDocs
-  };
+  window._firebase = { db, auth, provider, collection, doc, addDoc, onSnapshot, query, orderBy, setDoc, getDocs, deleteDoc, getDoc, signInWithPopup, signOut, onAuthStateChanged };
   window.dispatchEvent(new Event("firebase-ready"));
 </script>
 <style>
@@ -100,7 +100,7 @@ const EQUIPOS_SEG = {
 const BCOL = {habilitado:"#639922",inhabilitado:"#E24B4A",pendiente:"#EF9F27"};
 const PAL = [{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
 
-// ── Firebase hook ─────────────────────────────────────────────────────
+// ── Firebase hooks ────────────────────────────────────────────────────
 function useFirebase() {
   const [fb, setFb] = useState(window._firebase || null);
   useEffect(() => {
@@ -112,9 +112,46 @@ function useFirebase() {
   return fb;
 }
 
-// ── Chat de cliente (Firebase) ────────────────────────────────────────
+function useAuth() {
+  const fb = useFirebase();
+  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  useEffect(() => {
+    if (!fb) return;
+    const { auth, onAuthStateChanged, db, doc, getDoc } = fb;
+    const unsub = onAuthStateChanged(auth, async u => {
+      setUser(u);
+      if (u) {
+        try {
+          const ref = doc(db, "admins", u.email);
+          const snap = await getDoc(ref);
+          setIsAdmin(snap.exists());
+        } catch { setIsAdmin(false); }
+      } else {
+        setIsAdmin(false);
+      }
+      setLoadingAuth(false);
+    });
+    return () => unsub();
+  }, [fb]);
+
+  const login = async () => {
+    if (!fb) return;
+    try { await fb.signInWithPopup(fb.auth, fb.provider); } catch(e) { console.error(e); }
+  };
+  const logout = async () => {
+    if (!fb) return;
+    await fb.signOut(fb.auth);
+  };
+
+  return { user, isAdmin, loadingAuth, login, logout };
+}
+
 function ClienteChat({ clienteId, clienteNombre, onClose }) {
   const fb = useFirebase();
+  const { user, isAdmin, login } = useAuth();
   const [mensajes, setMensajes] = useState([]);
   const [equipo, setEquipo] = useState("");
   const [autor, setAutor] = useState("");
@@ -137,7 +174,7 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
 
   const enviar = async () => {
     if (!equipo || !autor || !texto.trim()) { alert("Completá equipo, autor y mensaje"); return; }
-    if (!fb) { alert("Firebase no disponible"); return; }
+    if (!fb) return;
     setEnviando(true);
     const { db, collection, addDoc } = fb;
     await addDoc(collection(db, `chats/${clienteId}/mensajes`), {
@@ -147,6 +184,13 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
     });
     setTexto("");
     setEnviando(false);
+  };
+
+  const borrarMensaje = async (msgId) => {
+    if (!fb || !isAdmin) return;
+    if (!confirm("¿Borrar este mensaje?")) return;
+    const { db, doc, deleteDoc } = fb;
+    await deleteDoc(doc(db, `chats/${clienteId}/mensajes`, msgId));
   };
 
   const equipoColors = {"Comercial":"#2E75B6","Atención al Cliente":"#1a5c3a","Logística":"#8a3a00","Cobranzas":"#791F1F"};
@@ -159,18 +203,29 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
             <p style={{margin:0,fontSize:15,fontWeight:600}}>💬 {clienteNombre}</p>
             <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>Historial compartido del cliente</p>
           </div>
-          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {!user
+              ? <button onClick={login} style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #dce6f5",background:"#f4f7fb",cursor:"pointer",color:"#1a2340"}}>🔑 Login admin</button>
+              : isAdmin
+                ? <span style={{fontSize:11,color:"#1a5c3a",fontWeight:500}}>✓ Admin</span>
+                : <span style={{fontSize:11,color:"#9baabf"}}>Logueado</span>
+            }
+            <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+          </div>
         </div>
 
         {/* Mensajes */}
         <div style={{height:320,overflowY:"auto",background:"#f4f7fb",borderRadius:10,padding:"10px",marginBottom:12,display:"flex",flexDirection:"column",gap:8}}>
           {!fb && <p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Conectando a Firebase...</p>}
-          {fb && mensajes.length === 0 && <p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Sin mensajes aún. Sé el primero en escribir.</p>}
+          {fb && mensajes.length === 0 && <p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Sin mensajes aún.</p>}
           {mensajes.map(m => (
             <div key={m.id} style={{background:"#fff",borderRadius:10,padding:"8px 12px",borderLeft:`3px solid ${equipoColors[m.equipo]||"#ccc"}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                 <span style={{fontSize:11,fontWeight:600,color:equipoColors[m.equipo]||"#1a2340"}}>{m.equipo} — {m.autor}</span>
-                <span style={{fontSize:10,color:"#9baabf"}}>{m.fecha}</span>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:10,color:"#9baabf"}}>{m.fecha}</span>
+                  {isAdmin && <button onClick={()=>borrarMensaje(m.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#dc3545",padding:"0 2px"}} title="Borrar mensaje">🗑</button>}
+                </div>
               </div>
               <p style={{margin:0,fontSize:13,color:"#1a2340"}}>{m.texto}</p>
             </div>
