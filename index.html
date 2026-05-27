@@ -272,13 +272,28 @@ function parseComodato(text, cartera) {
   const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");
   if (lines.length < 2) return { map:{}, clientes:[] };
   const map = {}, clientes = [];
+
+  // Índices según cartera
+  // BsAs:    A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8  → asesor=0, nombre=3, id=4, fecha=8
+  // Interior: A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11 → asesor=0, nombre=3, id=4, fecha=11
+  // Hielogic: A=0,B=1,C=2(cubo),D=3(modelo),E=4,F=5,G=6,H=7,I=8,J=9 → asesor=0, nombre=4, id=5, fecha=9
+  // Office:  A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11 → asesor=0, nombre=3, id=4, fecha=11
+
+  const cfg = {
+    "Buenos Aires": { asesor:0, modelo:2, nombre:3, id:4, fecha:8 },
+    "Interior":     { asesor:0, modelo:2, nombre:3, id:4, fecha:11 },
+    "Hielogic":     { asesor:0, modelo:3, nombre:4, id:5, fecha:9 },
+    "AQA Office":   { asesor:0, modelo:2, nombre:3, id:4, fecha:11 },
+  };
+  const idx = cfg[cartera] || cfg["Buenos Aires"];
+
   lines.slice(1).forEach(line => {
     const c = splitLine(line);
-    const asesor = (c[0]||"").trim();
-    const modelo = (c[2]||"").trim();
-    const nombre = (c[3]||"").replace(/"/g,"").trim();
-    const idPersat = (c[4]||"").trim();
-    const fechaIns = (c[8]||"").trim();
+    const asesor   = (c[idx.asesor]||"").trim();
+    const modelo   = (c[idx.modelo]||"").trim();
+    const nombre   = (c[idx.nombre]||"").replace(/"/g,"").trim();
+    const idPersat = (c[idx.id]||"").trim();
+    const fechaIns = (c[idx.fecha]||"").trim();
     if (idPersat) map[idPersat] = { asesorAtClte:asesor, fechaInstalacion:fechaIns };
     if (nombre && cartera === "AQA Office") {
       clientes.push({ id:idPersat||nombre, nombre, modelo, asesorCob:"—", asesorAtClte:asesor,
