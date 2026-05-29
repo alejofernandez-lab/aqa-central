@@ -42,7 +42,6 @@ input,select,textarea{font-family:inherit}
 <script type="text/babel">
 const { useState, useMemo, useEffect, useRef } = React;
 
-// ── URLs Sheets ───────────────────────────────────────────────────────
 const URLS = {
   cobBsAs:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=0&single=true&output=csv",
   cobInt:     "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=467657686&single=true&output=csv",
@@ -77,7 +76,6 @@ const LOG_URL_MAP = {
   "AQA Office_Instalaciones Pendientes":"offInstPend","AQA Office_Comodato":"offComodato","AQA Office_Venta":"offVenta","AQA Office_Desinstalaciones":"offDesins",
 };
 
-// ── Constantes ────────────────────────────────────────────────────────
 const MAIN_TABS = ["Atención al Cliente","Cobranzas","Comercial","Logística","Administración"];
 const LOG_HOJAS = ["Instalaciones Pendientes","Comodato","Desinstalaciones","Venta"];
 const ADM_TABS  = ["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio"];
@@ -89,6 +87,7 @@ const CLASIFICACIONES = ["HoReCa","AQA Office","Residencial","Hotel","Restaurant
 const MODELOS_ALL = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20","A Definir"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const MODELOS = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20"];
+const AJUSTES = ["trimestral","bimestral","cuatrimestral","semestral"];
 const USD_OPTS = [{label:"USD 6.900 (WL7/SM)",value:"6.900",letras:"seis mil novecientos"},{label:"USD 7.400 (BM)",value:"7.400",letras:"siete mil cuatrocientos"},{label:"USD 5.900 (RBF)",value:"5.900",letras:"cinco mil novecientos"},{label:"USD 4.000 (RBL/OFF20)",value:"4.000",letras:"cuatro mil"}];
 const SOCIEDADES = ["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributista","Asociación Civil"];
 const EQUIPOS_SEG = {
@@ -97,10 +96,8 @@ const EQUIPOS_SEG = {
   "Logística": ["Facundo Costabel","Alex Iraldi","Antonella Legname","Brian Gonzalez","Sebastian Garcia"],
   "Cobranzas": ["Dante Briceño","Mathias Servin","Dorotea Mazzieri","Milagros Saracco"],
 };
-const BCOL = {habilitado:"#639922",inhabilitado:"#E24B4A",pendiente:"#EF9F27"};
 const PAL = [{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
 
-// ── Firebase hooks ────────────────────────────────────────────────────
 function useFirebase() {
   const [fb, setFb] = useState(window._firebase || null);
   useEffect(() => {
@@ -129,23 +126,14 @@ function useAuth() {
           const snap = await getDoc(ref);
           setIsAdmin(snap.exists());
         } catch { setIsAdmin(false); }
-      } else {
-        setIsAdmin(false);
-      }
+      } else { setIsAdmin(false); }
       setLoadingAuth(false);
     });
     return () => unsub();
   }, [fb]);
 
-  const login = async () => {
-    if (!fb) return;
-    try { await fb.signInWithPopup(fb.auth, fb.provider); } catch(e) { console.error(e); }
-  };
-  const logout = async () => {
-    if (!fb) return;
-    await fb.signOut(fb.auth);
-  };
-
+  const login = async () => { if (!fb) return; try { await fb.signInWithPopup(fb.auth, fb.provider); } catch(e) { console.error(e); } };
+  const logout = async () => { if (!fb) return; await fb.signOut(fb.auth); };
   return { user, isAdmin, loadingAuth, login, logout };
 }
 
@@ -164,9 +152,7 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
     if (!fb) return;
     const { db, collection, query, orderBy, onSnapshot } = fb;
     const q = query(collection(db, `chats/${clienteId}/mensajes`), orderBy("ts", "asc"));
-    const unsub = onSnapshot(q, snap => {
-      setMensajes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    const unsub = onSnapshot(q, snap => { setMensajes(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
     return () => unsub();
   }, [fb, clienteId]);
 
@@ -178,12 +164,10 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
     setEnviando(true);
     const { db, collection, addDoc } = fb;
     await addDoc(collection(db, `chats/${clienteId}/mensajes`), {
-      equipo, autor, texto: texto.trim(),
-      ts: Date.now(),
+      equipo, autor, texto: texto.trim(), ts: Date.now(),
       fecha: new Date().toLocaleString("es-AR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})
     });
-    setTexto("");
-    setEnviando(false);
+    setTexto(""); setEnviando(false);
   };
 
   const borrarMensaje = async (msgId) => {
@@ -213,8 +197,6 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
             <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
           </div>
         </div>
-
-        {/* Mensajes */}
         <div style={{height:320,overflowY:"auto",background:"#f4f7fb",borderRadius:10,padding:"10px",marginBottom:12,display:"flex",flexDirection:"column",gap:8}}>
           {!fb && <p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Conectando a Firebase...</p>}
           {fb && mensajes.length === 0 && <p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Sin mensajes aún.</p>}
@@ -224,7 +206,7 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
                 <span style={{fontSize:11,fontWeight:600,color:equipoColors[m.equipo]||"#1a2340"}}>{m.equipo} — {m.autor}</span>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <span style={{fontSize:10,color:"#9baabf"}}>{m.fecha}</span>
-                  {isAdmin && <button onClick={()=>borrarMensaje(m.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#dc3545",padding:"0 2px"}} title="Borrar mensaje">🗑</button>}
+                  {isAdmin && <button onClick={()=>borrarMensaje(m.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#dc3545",padding:"0 2px"}} title="Borrar">🗑</button>}
                 </div>
               </div>
               <p style={{margin:0,fontSize:13,color:"#1a2340"}}>{m.texto}</p>
@@ -232,8 +214,6 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
           ))}
           <div ref={bottomRef}/>
         </div>
-
-        {/* Formulario */}
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             <div>
@@ -252,9 +232,7 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
             </div>
           </div>
           <textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Escribí la actualización..." rows={3}
-            style={{...SS,resize:"none"}}
-            onKeyDown={e=>{ if(e.key==="Enter"&&e.ctrlKey) enviar(); }}
-          />
+            style={{...SS,resize:"none"}} onKeyDown={e=>{ if(e.key==="Enter"&&e.ctrlKey) enviar(); }}/>
           <button onClick={enviar} disabled={enviando} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:enviando?"not-allowed":"pointer",opacity:enviando?.7:1}}>
             {enviando?"Enviando...":"Enviar (Ctrl+Enter)"}
           </button>
@@ -264,7 +242,6 @@ function ClienteChat({ clienteId, clienteNombre, onClose }) {
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────
 function splitLine(line) {
   const cols = []; let cur = "", inQ = false;
   for (let i = 0; i < line.length; i++) {
@@ -279,8 +256,7 @@ function splitLine(line) {
 
 function parseCSVText(text) {
   const norm = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
-  const logical = [];
-  let cur = "", inQ = false;
+  const logical = []; let cur = "", inQ = false;
   for (let i = 0; i < norm.length; i++) {
     const ch = norm[i];
     if (ch === '"') { inQ = !inQ; cur += ch; }
@@ -327,7 +303,6 @@ function parseComodato(text, cartera) {
   const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");
   if (lines.length < 2) return { map:{}, clientes:[] };
   const map = {}, clientes = [];
-
   const cfg = {
     "Buenos Aires": { asesor:0, modelo:2, nombre:3, id:4, fecha:8 },
     "Interior":     { asesor:0, modelo:2, nombre:3, id:4, fecha:11 },
@@ -335,7 +310,6 @@ function parseComodato(text, cartera) {
     "AQA Office":   { asesor:0, modelo:2, nombre:3, id:4, fecha:11 },
   };
   const idx = cfg[cartera] || cfg["Buenos Aires"];
-
   lines.slice(1).forEach(line => {
     const c = splitLine(line);
     const asesor   = (c[idx.asesor]||"").trim();
@@ -344,15 +318,9 @@ function parseComodato(text, cartera) {
     const idPersat = (c[idx.id]||"").trim();
     const fechaIns = (c[idx.fecha]||"").trim();
     if (idPersat) map[idPersat] = { asesorAtClte:asesor, fechaInstalacion:fechaIns };
-    // Agregar a clientes para todas las carteras (no solo Office)
     if (nombre) {
-      clientes.push({
-        id: idPersat||nombre, nombre, modelo,
-        asesorCob:"—", asesorAtClte:asesor,
-        abono:0, estado:"habilitado", deuda:0, fc:0, mens:0,
-        cartera, fechaInstalacion:fechaIns,
-        _soloComodato: true // flag para saber que viene del comodato
-      });
+      clientes.push({ id: idPersat||nombre, nombre, modelo, asesorCob:"—", asesorAtClte:asesor,
+        abono:0, estado:"habilitado", deuda:0, fc:0, mens:0, cartera, fechaInstalacion:fechaIns, _soloComodato: true });
     }
   });
   return { map, clientes };
@@ -360,7 +328,7 @@ function parseComodato(text, cartera) {
 
 const safeFetch = url => fetch(url).then(r => { if(!r.ok) throw new Error(); return r.text(); });
 const fmt = n => n<=0 ? "Sin deuda" : "$"+Math.round(n).toLocaleString("es-AR");
-const avColor = name => PAL[(name||"").split("").reduce((a,c)=>a+c.charCodeAt(0),0)%PAL.length];
+const avColor = name => PAL[(name||"?").split("").reduce((a,c)=>a+c.charCodeAt(0),0)%PAL.length];
 const initials = name => (name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
 
 const numLetras = n => {
@@ -378,7 +346,6 @@ const numLetras = n => {
   return r2===0?ms:ms+" "+numLetras(r2);
 };
 
-// ── UI Components ─────────────────────────────────────────────────────
 function Badge({estado}) {
   const M={habilitado:{bg:"#EAF3DE",c:"#27500A",t:"Habilitado"},inhabilitado:{bg:"#FCEBEB",c:"#791F1F",t:"Inhabilitado"},pendiente:{bg:"#FAEEDA",c:"#633806",t:"Fc. Pendientes"}};
   const s=M[estado]||M.habilitado;
@@ -395,41 +362,31 @@ function TabBar({tabs, active, onChange, color="#1F3864"}) {
   );
 }
 
-// ── Tabla ordenable ───────────────────────────────────────────────────
-function SortableTable({data, headerBg="#1F3864"}) {
+function GenericTable({data, headerBg="#1F3864"}) {
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
-
   if(!data||!data.headers||data.headers.length===0) return <div style={{padding:"1rem",textAlign:"center",color:"#6b7a99",fontSize:13}}>Sin datos</div>;
-
   const handleSort = col => {
     if(sortCol===col) setSortDir(d=>d==="asc"?"desc":"asc");
     else { setSortCol(col); setSortDir("asc"); }
   };
-
   const sorted = useMemo(()=>{
     if(!sortCol) return data.rows;
     return [...data.rows].sort((a,b)=>{
-      const va=(a[sortCol]||"").toLowerCase();
-      const vb=(b[sortCol]||"").toLowerCase();
-      const na=parseFloat(va.replace(/[^0-9.-]/g,""));
-      const nb=parseFloat(vb.replace(/[^0-9.-]/g,""));
+      const va=(a[sortCol]||"").toLowerCase(), vb=(b[sortCol]||"").toLowerCase();
+      const na=parseFloat(va.replace(/[^0-9.-]/g,"")), nb=parseFloat(vb.replace(/[^0-9.-]/g,""));
       let cmp = (!isNaN(na)&&!isNaN(nb)) ? na-nb : va.localeCompare(vb,"es");
       return sortDir==="asc"?cmp:-cmp;
     });
   },[data.rows, sortCol, sortDir]);
-
   return (
     <div style={{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-        <thead>
-          <tr>{data.headers.map(h=>(
-            <th key={h} onClick={()=>handleSort(h)}
-              style={{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap",cursor:"pointer",userSelect:"none"}}>
-              {h} {sortCol===h?(sortDir==="asc"?"↑":"↓"):"↕"}
-            </th>
-          ))}</tr>
-        </thead>
+        <thead><tr>{data.headers.map(h=>(
+          <th key={h} onClick={()=>handleSort(h)} style={{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap",cursor:"pointer",userSelect:"none"}}>
+            {h} {sortCol===h?(sortDir==="asc"?"↑":"↓"):"↕"}
+          </th>
+        ))}</tr></thead>
         <tbody>{sorted.map((row,i)=>(
           <tr key={i} style={{background:i%2===0?"#fff":"#f4f7fb"}}>
             {data.headers.map(h=><td key={h} style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",whiteSpace:"nowrap",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis"}}>{row[h]||"—"}</td>)}
@@ -483,12 +440,10 @@ function ModalLista({titulo, items, onSelect, onClose}) {
   );
 }
 
-// ── Generador de Contratos ────────────────────────────────────────────
 function generarTxt(f) {
   const vm=parseInt(f.mensual)||0, ci=parseInt(f.instalacion)||0, cb=parseInt(f.botellas)||0;
   const usd=USD_OPTS.find(o=>o.value===f.valorUsd)||{value:"—",letras:"—"};
   const ajAdj=f.ajuste.toLowerCase();
-  const ajPer={trimestral:"trimestre",bimestral:"bimestre",cuatrimestral:"cuatrimestre",semestral:"semestre"}[ajAdj]||ajAdj;
   const txt=`Ciudad Autónoma de Buenos Aires, ${f.dia} de ${f.mes} de 2026
 
 Señores
@@ -514,10 +469,6 @@ ANEXO I — Términos y Condiciones de la Oferta
 
 Entre, por una parte, FADEFIL S.A., CUIT 30-71295020-6, con domicilio en Camarones N°1975, CABA (el "Locador"); y por la otra parte ${f.razonSocial} CUIT ${f.cuit}, representado por el Sr. ${f.firmante} DNI ${f.dni}, con domicilio en ${f.direccion}.
 
-CONSIDERANDO:
-    - Que el Locador brinda servicios profesionales de instalación y mantenimiento de dispensadores y purificadores de agua potable.
-    - Que el Locatario es una ${f.tipoSociedad} que requiere contratar el servicio de entrega en comodato de un equipo "AQA" que incluye 2 (dos) cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables de 500 ml.
-
 PRIMERA. OBJETO
     1.1. Entrega en comodato y mantenimiento de la máquina ${f.modelo} de marca "AQA", 2 cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de 500 ml. Instalación en: ${f.direccion}.
     1.2. La Máquina es de titularidad exclusiva de Fadefil y será instalada en ${f.direccion}.
@@ -532,37 +483,6 @@ TERCERA. PRECIO
     3.2. Ajuste ${ajAdj} por IPC. Base: $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.
     3.3. Costo de instalación: $${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA.
     3.4. Valor Reposición — Máquina ${f.modelo}: USD ${usd.value} (${usd.letras}) + IVA. CO2: USD 350 + IVA. Botellas: USD 2 c/u + IVA.
-    3.5. Ante pérdida o destrucción, el Locatario abonará el Valor de Reposición dentro de los 10 días hábiles de intimación fehaciente.
-    3.6. Botellas: USD 2 + IVA c/u. Tapas: USD 0,20 + IVA c/u.
-
-CUARTA. FACTURACIÓN Y PAGO
-    4.1. Facturación mensual adelantada en formato electrónico.
-    4.2. Pago dentro de los 5 días corridos desde la emisión. Banco Credicoop CBU: 1910043855004300999628.
-
-QUINTA. AUTONOMÍA DE LAS PARTES
-    Las Partes son independientes. No existe relación de dependencia. Cada Parte asume responsabilidad frente a terceros y su personal.
-
-SEXTA. MARCAS
-    6.1. El Locatario no podrá usar las marcas de Fadefil sin autorización expresa.
-    6.2. Fadefil autoriza el uso del logo "AQA" en menús y redes sociales únicamente para promoción del servicio durante la vigencia.
-
-SÉPTIMA. OBLIGACIONES DE LAS PARTES
-    7.1. Fadefil prestará el servicio con máxima diligencia.
-    7.2. El Locatario garantiza estructura eléctrica y conexión de agua adecuadas.
-    7.3. El Locatario no podrá ceder ni trasladar los Equipos sin autorización escrita de Fadefil.
-    7.4. El Locatario implementará protector de tensión y cerrará llaves de paso ante ausencias mayores a 2 días.
-    7.5. El Locatario utilizará las botellas únicamente para servir agua del Equipo.
-
-OCTAVA. RESPONSABILIDAD
-    Cada Parte es responsable exclusiva por los daños imputables a su acción u omisión.
-
-NOVENA. MORA. RESCISIÓN
-    9.1. La mora opera automáticamente. Intereses: 1,5 veces la tasa activa del BNA.
-    9.2. Rescisión sin causa: preaviso de 15 días. Penalidades: 50% mensualidades pendientes (primeros 6 meses); 25% (meses 7-12); 50%+25% (Prórroga año 2-3); 25% (Prórroga año 3+).
-    9.3. Ante terminación: devolución de Equipos en 5 días. Prohibido uso de marca AQA.
-
-DÉCIMA A DÉCIMA SEXTA
-    Confidencialidad (2 años post terminación). Cesión prohibida sin conformidad escrita. No exclusividad de Fadefil. Locatario no podrá contratar servicios similares con terceros.
 
 DOMICILIOS
     Fadefil: Camarones N°1975, CABA.
@@ -577,9 +497,6 @@ CARTA DE ACEPTACIÓN
 ════════════════════════════════════════════════════
 
 Ciudad Autónoma de Buenos Aires, ___ de ________ de 2026
-
-Sres. Fadefil S.A. — Camarones 1975, CABA
-At.: Sr. Ignacio Musmanno
 
 Re: Aceptación de Oferta N°${f.nro}/26
 
@@ -627,7 +544,7 @@ function GeneradorContratos() {
   );
 }
 
-// ── Comercial (Firebase) ──────────────────────────────────────────────
+// ── Comercial ─────────────────────────────────────────────────────────
 const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",provincia:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:""};
 
 function Comercial({onNuevoCierre}) {
@@ -636,6 +553,7 @@ function Comercial({onNuevoCierre}) {
   const [loading,setLoading]=useState(true);
   const [showForm,setShowForm]=useState(false);
   const [form,setForm]=useState(CIERRE_VACIO);
+  const [expandedId,setExpandedId]=useState(null);      // ← FIX: declarado
   const [fVendedor,setFVendedor]=useState("Todos");
   const [fProvincia,setFProvincia]=useState("Todas");
   const [fClasif,setFClasif]=useState("Todas");
@@ -660,6 +578,18 @@ function Comercial({onNuevoCierre}) {
   },[fb]);
 
   useEffect(()=>{ if(fb&&loading) setLoading(false); },[fb]);
+
+  // ← FIX: filteredCierres declarado correctamente
+  const filteredCierres = useMemo(()=>cierres.filter(c=>{
+    const sq=qCom.toLowerCase();
+    return (c.nombreFantasia||"").toLowerCase().includes(sq)||
+           (c.razonSocial||"").toLowerCase().includes(sq)||
+           (c.vendedor||"").toLowerCase().includes(sq);
+  }).filter(c=>fVendedor==="Todos"||(c.vendedor||"")=== fVendedor)
+    .filter(c=>fProvincia==="Todas"||(c.provincia||"")=== fProvincia)
+    .filter(c=>fClasif==="Todas"||(c.clasificacion||"")=== fClasif)
+    .filter(c=>fModelo==="Todos"||(c.modelo||"")=== fModelo)
+  ,[cierres,qCom,fVendedor,fProvincia,fClasif,fModelo]);
 
   const guardar=async()=>{
     if(!form.nombreFantasia||!form.razonSocial){alert("Completá Nombre de Fantasía y Razón Social");return;}
@@ -688,9 +618,9 @@ function Comercial({onNuevoCierre}) {
       {modalVendedor&&<ModalLista titulo="Seleccionar Vendedor" items={VENDEDORES} onSelect={v=>setF("vendedor",v)} onClose={()=>setModalVendedor(false)}/>}
       {modalAsesor&&<ModalLista titulo="Asignar Asesor At. Cliente" items={ASESORES_ATCLTE} onSelect={a=>asignarAsesor(modalAsesor,a)} onClose={()=>setModalAsesor(null)}/>}
       {modalProvincia&&<ModalLista titulo="Seleccionar Provincia" items={PROVINCIAS} onSelect={v=>setF("provincia",v)} onClose={()=>setModalProvincia(false)}/>}
-      {chatCierreId&&(() => {
-        const c = cierres.find(x=>x.id===chatCierreId);
-        return c ? <ClienteChat clienteId={`cierre_${chatCierreId}`} clienteNombre={c.nombreFantasia} onClose={()=>setChatCierreId(null)}/> : null;
+      {chatCierreId&&(()=>{
+        const c=cierres.find(x=>x.id===chatCierreId);
+        return c?<ClienteChat clienteId={`cierre_${chatCierreId}`} clienteNombre={c.nombreFantasia} onClose={()=>setChatCierreId(null)}/>:null;
       })()}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -744,6 +674,7 @@ function Comercial({onNuevoCierre}) {
         </div>
       )}
 
+      {/* Filtros */}
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
         <input placeholder="Buscar cliente..." value={qCom} onChange={e=>setQCom(e.target.value)} style={{...SS,flex:1,minWidth:140}}/>
         <select value={fVendedor} onChange={e=>setFVendedor(e.target.value)} style={SS}>
@@ -772,7 +703,7 @@ function Comercial({onNuevoCierre}) {
       )}
 
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {cierres.map(c=>{
+        {filteredCierres.map(c=>{
           const open=expandedId===c.id;
           const sinAsesor=!c.asesor;
           return (
@@ -843,8 +774,7 @@ function App() {
   const [fCobrador,setFCobrador]=useState("Todos");
   const [fAtClte,setFAtClte]=useState("Todos");
   const [expanded,setExpanded]=useState(null);
-  const [instPendExtra,setInstPendExtra]=useState([]);
-  const [chatCliente,setChatCliente]=useState(null); // {id, nombre}
+  const [chatCliente,setChatCliente]=useState(null);
 
   useEffect(()=>{
     (async()=>{
@@ -853,32 +783,21 @@ function App() {
           safeFetch(URLS.cobBsAs),safeFetch(URLS.cobInt),safeFetch(URLS.cobHiel),
           safeFetch(URLS.baComodato),safeFetch(URLS.intComodato),safeFetch(URLS.hielComodato),safeFetch(URLS.offComodato),
         ]);
-        const {map:m1, clientes:c1}=parseComodato(rComBsAs,"Buenos Aires");
-        const {map:m2, clientes:c2}=parseComodato(rComInt,"Interior");
-        const {map:m3, clientes:c3}=parseComodato(rComHiel,"Hielogic");
-        const {map:m4, clientes:c4}=parseComodato(rComOff,"AQA Office");
+        const {map:m1,clientes:c1}=parseComodato(rComBsAs,"Buenos Aires");
+        const {map:m2,clientes:c2}=parseComodato(rComInt,"Interior");
+        const {map:m3,clientes:c3}=parseComodato(rComHiel,"Hielogic");
+        const {map:m4,clientes:c4}=parseComodato(rComOff,"AQA Office");
         const cmap={...m1,...m2,...m3,...m4};
-
-        // Clientes de cobranzas (con deuda, estado, etc.)
-        const cobClientes = [
+        const cobClientes=[
           ...parseCob(rCobBsAs,"Buenos Aires"),
           ...parseCob(rCobInt,"Interior"),
           ...parseCob(rCobHiel,"Hielogic"),
-        ].map(c=>{
-          const x=cmap[c.id]||{};
-          return {...c, asesorAtClte:x.asesorAtClte||"", fechaInstalacion:x.fechaInstalacion||""};
-        });
-
-        // IDs que ya están en cobranzas
-        const cobIds = new Set(cobClientes.map(c=>c.id));
-
-        // Clientes del comodato que NO están en cobranzas (instalaciones recientes)
-        const soloComodato = [...c1,...c2,...c3,...c4].filter(c=>!cobIds.has(c.id));
-
-        const all = [...cobClientes, ...soloComodato];
+        ].map(c=>{ const x=cmap[c.id]||{}; return {...c,asesorAtClte:x.asesorAtClte||"",fechaInstalacion:x.fechaInstalacion||""}; });
+        const cobIds=new Set(cobClientes.map(c=>c.id));
+        const soloComodato=[...c1,...c2,...c3,...c4].filter(c=>!cobIds.has(c.id));
+        const all=[...cobClientes,...soloComodato];
         if(all.length>0) setClientes(all);
         else throw new Error();
-        if(all.length>0) setClientes(all);
       } catch(e){console.error(e);}
       setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
       setLoading(false);
@@ -886,7 +805,7 @@ function App() {
   },[]);
 
   useEffect(()=>{
-    if(tab!=="Atención al Cliente"||logHoja==="Comodato") return;
+    if(tab!=="Atención al Cliente") return;
     const carteras=logCartera==="Todos"?["Buenos Aires","Interior","Hielogic","AQA Office"]:[logCartera];
     carteras.forEach(c=>{
       const key=`${c}_${logHoja}`;
@@ -923,21 +842,53 @@ function App() {
     })();
   },[tab,admTab]);
 
-  const handleNuevoCierre=c=>{
-    setInstPendExtra(p=>[{Asesor:c.asesor||"Sin asignar",Vendedor:c.vendedor||"—",Modelo:c.modelo||"A Definir",["Nombre de Fantasía - Sucursal"]:c.nombreFantasia,Solicitud:c.fecha,Documentación:"",Relevo:"",Estado:"Pendiente",Instalación:"",Área:"At. Cliente",Observaciones:c.observaciones||""},...p]);
-  };
+  const handleNuevoCierre=c=>{};
 
-  const cobradores=useMemo(()=>["Todos",...new Set(clientes.map(c=>c.asesorCob).filter(Boolean))]  ,[clientes]);
-  const stats=useMemo(()=>({total:clientes.length,inhab:clientes.filter(c=>c.estado==="inhabilitado").length,pend:clientes.filter(c=>c.estado==="pendiente").length,hab:clientes.filter(c=>c.estado==="habilitado").length,deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0)}),[clientes]);
-  const filteredAtClte=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq))&&(fAtClte==="Todos"||c.asesorAtClte===fAtClte)&&(logCartera==="Todos"||c.cartera===logCartera);}),[clientes,q,fAtClte,logCartera]);
-  const filteredCob=useMemo(()=>clientes.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))&&(fEstado==="todos"||c.estado===fEstado)&&(fCobrador==="Todos"||c.asesorCob===fCobrador);}),[clientes,q,fEstado,fCobrador]);
-  const resumen=useMemo(()=>{const r={};clientes.forEach(c=>{const k=c.asesorCob||"Sin asignar";if(!r[k])r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};r[k].total++;r[k][c.estado]=(r[k][c.estado]||0)+1;if(c.deuda>0)r[k].deuda+=c.deuda;});return Object.values(r).sort((a,b)=>b.deuda-a.deuda);},[clientes]);
+  const cobradores=useMemo(()=>["Todos",...new Set(clientes.map(c=>c.asesorCob).filter(Boolean))],[clientes]);
+
+  // ── FIX: stats con facturacionMes calculado correctamente ──────────
+  const stats=useMemo(()=>({
+    total:clientes.length,
+    inhab:clientes.filter(c=>c.estado==="inhabilitado").length,
+    pend:clientes.filter(c=>c.estado==="pendiente").length,
+    hab:clientes.filter(c=>c.estado==="habilitado").length,
+    deudaTotal:clientes.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0),
+    facturacionMes:clientes.reduce((s,c)=>{
+      const abono=parseFloat(c.abono)||0;
+      return s+(abono>0?abono*1.21:0);  // suma abonos con IVA
+    },0),
+  }),[clientes]);
+
+  const filteredAtClte=useMemo(()=>clientes.filter(c=>{
+    const sq=q.toLowerCase();
+    return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq))
+      &&(fAtClte==="Todos"||c.asesorAtClte===fAtClte)
+      &&(logCartera==="Todos"||c.cartera===logCartera);
+  }),[clientes,q,fAtClte,logCartera]);
+
+  const filteredCob=useMemo(()=>clientes.filter(c=>{
+    const sq=q.toLowerCase();
+    return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))
+      &&(fEstado==="todos"||c.estado===fEstado)
+      &&(fCobrador==="Todos"||c.asesorCob===fCobrador);
+  }),[clientes,q,fEstado,fCobrador]);
+
+  const resumen=useMemo(()=>{
+    const r={};
+    clientes.forEach(c=>{
+      const k=c.asesorCob||"Sin asignar";
+      if(!r[k])r[k]={cob:k,total:0,inhabilitado:0,pendiente:0,habilitado:0,deuda:0};
+      r[k].total++; r[k][c.estado]=(r[k][c.estado]||0)+1;
+      if(c.deuda>0)r[k].deuda+=c.deuda;
+    });
+    return Object.values(r).sort((a,b)=>b.deuda-a.deuda);
+  },[clientes]);
+
   const currentLogData=useMemo(()=>{
-    if(logHoja==="Comodato") return null;
     const carteras=logCartera==="Todos"?["Buenos Aires","Interior","Hielogic","AQA Office"]:[logCartera];
-    let headers=[];const rows=[];
+    let headers=[]; const rows=[];
     carteras.forEach(c=>{
-      const key=`${c}_${logHoja}`;const d=logData[key];
+      const key=`${c}_${logHoja}`; const d=logData[key];
       if(d&&d.headers&&d.headers.length>0){
         if(headers.length===0) headers=d.headers;
         const fil=fAtClte==="Todos"?d.rows:d.rows.filter(r=>(r[d.headers[0]]||"").toLowerCase().includes(fAtClte.toLowerCase()));
@@ -952,9 +903,8 @@ function App() {
   function ClienteCard({c}) {
     const av=avColor(c.asesorAtClte||c.asesorCob);
     const open=expanded?.id===c.id&&expanded?.n===c.nombre;
-    const chatId = `cliente_${c.id}`;
     return (
-      <div style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${BCOL[c.estado]||"#ccc"}`}}>
+      <div style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${c.estado==="inhabilitado"?"#E24B4A":c.estado==="pendiente"?"#EF9F27":"#639922"}`}}>
         <div onClick={()=>setExpanded(open?null:{id:c.id,n:c.nombre})} style={{padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
           <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
             <div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div>
@@ -964,7 +914,7 @@ function App() {
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-            <button onClick={e=>{e.stopPropagation();setChatCliente({id:chatId,nombre:c.nombre});}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬</button>
+            <button onClick={e=>{e.stopPropagation();setChatCliente({id:`cliente_${c.id}`,nombre:c.nombre});}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬</button>
             <Badge estado={c.estado}/>
             <span style={{fontSize:11,color:c.deuda>500000?"#791F1F":c.deuda>0?"#633806":"#6b7a99",fontWeight:c.deuda>500000?600:400,whiteSpace:"nowrap"}}>{fmt(c.deuda)}</span>
           </div>
@@ -1014,22 +964,20 @@ function App() {
             <select value={logCartera} onChange={e=>setLogCartera(e.target.value)} style={SS}>{["Todos","Buenos Aires","Interior","Hielogic","AQA Office"].map(o=><option key={o}>{o}</option>)}</select>
             <select value={fAtClte} onChange={e=>setFAtClte(e.target.value)} style={SS}>{["Todos",...ASESORES_ATCLTE].map(o=><option key={o}>{o}</option>)}</select>
           </div>
-          {logHoja!=="Comodato"&&(
-            loadingLog
+          {logHoja!=="Comodato"
+            ? loadingLog
               ? <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>
-              : currentLogData&&<div>
+              : <div>
                   <p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{currentLogData.rows.length} registros · {logCartera==="Todos"?"Todas las carteras":logCartera} · {logHoja}</p>
                   <GenericTable data={currentLogData} headerBg="#1F3864"/>
                 </div>
-          )}
-          {logHoja==="Comodato"&&(
-            <div>
-              <p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{filteredAtClte.length} de {clientes.length}</p>
-              <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                {filteredAtClte.map((c,i)=><ClienteCard key={c.id+i} c={c}/>)}
+            : <div>
+                <p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{filteredAtClte.length} de {clientes.length}</p>
+                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                  {filteredAtClte.map((c,i)=><ClienteCard key={c.id+i} c={c}/>)}
+                </div>
               </div>
-            </div>
-          )}
+          }
         </div>
       )}
 
@@ -1055,9 +1003,9 @@ function App() {
             <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
               <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Facturación del mes (c/IVA)</p>
               <p style={{margin:0,fontSize:22,fontWeight:600,color:"#1F3864"}}>{fmt(stats.facturacionMes)}</p>
-              <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>suma de abonos × 1,21</p>
             </div>
           </div>
+
           <p style={{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Detalle por cliente</p>
           <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:20}}>
             {filteredCob.map((c,i)=><ClienteCard key={c.id+i} c={c}/>)}
