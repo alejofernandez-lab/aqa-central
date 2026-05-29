@@ -558,6 +558,7 @@ function Comercial({onNuevoCierre}) {
   const [fProvincia,setFProvincia]=useState("Todas");
   const [fClasif,setFClasif]=useState("Todas");
   const [fModelo,setFModelo]=useState("Todos");
+  const [fAsesorCom,setFAsesorCom]=useState("Todos");
   const [qCom,setQCom]=useState("");
   const [modalVendedor,setModalVendedor]=useState(false);
   const [modalAsesor,setModalAsesor]=useState(null);
@@ -589,7 +590,8 @@ function Comercial({onNuevoCierre}) {
     .filter(c=>fProvincia==="Todas"||(c.provincia||"")=== fProvincia)
     .filter(c=>fClasif==="Todas"||(c.clasificacion||"")=== fClasif)
     .filter(c=>fModelo==="Todos"||(c.modelo||"")=== fModelo)
-  ,[cierres,qCom,fVendedor,fProvincia,fClasif,fModelo]);
+    .filter(c=>fAsesorCom==="Todos"||(c.asesor||"")=== fAsesorCom)
+  ,[cierres,qCom,fVendedor,fProvincia,fClasif,fModelo,fAsesorCom]);
 
   const guardar=async()=>{
     if(!form.nombreFantasia||!form.razonSocial){alert("Completá Nombre de Fantasía y Razón Social");return;}
@@ -677,6 +679,11 @@ function Comercial({onNuevoCierre}) {
       {/* Filtros */}
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
         <input placeholder="Buscar cliente..." value={qCom} onChange={e=>setQCom(e.target.value)} style={{...SS,flex:1,minWidth:140}}/>
+        <select value={fAsesorCom} onChange={e=>setFAsesorCom(e.target.value)} style={SS}>
+          <option value="Todos">Todos los asesores</option>
+          <option value="">Sin asignar</option>
+          {ASESORES_ATCLTE.map(a=><option key={a}>{a}</option>)}
+        </select>
         <select value={fVendedor} onChange={e=>setFVendedor(e.target.value)} style={SS}>
           <option value="Todos">Todos los vendedores</option>
           {VENDEDORES.map(v=><option key={v}>{v}</option>)}
@@ -772,6 +779,7 @@ function App() {
   const [q,setQ]=useState("");
   const [fEstado,setFEstado]=useState("todos");
   const [fCobrador,setFCobrador]=useState("Todos");
+  const [fPlaza,setFPlaza]=useState("Todas");
   const [fAtClte,setFAtClte]=useState("Todos");
   const [expanded,setExpanded]=useState(null);
   const [chatCliente,setChatCliente]=useState(null);
@@ -870,8 +878,9 @@ function App() {
     const sq=q.toLowerCase();
     return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq))
       &&(fEstado==="todos"||c.estado===fEstado)
-      &&(fCobrador==="Todos"||c.asesorCob===fCobrador);
-  }),[clientes,q,fEstado,fCobrador]);
+      &&(fCobrador==="Todos"||c.asesorCob===fCobrador)
+      &&(fPlaza==="Todas"||c.cartera===fPlaza);
+  }),[clientes,q,fEstado,fCobrador,fPlaza]);
 
   const resumen=useMemo(()=>{
     const r={};
@@ -986,6 +995,12 @@ function App() {
         <div>
           <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
             <input placeholder="Buscar nombre, ID, cobrador..." value={q} onChange={e=>setQ(e.target.value)} style={{...SS,flex:1,minWidth:160}}/>
+            <select value={fPlaza} onChange={e=>setFPlaza(e.target.value)} style={SS}>
+              <option value="Todas">Todas las plazas</option>
+              <option value="Buenos Aires">Buenos Aires</option>
+              <option value="Interior">Interior</option>
+              <option value="Hielogic">Hielogic</option>
+            </select>
             <select value={fEstado} onChange={e=>setFEstado(e.target.value)} style={SS}>
               <option value="todos">Todos los estados</option>
               <option value="habilitado">Habilitado</option>
@@ -994,17 +1009,27 @@ function App() {
             </select>
             <select value={fCobrador} onChange={e=>setFCobrador(e.target.value)} style={SS}>{cobradores.map(c=><option key={c}>{c}</option>)}</select>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-            <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
-              <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Deuda total cartera</p>
-              <p style={{margin:0,fontSize:22,fontWeight:600,color:"#791F1F"}}>{fmt(stats.deudaTotal)}</p>
-              <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>sobre {stats.total} clientes · mostrando {filteredCob.length}</p>
-            </div>
-            <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
-              <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Facturación del mes (c/IVA)</p>
-              <p style={{margin:0,fontSize:22,fontWeight:600,color:"#1F3864"}}>{fmt(stats.facturacionMes)}</p>
-            </div>
-          </div>
+          {(()=>{
+            const deudaFiltrada = filteredCob.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0);
+            const facturacionFiltrada = filteredCob.reduce((s,c)=>{
+              const ab = parseFloat(c.abono)||0;
+              return s+(ab>0?Math.round(ab)*1.21:0);
+            },0);
+            return (
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
+                  <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Deuda total{fPlaza!=="Todas"||fEstado!=="todos"||fCobrador!=="Todos"?" (filtrada)":""}</p>
+                  <p style={{margin:0,fontSize:22,fontWeight:600,color:"#791F1F"}}>{fmt(deudaFiltrada)}</p>
+                  <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>mostrando {filteredCob.length} de {clientes.length} clientes</p>
+                </div>
+                <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
+                  <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Facturación del mes c/IVA{fPlaza!=="Todas"||fEstado!=="todos"||fCobrador!=="Todos"?" (filtrada)":""}</p>
+                  <p style={{margin:0,fontSize:22,fontWeight:600,color:"#1F3864"}}>{fmt(facturacionFiltrada)}</p>
+                  <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>{filteredCob.filter(c=>(parseFloat(c.abono)||0)>0).length} clientes con abono</p>
+                </div>
+              </div>
+            );
+          })()}
 
           <p style={{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Detalle por cliente</p>
           <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:20}}>
