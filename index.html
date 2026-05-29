@@ -1024,7 +1024,14 @@ function App() {
           </div>
           {(()=>{
             const clientesConAbono = filteredCob.filter(c=>(parseFloat(c.abono)||0)>0);
-            const deudaFiltrada = filteredCob.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0);
+            // Deuda: deduplicar por nombre → tomar la deuda más alta por cliente
+            const deudaPorCliente = {};
+            filteredCob.forEach(c=>{
+              const key = c.nombre.trim().toLowerCase();
+              const d = c.deuda > 0 ? c.deuda : 0;
+              if(!deudaPorCliente[key] || d > deudaPorCliente[key]) deudaPorCliente[key] = d;
+            });
+            const deudaFiltrada = Object.values(deudaPorCliente).reduce((s,d)=>s+d, 0);
             const facturacionFiltrada = clientesConAbono.reduce((s,c)=>s+Math.round(parseFloat(c.abono))*1.21, 0);
             return (
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
