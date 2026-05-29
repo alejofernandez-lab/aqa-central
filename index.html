@@ -275,7 +275,20 @@ function parseCSVText(text) {
   return { headers, rows };
 }
 
-function parseNum(s) { return parseFloat((s||"").replace(/[^0-9,-]/g,"").replace(/\./g,"").replace(",",".")) || 0; }
+function parseNum(s) {
+  const clean = (s||"").trim().replace(/\$/g,"").replace(/\s/g,"");
+  // Formato argentino: 304.000,00 → separador miles=punto, decimal=coma
+  // Formato limpio: 304000 o 304000.00
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(clean)) {
+    // tiene puntos de miles y posible coma decimal → argentino
+    return parseFloat(clean.replace(/\./g,"").replace(",",".")) || 0;
+  }
+  if (/,/.test(clean) && !/\./.test(clean)) {
+    // solo coma → decimal europeo: 304000,00
+    return parseFloat(clean.replace(",",".")) || 0;
+  }
+  return parseFloat(clean.replace(",","")) || 0;
+}
 
 function parseEstado(f, g) {
   const check = s => { const sl=(s||"").toLowerCase(); if(sl.includes("inhabilitado"))return"inhabilitado"; if(sl.includes("facturas")||sl.includes("pendiente"))return"pendiente"; return"habilitado"; };
@@ -1010,13 +1023,11 @@ function App() {
             <select value={fCobrador} onChange={e=>setFCobrador(e.target.value)} style={SS}>{cobradores.map(c=><option key={c}>{c}</option>)}</select>
           </div>
           {(()=>{
+            const clientesConAbono = filteredCob.filter(c=>(parseFloat(c.abono)||0)>0);
             const deudaFiltrada = filteredCob.reduce((s,c)=>s+(c.deuda>0?c.deuda:0),0);
-            const facturacionFiltrada = filteredCob.reduce((s,c)=>{
-              const ab = parseFloat(c.abono)||0;
-              return s+(ab>0?Math.round(ab)*1.21:0);
-            },0);
+            const facturacionFiltrada = clientesConAbono.reduce((s,c)=>s+Math.round(parseFloat(c.abono))*1.21, 0);
             return (
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
                 <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
                   <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Deuda total{fPlaza!=="Todas"||fEstado!=="todos"||fCobrador!=="Todos"?" (filtrada)":""}</p>
                   <p style={{margin:0,fontSize:22,fontWeight:600,color:"#791F1F"}}>{fmt(deudaFiltrada)}</p>
@@ -1025,7 +1036,12 @@ function App() {
                 <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
                   <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Facturación del mes c/IVA{fPlaza!=="Todas"||fEstado!=="todos"||fCobrador!=="Todos"?" (filtrada)":""}</p>
                   <p style={{margin:0,fontSize:22,fontWeight:600,color:"#1F3864"}}>{fmt(facturacionFiltrada)}</p>
-                  <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>{filteredCob.filter(c=>(parseFloat(c.abono)||0)>0).length} clientes con abono</p>
+                  <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>{clientesConAbono.length} clientes con abono</p>
+                </div>
+                <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
+                  <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Abono promedio s/IVA{fPlaza!=="Todas"||fEstado!=="todos"||fCobrador!=="Todos"?" (filtrado)":""}</p>
+                  <p style={{margin:0,fontSize:22,fontWeight:600,color:"#1a5c3a"}}>{clientesConAbono.length>0?fmt(clientesConAbono.reduce((s,c)=>s+(parseFloat(c.abono)||0),0)/clientesConAbono.length):"—"}</p>
+                  <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>sobre {clientesConAbono.length} clientes activos</p>
                 </div>
               </div>
             );
