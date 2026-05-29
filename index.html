@@ -84,9 +84,9 @@ const ADM_TABS  = ["Generador de Contratos","Intimaciones","Cartas Documento","V
 const ADM_COLORS = {"Intimaciones":"#8a3a00","Cartas Documento":"#1a3a8a","Veraz":"#5a1a8a"};
 const ASESORES_ATCLTE = ["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"];
 const VENDEDORES = ["Santiago Puigmarti","Nicolas Albino","Paloma Suarez","Vicente Biondo","Laura Pomponio","Tomas Zoff","Claudio Lozano","Ignacio Musmanno","Alejo Fernandez","Marcelo Paccapelo"];
+const PROVINCIAS = ["CABA","Buenos Aires","Catamarca","Chaco","Chubut","Córdoba","Corrientes","Entre Ríos","Formosa","Jujuy","La Pampa","La Rioja","Mendoza","Misiones","Neuquén","Río Negro","Salta","San Juan","San Luis","Santa Cruz","Santa Fe","Santiago del Estero","Tierra del Fuego","Tucumán"];
 const CLASIFICACIONES = ["HoReCa","AQA Office","Residencial","Hotel","Restaurante","Café","Bar","Otro"];
 const MODELOS_ALL = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20","A Definir"];
-const AJUSTES = ["Trimestral","Bimestral","Cuatrimestral","Semestral"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const MODELOS = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20"];
 const USD_OPTS = [{label:"USD 6.900 (WL7/SM)",value:"6.900",letras:"seis mil novecientos"},{label:"USD 7.400 (BM)",value:"7.400",letras:"siete mil cuatrocientos"},{label:"USD 5.900 (RBF)",value:"5.900",letras:"cinco mil novecientos"},{label:"USD 4.000 (RBL/OFF20)",value:"4.000",letras:"cuatro mil"}];
@@ -395,13 +395,42 @@ function TabBar({tabs, active, onChange, color="#1F3864"}) {
   );
 }
 
-function GenericTable({data, headerBg="#1F3864"}) {
+// ── Tabla ordenable ───────────────────────────────────────────────────
+function SortableTable({data, headerBg="#1F3864"}) {
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
+
   if(!data||!data.headers||data.headers.length===0) return <div style={{padding:"1rem",textAlign:"center",color:"#6b7a99",fontSize:13}}>Sin datos</div>;
+
+  const handleSort = col => {
+    if(sortCol===col) setSortDir(d=>d==="asc"?"desc":"asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  };
+
+  const sorted = useMemo(()=>{
+    if(!sortCol) return data.rows;
+    return [...data.rows].sort((a,b)=>{
+      const va=(a[sortCol]||"").toLowerCase();
+      const vb=(b[sortCol]||"").toLowerCase();
+      const na=parseFloat(va.replace(/[^0-9.-]/g,""));
+      const nb=parseFloat(vb.replace(/[^0-9.-]/g,""));
+      let cmp = (!isNaN(na)&&!isNaN(nb)) ? na-nb : va.localeCompare(vb,"es");
+      return sortDir==="asc"?cmp:-cmp;
+    });
+  },[data.rows, sortCol, sortDir]);
+
   return (
     <div style={{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-        <thead><tr>{data.headers.map(h=><th key={h} style={{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
-        <tbody>{data.rows.map((row,i)=>(
+        <thead>
+          <tr>{data.headers.map(h=>(
+            <th key={h} onClick={()=>handleSort(h)}
+              style={{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap",cursor:"pointer",userSelect:"none"}}>
+              {h} {sortCol===h?(sortDir==="asc"?"↑":"↓"):"↕"}
+            </th>
+          ))}</tr>
+        </thead>
+        <tbody>{sorted.map((row,i)=>(
           <tr key={i} style={{background:i%2===0?"#fff":"#f4f7fb"}}>
             {data.headers.map(h=><td key={h} style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",whiteSpace:"nowrap",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis"}}>{row[h]||"—"}</td>)}
           </tr>
@@ -599,7 +628,7 @@ function GeneradorContratos() {
 }
 
 // ── Comercial (Firebase) ──────────────────────────────────────────────
-const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:""};
+const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",provincia:"",correo:"",contacto:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:""};
 
 function Comercial({onNuevoCierre}) {
   const fb = useFirebase();
@@ -607,9 +636,14 @@ function Comercial({onNuevoCierre}) {
   const [loading,setLoading]=useState(true);
   const [showForm,setShowForm]=useState(false);
   const [form,setForm]=useState(CIERRE_VACIO);
-  const [expandedId,setExpandedId]=useState(null);
+  const [fVendedor,setFVendedor]=useState("Todos");
+  const [fProvincia,setFProvincia]=useState("Todas");
+  const [fClasif,setFClasif]=useState("Todas");
+  const [fModelo,setFModelo]=useState("Todos");
+  const [qCom,setQCom]=useState("");
   const [modalVendedor,setModalVendedor]=useState(false);
   const [modalAsesor,setModalAsesor]=useState(null);
+  const [modalProvincia,setModalProvincia]=useState(false);
   const [chatCierreId,setChatCierreId]=useState(null);
   const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
   const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
@@ -653,6 +687,7 @@ function Comercial({onNuevoCierre}) {
     <div>
       {modalVendedor&&<ModalLista titulo="Seleccionar Vendedor" items={VENDEDORES} onSelect={v=>setF("vendedor",v)} onClose={()=>setModalVendedor(false)}/>}
       {modalAsesor&&<ModalLista titulo="Asignar Asesor At. Cliente" items={ASESORES_ATCLTE} onSelect={a=>asignarAsesor(modalAsesor,a)} onClose={()=>setModalAsesor(null)}/>}
+      {modalProvincia&&<ModalLista titulo="Seleccionar Provincia" items={PROVINCIAS} onSelect={v=>setF("provincia",v)} onClose={()=>setModalProvincia(false)}/>}
       {chatCierreId&&(() => {
         const c = cierres.find(x=>x.id===chatCierreId);
         return c ? <ClienteChat clienteId={`cierre_${chatCierreId}`} clienteNombre={c.nombreFantasia} onClose={()=>setChatCierreId(null)}/> : null;
@@ -684,6 +719,12 @@ function Comercial({onNuevoCierre}) {
               {campo("Nombre de Fantasía",inp("nombreFantasia","Ej: LOI SUITES"),true)}
               {campo("Razón Social",inp("razonSocial","Ej: LOITEGUI SA"),true)}
               {campo("Dirección",inp("direccion","Dirección de instalación"),true)}
+              {campo("Provincia",
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <div style={{flex:1,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",fontSize:13,color:form.provincia?"#1a2340":"#9baabf",minHeight:38}}>{form.provincia||"Sin seleccionar"}</div>
+                  <button onClick={()=>setModalProvincia(true)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"9px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Elegir</button>
+                </div>
+              )}
               {campo("Correo",inp("correo","email@ejemplo.com"))}
               {campo("Contacto",inp("contacto","Nombre - Cargo - Tel"))}
             </div>
@@ -702,6 +743,27 @@ function Comercial({onNuevoCierre}) {
           </div>
         </div>
       )}
+
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        <input placeholder="Buscar cliente..." value={qCom} onChange={e=>setQCom(e.target.value)} style={{...SS,flex:1,minWidth:140}}/>
+        <select value={fVendedor} onChange={e=>setFVendedor(e.target.value)} style={SS}>
+          <option value="Todos">Todos los vendedores</option>
+          {VENDEDORES.map(v=><option key={v}>{v}</option>)}
+        </select>
+        <select value={fProvincia} onChange={e=>setFProvincia(e.target.value)} style={SS}>
+          <option value="Todas">Todas las provincias</option>
+          {PROVINCIAS.map(p=><option key={p}>{p}</option>)}
+        </select>
+        <select value={fClasif} onChange={e=>setFClasif(e.target.value)} style={SS}>
+          <option value="Todas">Todas las clasificaciones</option>
+          {CLASIFICACIONES.map(c=><option key={c}>{c}</option>)}
+        </select>
+        <select value={fModelo} onChange={e=>setFModelo(e.target.value)} style={SS}>
+          <option value="Todos">Todos los modelos</option>
+          {MODELOS_ALL.map(m=><option key={m}>{m}</option>)}
+        </select>
+      </div>
+      <p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{filteredCierres.length} de {cierres.length} cierres</p>
 
       {cierres.length===0&&!showForm&&(
         <div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",textAlign:"center",border:"1px solid #dce6f5"}}>
@@ -732,7 +794,7 @@ function Comercial({onNuevoCierre}) {
               {open&&(
                 <div style={{padding:"0 14px 14px",borderTop:"1px solid #dce6f5"}}>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginTop:10}}>
-                    {[{l:"Clasificación",v:c.clasificacion},{l:"Vendedor",v:c.vendedor},{l:"Dirección",v:c.direccion},{l:"Correo",v:c.correo},{l:"Contacto",v:c.contacto},{l:"Modelo",v:c.modelo},{l:"Valor",v:c.valor},{l:"Instalación",v:c.instalacion},{l:"Insumos",v:c.insumos},{l:"Contrato",v:c.contrato},{l:"Ajuste",v:c.ajuste}].filter(x=>x.v).map(({l,v})=>(
+                    {[{l:"Clasificación",v:c.clasificacion},{l:"Vendedor",v:c.vendedor},{l:"Provincia",v:c.provincia},{l:"Dirección",v:c.direccion},{l:"Correo",v:c.correo},{l:"Contacto",v:c.contacto},{l:"Modelo",v:c.modelo},{l:"Valor",v:c.valor},{l:"Instalación",v:c.instalacion},{l:"Insumos",v:c.insumos},{l:"Contrato",v:c.contrato},{l:"Ajuste",v:c.ajuste}].filter(x=>x.v).map(({l,v})=>(
                       <div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}>
                         <p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p>
                         <p style={{margin:0,fontSize:12,fontWeight:500}}>{v}</p>
@@ -984,10 +1046,17 @@ function App() {
             </select>
             <select value={fCobrador} onChange={e=>setFCobrador(e.target.value)} style={SS}>{cobradores.map(c=><option key={c}>{c}</option>)}</select>
           </div>
-          <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5",marginBottom:12}}>
-            <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Deuda total cartera</p>
-            <p style={{margin:0,fontSize:24,fontWeight:600,color:"#791F1F"}}>{fmt(stats.deudaTotal)}</p>
-            <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>sobre {stats.total} clientes · mostrando {filteredCob.length}</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+            <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
+              <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Deuda total cartera</p>
+              <p style={{margin:0,fontSize:22,fontWeight:600,color:"#791F1F"}}>{fmt(stats.deudaTotal)}</p>
+              <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>sobre {stats.total} clientes · mostrando {filteredCob.length}</p>
+            </div>
+            <div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}>
+              <p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Facturación del mes (c/IVA)</p>
+              <p style={{margin:0,fontSize:22,fontWeight:600,color:"#1F3864"}}>{fmt(stats.facturacionMes)}</p>
+              <p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>suma de abonos × 1,21</p>
+            </div>
           </div>
           <p style={{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Detalle por cliente</p>
           <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:20}}>
