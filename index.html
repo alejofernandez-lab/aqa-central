@@ -317,10 +317,10 @@ function parseComodato(text, cartera) {
   if (lines.length < 2) return { map:{}, clientes:[] };
   const map = {}, clientes = [];
   const cfg = {
-    "Buenos Aires": { asesor:0, modelo:2, nombre:3, id:4, fecha:8 },
-    "Interior":     { asesor:0, modelo:2, nombre:3, id:4, fecha:11 },
-    "Hielogic":     { asesor:0, modelo:3, nombre:4, id:5, fecha:9 },
-    "AQA Office":   { asesor:0, modelo:2, nombre:3, id:4, fecha:11 },
+    "Buenos Aires": { asesor:0, modelo:2, nombre:3, id:4, fecha:8,  localidad:-1, provincia:-1 },
+    "Interior":     { asesor:0, modelo:2, nombre:3, id:4, fecha:11, localidad:6,  provincia:7  },
+    "Hielogic":     { asesor:0, modelo:3, nombre:4, id:5, fecha:9,  localidad:-1, provincia:-1 },
+    "AQA Office":   { asesor:0, modelo:2, nombre:3, id:4, fecha:11, localidad:-1, provincia:-1 },
   };
   const idx = cfg[cartera] || cfg["Buenos Aires"];
   lines.slice(1).forEach(line => {
@@ -330,10 +330,13 @@ function parseComodato(text, cartera) {
     const nombre   = (c[idx.nombre]||"").replace(/"/g,"").trim();
     const idPersat = (c[idx.id]||"").trim();
     const fechaIns = (c[idx.fecha]||"").trim();
-    if (idPersat) map[idPersat] = { asesorAtClte:asesor, fechaInstalacion:fechaIns };
+    const localidad= idx.localidad>=0?(c[idx.localidad]||"").trim():"";
+    const provincia= idx.provincia>=0?(c[idx.provincia]||"").trim():"";
+    if (idPersat) map[idPersat] = { asesorAtClte:asesor, fechaInstalacion:fechaIns, localidad, provincia };
     if (nombre) {
       clientes.push({ id: idPersat||nombre, nombre, modelo, asesorCob:"—", asesorAtClte:asesor,
-        abono:0, estado:"habilitado", deuda:0, fc:0, mens:0, cartera, fechaInstalacion:fechaIns, _soloComodato: true });
+        abono:0, estado:"habilitado", deuda:0, fc:0, mens:0, cartera, fechaInstalacion:fechaIns,
+        localidad, provincia, _soloComodato: true });
     }
   });
   return { map, clientes };
@@ -813,7 +816,7 @@ function App() {
           ...parseCob(rCobBsAs,"Buenos Aires"),
           ...parseCob(rCobInt,"Interior"),
           ...parseCob(rCobHiel,"Hielogic"),
-        ].map(c=>{ const x=cmap[c.id]||{}; return {...c,asesorAtClte:x.asesorAtClte||"",fechaInstalacion:x.fechaInstalacion||""}; });
+        ].map(c=>{ const x=cmap[c.id]||{}; return {...c, asesorAtClte:x.asesorAtClte||"", fechaInstalacion:x.fechaInstalacion||"", localidad:x.localidad||"", provincia:x.provincia||""}; });
         const cobIds=new Set(cobClientes.map(c=>c.id));
         const soloComodato=[...c1,...c2,...c3,...c4].filter(c=>!cobIds.has(c.id));
         const all=[...cobClientes,...soloComodato];
@@ -944,7 +947,7 @@ function App() {
         {open&&(
           <div style={{padding:"0 14px 12px",borderTop:"1px solid #dce6f5"}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6,marginTop:10}}>
-              {[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"}].map(({l,v})=>(
+              {[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"}, ...(c.cartera==="Interior"&&c.localidad?[{l:"Localidad",v:c.localidad}]:[]), ...(c.cartera==="Interior"&&c.provincia?[{l:"Provincia",v:c.provincia}]:[])].map(({l,v})=>(
                 <div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}>
                   <p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p>
                   <p style={{margin:0,fontSize:13,fontWeight:500}}>{v}</p>
