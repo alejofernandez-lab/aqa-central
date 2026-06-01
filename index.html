@@ -87,8 +87,12 @@ const CLASIFICACIONES = ["HoReCa","AQA Office","Residencial","Hotel","Restaurant
 const MODELOS_ALL = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20","A Definir"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const MODELOS = ["SM 30","SM 30 R F","SM 80","BM 80","RBF","WL7","RBL","OFF20"];
+const MODELOS_HIELOGIC = ["31A","120P","210P","420P","700P","1500P"];
 const AJUSTES = ["trimestral","bimestral","cuatrimestral","semestral"];
 const USD_OPTS = [{label:"USD 6.900 (WL7/SM)",value:"6.900",letras:"seis mil novecientos"},{label:"USD 7.400 (BM)",value:"7.400",letras:"siete mil cuatrocientos"},{label:"USD 5.900 (RBF)",value:"5.900",letras:"cinco mil novecientos"},{label:"USD 4.000 (RBL/OFF20)",value:"4.000",letras:"cuatro mil"}];
+const USD_HIELOGIC = [{label:"31A — USD 1.700",value:"1.700",letras:"mil setecientos"},{label:"120P — USD 2.100",value:"2.100",letras:"dos mil cien"},{label:"210P — USD 3.000",value:"3.000",letras:"tres mil"},{label:"420P — USD 5.300",value:"5.300",letras:"cinco mil trescientos"},{label:"700P — USD 6.900",value:"6.900",letras:"seis mil novecientos"},{label:"1500P — USD 14.500",value:"14.500",letras:"catorce mil quinientos"}];
+const HIELOGIC_PRECIOS = {"31A":{mens:110000,inst:80000},"120P":{mens:157000,inst:98000},"210P":{mens:238000,inst:145000},"420P":{mens:414000,inst:245000},"700P":{mens:568000,inst:338000},"1500P":{mens:999000,inst:561000}};
+const TIPOS_CONTRATO = ["Buenos Aires","Interior con CO2","Interior sin CO2","Hielogic Buenos Aires","Hielogic Interior","AQA Office"];
 const SOCIEDADES = ["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributista","Asociación Civil"];
 const EQUIPOS_SEG = {
   "Comercial": VENDEDORES,
@@ -456,86 +460,260 @@ function ModalLista({titulo, items, onSelect, onClose}) {
   );
 }
 
-function generarTxt(f) {
-  const vm=parseInt(f.mensual)||0, ci=parseInt(f.instalacion)||0, cb=parseInt(f.botellas)||0;
-  const usd=USD_OPTS.find(o=>o.value===f.valorUsd)||{value:"—",letras:"—"};
-  const ajAdj=f.ajuste.toLowerCase();
-  const txt=`Ciudad Autónoma de Buenos Aires, ${f.dia} de ${f.mes} de 2026
+function generarPDF(f, tipo) {
+  // Cargar jsPDF dinámicamente
+  if (!window.jspdf) {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    script.onload = () => generarPDF(f, tipo);
+    document.head.appendChild(script);
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:"mm", format:"a4" });
+  const W = 210, ML = 20, MR = 20, TW = W - ML - MR;
+  let y = 20;
+  const lh = 5.5; // line height
 
-Señores
-${f.razonSocial}
-${f.direccion}
-Presente
+  const addText = (txt, opts={}) => {
+    const { size=10, bold=false, align="left", indent=0, color=[0,0,0] } = opts;
+    doc.setFontSize(size);
+    doc.setFont("helvetica", bold?"bold":"normal");
+    doc.setTextColor(...color);
+    const x = align==="center" ? W/2 : ML + indent;
+    const lines = doc.splitTextToSize(txt, TW - indent);
+    lines.forEach(line => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.text(line, x, y, align==="center"?{align:"center"}:{});
+      y += lh;
+    });
+  };
 
-Ref: Oferta de prestación de servicios N°${f.nro}
+  const addLine = () => { y += 2; };
+  const addPageBreak = () => { doc.addPage(); y = 20; };
 
-Fadefil S.A. CUIT 30-71295020-6, representada por el Sr. Ignacio Musmanno, DNI N°37.988.431, en su carácter de apoderado con domicilio en Camarones N°1975, de esta Ciudad, ("Fadefil" y/o el "Locador"), se dirige a ${f.razonSocial} CUIT ${f.cuit} representado en este acto por el Sr. ${f.firmante}, con DNI ${f.dni}, en su carácter de Representante con domicilio en ${f.direccion} (el "Locatario" y junto con Fadefil y/o el Proveedor las "Partes" e individualmente la "Parte") a fin de efectuar la oferta de prestación de servicio de entrega en comodato e instalación de los equipos y/o sus adicionales, en el domicilio sito en ${f.direccion} (la "Oferta"):
+  const vm = parseInt(f.mensual)||0;
+  const ci = parseInt(f.instalacion)||0;
+  const cb = parseInt(f.botellas)||0;
+  const isHielogic = tipo.startsWith("Hielogic");
+  const isOffice = tipo === "AQA Office";
+  const isInterior = tipo.startsWith("Interior");
+  const hasCO2 = tipo === "Buenos Aires" || tipo === "Interior con CO2" || tipo === "AQA Office";
 
-    - La Oferta podrá ser aceptada por Uds. dentro de los 5 (cinco) días corridos de recibida.
-    - La Oferta se considerará aceptada con la fórmula: "Por la presente aceptamos su oferta de fecha ${f.dia} de ${f.mes} de 2026".
-    - Una vez aceptada, la relación comercial será regida por los términos del Anexo I.
+  const locador = isOffice ? "Aquaimport S.R.L." : "Fadefil S.A.";
+  const locadorCUIT = isOffice ? "30-71805428-8" : "30-71295020-6";
+  const locadorRep = isOffice ? "Sr. Luciano Szuldman" : "Sr. Ignacio Musmanno";
+  const locadorDNI = isOffice ? "37.276.675" : "37.988.431";
+  const locadorCaracter = isOffice ? "presidente" : "apoderado";
+  const locadorDom = isOffice ? "Caldas N°1445" : "Camarones N°1975";
+  const cbu = isOffice ? "1910043855004301248378" : isInterior ? "1910043855004301128614" : isHielogic ? "1910043855004300590296" : "1910043855004300999628";
 
-Atentamente,
-p/Fadefil S.A.
-Aclaración: Ignacio Musmanno   DNI: 37.988.431
-Carácter: apoderado
+  const usdOpts = isHielogic ? USD_HIELOGIC : USD_OPTS;
+  const usd = usdOpts.find(o=>o.value===f.valorUsd)||{value:"—",letras:"—"};
+  const ajAdj = (f.ajuste||"").toLowerCase();
 
+  // ── HOJA 1 ───────────────────────────────────────────────────────
+  addText(`Ciudad Autónoma de Buenos Aires, ${f.dia} de ${f.mes} de 2026`, {align:"center"});
+  addLine();
+  addText("Señores", {bold:true});
+  addText(f.razonSocial, {bold:true});
+  addText(f.direccion, {bold:true});
+  addText("Presente", {bold:true});
+  addLine();
+  addText(`Ref: Oferta de prestación de servicios N°${f.nro}`, {bold:true});
+  addLine();
 
-ANEXO I — Términos y Condiciones de la Oferta
+  const equipoDesc = isHielogic
+    ? `un equipo fabricador de hielo marca "HIELOGIC", modelo "${f.modelo}"`
+    : `un equipo dispensador y purificador de agua marca "AQA"`;
 
-Entre, por una parte, FADEFIL S.A., CUIT 30-71295020-6, con domicilio en Camarones N°1975, CABA (el "Locador"); y por la otra parte ${f.razonSocial} CUIT ${f.cuit}, representado por el Sr. ${f.firmante} DNI ${f.dni}, con domicilio en ${f.direccion}.
+  addText(`${locador} CUIT ${locadorCUIT}, representada por el ${locadorRep}, DNI N°${locadorDNI}, en su carácter de ${locadorCaracter} con domicilio en ${locadorDom}, de esta Ciudad, ("${locador}" y/o el "Locador"), se dirige a ${f.razonSocial} CUIT ${f.cuit} representado en este acto por el Sr. ${f.firmante}, con DNI ${f.dni}, en su carácter de Representante con domicilio en ${f.direccion} (el "Locatario" y junto con ${locador} y/o el Proveedor las "Partes" e individualmente la "Parte") a fin de efectuar la oferta de prestación de servicio de entrega en comodato e instalación de los equipos y/o sus adicionales, en el domicilio sito en ${f.direccion} (la "Oferta"):`);
+  addLine();
+  addText("1. La Oferta podrá ser aceptada por Uds. dentro de los 5 (cinco) días corridos de recibida.", {indent:5});
+  addText(`2. La Oferta se considerará aceptada con la fórmula: "Por la presente aceptamos su oferta de fecha ${f.dia} de ${f.mes} de 2026".`, {indent:5});
+  addText("3. Una vez aceptada, la relación comercial será regida por los términos del Anexo I.", {indent:5});
+  if (isHielogic) addText("4. La Oferta se regirá por las leyes de la República Argentina y toda controversia será resuelta por los Tribunales Nacionales Ordinarios de la Ciudad Autónoma de Buenos Aires.", {indent:5});
+  addLine();
+  addText("Atentamente,");
+  addLine();
+  addText(`p/ ${locador}`);
+  addText(`Aclaración: ${locadorRep}   DNI: ${locadorDNI}`);
+  addText(`Carácter: ${locadorCaracter}`);
 
-PRIMERA. OBJETO
-    1.1. Entrega en comodato y mantenimiento de la máquina ${f.modelo} de marca "AQA", 2 cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de 500 ml. Instalación en: ${f.direccion}.
-    1.2. La Máquina es de titularidad exclusiva de Fadefil y será instalada en ${f.direccion}.
-    1.3. El Locador asistirá cada 90 días para revisión y mantenimiento.
-    1.4. El servicio incluye soporte técnico 24hs, mantenimiento trimestral, cambio de filtros, capacitación y reparaciones sin costo por uso adecuado.
+  // ── ANEXO I ──────────────────────────────────────────────────────
+  addPageBreak();
+  addText("ANEXO I", {bold:true, align:"center", size:12});
+  addText("Términos y Condiciones de la Oferta", {bold:true, align:"center"});
+  addLine();
+  addText(`Entre, por una parte, ${locador.toUpperCase()}, CUIT ${locadorCUIT}, representado por el ${locadorRep} con DNI ${locadorDNI}, en su carácter de ${locadorCaracter}, con domicilio en ${locadorDom}, CABA (el "Locador"); y por la otra parte ${f.razonSocial} CUIT ${f.cuit}, representado por el Sr. ${f.firmante} DNI ${f.dni}, con domicilio en ${f.direccion}.`);
+  addLine();
+  addText("CONSIDERANDO:", {bold:true});
+  addText(`I. Que el Locador es una sociedad constituida conforme las leyes de la República Argentina, que brinda servicios profesionales de instalación y mantenimiento de ${isHielogic?"equipos fabricadores de hielo":"dispensadores y purificadores de agua potable"}.`);
+  if (isHielogic) {
+    addText(`II. Que el Locatario es ${f.tipoSociedad} para el cual requiere contratar el servicio de entrega en comodato de ${equipoDesc}, conforme se detalla en la Oferta.`);
+  } else {
+    const botDesc = tipo==="Interior sin CO2" ? `80 (ochenta) botellas de vidrio reutilizables marca "AQA" de 500 ml` : `2 (dos) cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml`;
+    addText(`II. Que el Locatario es ${f.tipoSociedad} que requiere contratar el servicio de entrega en comodato de ${equipoDesc} que incluye la provisión de ${botDesc} de capacidad cada una.`);
+  }
+  addLine();
 
-SEGUNDA. PLAZO
-    2.1. Vigencia desde la instalación por 12 (doce) meses, renovable por períodos de 24 (veinticuatro) meses con preaviso de 30 días.
+  // PRIMERA
+  addText("PRIMERA. OBJETO", {bold:true});
+  if (isHielogic) {
+    addText(`1.1. El Objeto de la presente es la entrega en comodato y mantenimiento de un (1) equipo fabricador de hielo marca "HIELOGIC", modelo "${f.modelo}" (el "Equipo"), instalado en: ${f.direccion}.`);
+    addText("1.2. El Equipo es de titularidad exclusiva de "+locador+", quien lo entrega en comodato al Locatario.");
+    addText("1.3. El Locador asistirá cada 90 días para revisión y mantenimiento.");
+    addText("1.4. El servicio incluye: soporte técnico 24hs, sanitización cuatrimestral, cambios de filtros de aire, limpieza de compresor y condensador, cambio de filtro de agua anual o cada 15.000 litros, capacitación y cambio de equipo si es necesario.");
+    addText("1.5. Cualquier desperfecto deberá ser notificado fehacientemente dentro de las 96 horas.");
+    addText("1.6. Si la reparación requiere traslado del Equipo, el Locador proveerá otro equipo mientras dure la reparación.");
+  } else {
+    const botObj = tipo==="Interior sin CO2" ? `80 (ochenta) botellas de 500 ml` : `2 cilindros CO2 y ${cb} (${numLetras(cb)}) botellas de 500 ml`;
+    addText(`1.1. Entrega en comodato y mantenimiento de la máquina "${f.modelo}" de marca "AQA", ${botObj}. Instalación en: ${f.direccion}.`);
+    addText("1.2. La Máquina es de titularidad exclusiva de "+locador+".");
+    addText("1.3. El Locador asistirá cada 90 días para revisión y mantenimiento.");
+    addText("1.4. El servicio incluye: soporte técnico 24hs, mantenimiento trimestral, cambio de filtros, capacitación y reparaciones sin costo por uso adecuado. Cualquier desperfecto debe notificarse dentro de las 48 horas.");
+  }
+  addLine();
 
-TERCERA. PRECIO
-    3.1. Suma mensual de $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.
-    3.2. Ajuste ${ajAdj} por IPC. Base: $${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.
-    3.3. Costo de instalación: $${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA.
-    3.4. Valor Reposición — Máquina ${f.modelo}: USD ${usd.value} (${usd.letras}) + IVA. CO2: USD 350 + IVA. Botellas: USD 2 c/u + IVA.
+  // SEGUNDA
+  addText("SEGUNDA. PLAZO", {bold:true});
+  addText("2.1. Vigencia desde la instalación por 12 (doce) meses, renovable automáticamente por períodos de 24 (veinticuatro) meses con preaviso de 30 días.");
+  addText("2.2. Finalizado el plazo, la Relación Comercial concluirá de pleno derecho sin derecho a indemnización.");
+  addLine();
 
-DOMICILIOS
-    Fadefil: Camarones N°1975, CABA.
-    Locatario: ${f.direccion}.
+  // TERCERA
+  addText("TERCERA. PRECIO", {bold:true});
+  addText(`3.1. Suma mensual de ${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.`);
+  addText(`3.2. Ajuste ${ajAdj} por IPC. Base: ${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)}) más IVA.`);
+  addText(`3.3. Costo de instalación: ${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)}) más IVA.`);
+  if (isHielogic) {
+    addText(`3.4. Valor de Reposición — Equipo HIELOGIC "${f.modelo}": USD ${usd.value} (${usd.letras}) + IVA.`);
+  } else {
+    addText(`3.4. Valor de Reposición — Máquina "${f.modelo}": USD ${usd.value} (${usd.letras}) + IVA.${hasCO2?" CO2: USD 350 + IVA.":""}`);
+    addText("3.5. Botellas: USD 2 + IVA c/u. Tapas: USD 0,20 + IVA c/u.");
+  }
+  addText("3.6. Ante pérdida o destrucción, el Locatario abonará el Valor de Reposición dentro de los 10 días hábiles de intimación fehaciente.");
+  addLine();
 
-JURISDICCIÓN
-    Ley argentina. Tribunales Nacionales Ordinarios, CABA.
+  // CUARTA
+  addText("CUARTA. FACTURACIÓN Y PAGO", {bold:true});
+  addText("4.1. Facturación mensual adelantada en formato electrónico.");
+  addText(`4.2. Pago dentro de los 5 días corridos desde la emisión. ${isOffice?"Aquaimport S.R.L.":locador} — Banco Credicoop CBU: ${cbu}.`);
+  addLine();
 
+  // QUINTA
+  addText("QUINTA. AUTONOMÍA DE LAS PARTES", {bold:true});
+  addText("Las Partes son independientes entre sí. No existe relación de dependencia ni sociedad de hecho. Cada Parte asume plena responsabilidad frente a terceros y su propio personal por todas las obligaciones civiles, penales, laborales y previsionales derivadas de su actividad.");
+  addLine();
 
-════════════════════════════════════════════════════
-CARTA DE ACEPTACIÓN
-════════════════════════════════════════════════════
+  // SEXTA
+  addText("SEXTA. MARCAS", {bold:true});
+  addText(`6.1. El Locatario no podrá usar las marcas de ${locador} sin autorización expresa.`);
+  if (!isHielogic) addText(`6.2. ${locador} autoriza el uso del logo "AQA" en menús y redes sociales únicamente para promoción del servicio durante la vigencia.`);
+  addLine();
 
-Ciudad Autónoma de Buenos Aires, ___ de ________ de 2026
+  // SEPTIMA
+  addText("SÉPTIMA. OBLIGACIONES DE LAS PARTES", {bold:true});
+  addText(`7.1. ${locador} prestará el servicio con máxima diligencia y eficiencia.`);
+  addText("7.2. El Locatario garantiza estructura eléctrica y conexión de agua adecuadas.");
+  addText("7.3. El Locatario no podrá ceder ni trasladar los Equipos sin autorización escrita de "+locador+".");
+  addText("7.4. El Locatario implementará protector de tensión y cerrará llaves de paso ante ausencias mayores a 2 días corridos.");
+  if (!isHielogic) addText("7.5. El Locatario utilizará las botellas únicamente para servir agua del Equipo.");
+  addLine();
 
-Re: Aceptación de Oferta N°${f.nro}/26
+  // OCTAVA
+  addText("OCTAVA. RESPONSABILIDAD", {bold:true});
+  addText("Cada Parte es responsable exclusiva por los daños imputables a su acción u omisión. Las Partes se garantizan recíprocamente indemnidad total por daños a terceros.");
+  addLine();
 
-Por la presente aceptamos vuestra "Oferta de prestación de servicios N°${f.nro}/26" de fecha ${f.dia} de ${f.mes} de 2026.
+  // NOVENA
+  addText("NOVENA. MORA. RESCISIÓN", {bold:true});
+  addText("9.1. La mora opera automáticamente. Intereses: 1,5 veces la tasa activa del BNA.");
+  addText("9.2. Dentro de los primeros 30 días de aceptada la Oferta, cualquiera de las Partes podrá resolver la Relación Comercial con preaviso de 15 días sin indemnización.");
+  addText("9.3. Rescisión sin causa: preaviso de 15 días. Penalidades por rescisión anticipada del Locatario:");
+  addText("- Primeros 6 meses: 50% de mensualidades pendientes hasta completar el año.", {indent:8});
+  addText("- Meses 7 a 12: 25% de mensualidades pendientes hasta completar el año.", {indent:8});
+  addText("- Meses 13 a 24 (Prórroga): 50% pendientes año 2 + 25% pendientes año 3.", {indent:8});
+  addText("- Mes 25 en adelante: 25% de mensualidades pendientes hasta fin de Prórroga.", {indent:8});
+  addText("9.4. Ante terminación: devolución de Equipos en 5 días. Prohibido uso de marca AQA.");
+  addLine();
 
-_________________
-FIRMA / ACLARACIÓN / DNI`;
-  const blob=new Blob([txt],{type:"text/plain;charset=utf-8"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download=`Contrato_AQA_${(f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"")}_${f.dia}${(f.mes||"").slice(0,3)}2026.txt`;
-  a.click(); URL.revokeObjectURL(url);
+  // DECIMA a DECIMO SEXTA
+  addText("DÉCIMA. CONFIDENCIALIDAD", {bold:true});
+  addText("Las Partes mantendrán confidencialidad de la información durante la vigencia y hasta 2 años después de la terminación.");
+  addLine();
+  addText("DÉCIMA SEGUNDA. CESIÓN", {bold:true});
+  addText("El Locatario no podrá ceder ni transferir sus derechos y obligaciones sin conformidad escrita del Locador.");
+  addLine();
+  addText("DÉCIMA CUARTA. NO EXCLUSIVIDAD", {bold:true});
+  addText(`${locador} podrá prestar el Servicio a cualquier otra persona o entidad. El Locatario no podrá contratar servicios similares con terceros.`);
+  addLine();
+  addText("DÉCIMA QUINTA. DOMICILIOS", {bold:true});
+  addText(`${locador}: ${locadorDom}, Ciudad Autónoma de Buenos Aires.`);
+  addText(`Locatario: ${f.direccion}.`);
+  addLine();
+  addText("DÉCIMA SEXTA. LEGISLACIÓN Y JURISDICCIÓN", {bold:true});
+  addText("La presente Oferta se regirá por las leyes de la República Argentina. Toda controversia será resuelta por los Tribunales Nacionales Ordinarios con asiento en la Ciudad Autónoma de Buenos Aires.");
+
+  // ── CARTA DE ACEPTACIÓN ──────────────────────────────────────────
+  addPageBreak();
+  addText("═".repeat(60), {align:"center"});
+  addText("CARTA DE ACEPTACIÓN", {bold:true, align:"center", size:12});
+  addText("═".repeat(60), {align:"center"});
+  addLine();
+  addText(`Ciudad Autónoma de Buenos Aires, ___ de ________ de 2026`, {align:"center"});
+  addLine();
+  addText(`Sres. ${locador}`);
+  addText(`${locadorDom}, CABA`);
+  addText(`At.: ${locadorRep}`);
+  addLine();
+  addText(`Re: Aceptación de Oferta de prestación de servicios N°${f.nro}/26`, {bold:true});
+  addLine();
+  addText("De nuestra consideración:");
+  addLine();
+  addText(`${locador}, con domicilio en ${locadorDom}, Ciudad Autónoma de Buenos Aires, por la presente nos dirigimos a Uds. a fin de notificarles nuestra decisión de aceptar vuestra "Oferta de prestación de servicios N°${f.nro}/26" de fecha ${f.dia} de ${f.mes} de 2026.`);
+  addLine();
+  addText("Los saludo atentamente.");
+  addLine(); addLine(); addLine();
+  addText("_______________________");
+  addText("FIRMA");
+  addLine();
+  addText("_______________________");
+  addText("ACLARACIÓN");
+  addLine();
+  addText("_______________________");
+  addText("DNI");
+
+  const nombre = (f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
+  doc.save(`Contrato_${tipo.replace(/\s+/g,"_")}_${nombre}_${f.dia}${(f.mes||"").slice(0,3)}2026.pdf`);
 }
 
 function GeneradorContratos() {
-  const [f,setF]=useState({dia:"",mes:"",nro:"",razonSocial:"",cuit:"",tipoSociedad:"",firmante:"",dni:"",direccion:"",modelo:"",botellas:"",valorUsd:"",mensual:"",ajuste:"",instalacion:"0"});
-  const [ok,setOk]=useState(false);
-  const set=(k,v)=>setF(p=>({...p,[k]:v}));
-  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
-  const inp=(k,ph,type="text")=><input type={type} value={f[k]} onChange={e=>set(k,e.target.value)} placeholder={ph} style={SS}/>;
-  const sel=(k,opts)=><select value={f[k]} onChange={e=>set(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{opts.map(o=>typeof o==="string"?<option key={o}>{o}</option>:<option key={o.value} value={o.value}>{o.label}</option>)}</select>;
-  const campo=(label,child,full=false)=><div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</label>{child}</div>;
-  const sec=(num,titulo,children)=>(
+  const [tipo, setTipo] = useState("");
+  const [step, setStep] = useState("tipo"); // "tipo" | "form"
+  const [f, setF] = useState({dia:"",mes:"",nro:"",razonSocial:"",cuit:"",tipoSociedad:"",firmante:"",dni:"",direccion:"",modelo:"",botellas:"",valorUsd:"",mensual:"",ajuste:"",instalacion:"0"});
+  const [ok, setOk] = useState(false);
+  const set = (k,v) => setF(p=>({...p,[k]:v}));
+
+  const isHielogic = tipo.startsWith("Hielogic");
+  const isOffice = tipo === "AQA Office";
+  const sinCO2 = false; // Interior sin CO2 tiene botellas variables como Buenos Aires
+  const modelosDisp = isHielogic ? MODELOS_HIELOGIC : MODELOS_ALL.filter(m=>m!=="A Definir");
+  const usdDisp = isHielogic ? USD_HIELOGIC : USD_OPTS;
+
+  // Autocompletar solo valorUsd para Hielogic al elegir modelo
+  useEffect(()=>{
+    if(isHielogic && f.modelo) {
+      const match = USD_HIELOGIC.find(u=>u.label.startsWith(f.modelo));
+      if(match) setF(prev=>({...prev, valorUsd: match.value}));
+    }
+  },[f.modelo, isHielogic]);
+
+  const SS = {fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+  const inp = (k,ph,type="text") => <input type={type} value={f[k]} onChange={e=>set(k,e.target.value)} placeholder={ph} style={SS}/>;
+  const sel = (k,opts) => <select value={f[k]} onChange={e=>set(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{opts.map(o=>typeof o==="string"?<option key={o}>{o}</option>:<option key={o.value} value={o.value}>{o.label}</option>)}</select>;
+  const campo = (label,child,full=false) => <div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</label>{child}</div>;
+  const sec = (num,titulo,children) => (
     <div style={{border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",marginBottom:12}}>
       <div style={{background:"#1F3864",padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}>
         <span style={{width:20,height:20,borderRadius:"50%",background:"rgba(255,255,255,.2)",color:"white",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{num}</span>
@@ -544,18 +722,73 @@ function GeneradorContratos() {
       <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,background:"#fff"}}>{children}</div>
     </div>
   );
-  const generar=()=>{
-    if(!parseInt(f.mensual)||!parseInt(f.botellas)||!f.razonSocial||!f.firmante){alert("Completá todos los campos");return;}
-    generarTxt(f); setOk(true);
+
+  const generar = () => {
+    if(!parseInt(f.mensual)||!f.razonSocial||!f.firmante||!f.modelo){alert("Completá todos los campos obligatorios");return;}
+    generarPDF(f, tipo);
+    setOk(true);
   };
+
+  const TIPO_COLORS = {
+    "Buenos Aires":"#1F3864","Interior con CO2":"#1a5c3a","Interior sin CO2":"#2d6a4f",
+    "Hielogic Buenos Aires":"#5a1a8a","Hielogic Interior":"#7b2d8b",
+    "AQA Office":"#8a3a00"
+  };
+
+  if (step === "tipo") return (
+    <div>
+      <p style={{fontSize:13,color:"#6b7a99",marginBottom:16}}>Seleccioná el tipo de contrato a generar:</p>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        {TIPOS_CONTRATO.map(t=>(
+          <button key={t} onClick={()=>{setTipo(t);setStep("form");setOk(false);}} style={{
+            background:TIPO_COLORS[t]||"#1F3864",color:"white",border:"none",borderRadius:12,
+            padding:"18px 14px",fontSize:13,fontWeight:600,cursor:"pointer",textAlign:"left",lineHeight:1.4
+          }}>
+            {t==="Buenos Aires"?"🏙️":t.startsWith("Interior")?"🗺️":t.startsWith("Hielogic")?"🧊":"🏢"} {t}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div>
-      {sec(1,"Datos del Contrato",<div style={{gridColumn:"1/-1",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>{campo("Día",inp("dia","20","number"))}{campo("Mes",sel("mes",MESES))}{campo("N° Oferta",inp("nro","142"))}</div>)}
-      {sec(2,"Datos del Cliente",<>{campo("Razón Social",inp("razonSocial","El Bar de Juan S.R.L."),true)}{campo("CUIT",inp("cuit","30-12345678-9"))}{campo("Tipo de Sociedad",sel("tipoSociedad",SOCIEDADES))}{campo("Nombre del Firmante",inp("firmante","Juan Pérez"))}{campo("DNI del Firmante",inp("dni","28.456.789"))}{campo("Dirección",inp("direccion","Av. Corrientes 1234"),true)}</>)}
-      {sec(3,"Equipo",<>{campo("Modelo",sel("modelo",MODELOS))}{campo("Cant. Botellas",inp("botellas","6","number"))}{campo("Valor USD Reposición",sel("valorUsd",USD_OPTS),true)}</>)}
-      {sec(4,"Precio",<>{campo("Valor Mensual ($ sin IVA)",inp("mensual","350000","number"))}{campo("Tipo de Ajuste",sel("ajuste",AJUSTES))}{campo("Costo Instalación ($ sin IVA)",inp("instalacion","0","number"))}</>)}
-      <button onClick={generar} style={{width:"100%",background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:4}}>⬇ Descargar Contrato (.txt)</button>
-      {ok&&<div style={{marginTop:10,padding:"10px 14px",background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,fontSize:13,fontWeight:500}}>✔ Descargado. Abrilo con Word.</div>}
+      <button onClick={()=>setStep("tipo")} style={{background:"none",border:"1px solid #dce6f5",borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",color:"#6b7a99",marginBottom:14}}>← Cambiar tipo</button>
+      <div style={{background:TIPO_COLORS[tipo]||"#1F3864",borderRadius:10,padding:"10px 16px",marginBottom:14}}>
+        <p style={{margin:0,color:"white",fontSize:14,fontWeight:600}}>{tipo}</p>
+        <p style={{margin:0,color:"rgba(255,255,255,.7)",fontSize:11}}>{isOffice?"Aquaimport S.R.L. · Luciano Szuldman":isHielogic?"Fadefil S.A. · Equipo fabricador de hielo":"Fadefil S.A. · Dispensador AQA"}</p>
+      </div>
+
+      {sec(1,"Datos del Contrato",
+        <div style={{gridColumn:"1/-1",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          {campo("Día",inp("dia","20","number"))}
+          {campo("Mes",sel("mes",MESES))}
+          {campo("N° Oferta",inp("nro","142"))}
+        </div>
+      )}
+      {sec(2,"Datos del Cliente",<>
+        {campo("Razón Social",inp("razonSocial","El Bar de Juan S.R.L."),true)}
+        {campo("CUIT",inp("cuit","30-12345678-9"))}
+        {campo("Tipo de Sociedad",sel("tipoSociedad",SOCIEDADES))}
+        {campo("Nombre del Firmante",inp("firmante","Juan Pérez"))}
+        {campo("DNI del Firmante",inp("dni","28.456.789"))}
+        {campo("Dirección",inp("direccion","Av. Corrientes 1234"),true)}
+      </>)}
+      {sec(3,isHielogic?"Equipo Hielogic":"Equipo AQA",<>
+        {campo("Modelo",sel("modelo",modelosDisp))}
+      {campo("Cant. Botellas",inp("botellas","6","number"))}
+        {campo("Valor USD Reposición",sel("valorUsd",usdDisp),(!isHielogic&&!sinCO2)?false:true)}
+      </>)}
+      {sec(4,"Precio",<>
+        {campo("Valor Mensual ($ sin IVA)",inp("mensual","350000","number"))}
+        {campo("Tipo de Ajuste",sel("ajuste",AJUSTES))}
+        {campo("Costo Instalación ($ sin IVA)",inp("instalacion","0","number"))}
+      </>)}
+
+      <button onClick={generar} style={{width:"100%",background:TIPO_COLORS[tipo]||"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",marginTop:4}}>
+        ⬇ Descargar Contrato (.pdf)
+      </button>
+      {ok && <div style={{marginTop:10,padding:"10px 14px",background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,fontSize:13,fontWeight:500}}>✔ PDF generado y descargado correctamente.</div>}
     </div>
   );
 }
@@ -935,7 +1168,7 @@ function App() {
             <div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div>
             <div style={{minWidth:0}}>
               <p style={{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</p>
-              <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}</p>
+              <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}{c.cartera==="Interior"&&c.localidad?` · ${c.localidad}`:""}{c.cartera==="Interior"&&c.provincia?`, ${c.provincia}`:""}</p>
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
