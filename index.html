@@ -882,14 +882,15 @@ function App(){
         const cmap={...m1,...m2,...m3,...m4};
         const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")]
           .map(c=>{
-            const x=cmap[c.id]||cmap[c.nombre?.toLowerCase()]||{};
+            const id=String(c.id).trim();
+            const x=cmap[id]||cmap[String(parseInt(id))]||cmap[c.nombre?.toLowerCase()]||{};
             return{
               ...c,
-              asesorAtClte:    x.asesorAtClte     || "",
-              vendedor:        x.vendedor         || "",
-              fechaInstalacion:x.fechaInstalacion || "",
-              localidad:       x.localidad        || "",
-              provincia:       x.provincia        || "",
+              asesorAtClte:    x.asesorAtClte     ||"",
+              vendedor:        x.vendedor         ||"",
+              fechaInstalacion:x.fechaInstalacion ||"",
+              localidad:       x.localidad        ||"",
+              provincia:       x.provincia        ||"",
             };
           });
         const cobIds=new Set(cobClientes.map(c=>c.id));
@@ -983,7 +984,7 @@ function App(){
             <div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div>
             <div style={{minWidth:0}}>
               <p style={{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</p>
-              <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}{c.cartera==="Interior"&&c.localidad?` · ${c.localidad}`:""}{c.cartera==="Interior"&&c.provincia?`, ${c.provincia}`:""}{c.vendedor?` · ${c.vendedor}`:""}</p>
+              <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}{c.cartera==="Interior"&&c.localidad?` · ${c.localidad}`:""}{c.cartera==="Interior"&&c.provincia?`, ${c.provincia}`:""}</p>
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
@@ -995,7 +996,7 @@ function App(){
         {open&&(
           <div style={{padding:"0 14px 12px",borderTop:"1px solid #dce6f5"}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6,marginTop:10}}>
-              {[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Vendedor",v:c.vendedor||"—"},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"},
+              {[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"},
                 ...(c.cartera==="Interior"&&c.localidad?[{l:"Localidad",v:c.localidad}]:[]),
                 ...(c.cartera==="Interior"&&c.provincia?[{l:"Provincia",v:c.provincia}]:[])
               ].map(({l,v})=>(
