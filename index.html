@@ -883,7 +883,12 @@ function App(){
         const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")]
           .map(c=>{
             const x=cmap[c.id]||cmap[c.nombre?.toLowerCase()]||{};
-            return{...c,asesorAtClte:x.asesorAtClte||"",vendedor:x.vendedor||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||""};
+            const vendedor = x.vendedor || "";
+            const asesorAtClte = x.asesorAtClte || "";
+            const fechaInstalacion = x.fechaInstalacion || "";
+            const localidad = x.localidad || "";
+            const provincia = x.provincia || "";
+            return{...c, asesorAtClte, vendedor, fechaInstalacion, localidad, provincia};
           });
         const cobIds=new Set(cobClientes.map(c=>c.id));
         const soloComodato=[...c1,...c2,...c3,...c4].filter(c=>!cobIds.has(c.id));
@@ -988,7 +993,7 @@ function App(){
         {open&&(
           <div style={{padding:"0 14px 12px",borderTop:"1px solid #dce6f5"}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6,marginTop:10}}>
-              {[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Vendedor",v:c.vendedor||"—"},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"},
+              {[{l:"Modelo",v:c.modelo||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Vendedor",v:c.vendedor||`(id:${c.id})`},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"},
                 ...(c.cartera==="Interior"&&c.localidad?[{l:"Localidad",v:c.localidad}]:[]),
                 ...(c.cartera==="Interior"&&c.provincia?[{l:"Provincia",v:c.provincia}]:[])
               ].map(({l,v})=>(
