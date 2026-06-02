@@ -883,12 +883,14 @@ function App(){
         const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")]
           .map(c=>{
             const x=cmap[c.id]||cmap[c.nombre?.toLowerCase()]||{};
-            const vendedor = x.vendedor || "";
-            const asesorAtClte = x.asesorAtClte || "";
-            const fechaInstalacion = x.fechaInstalacion || "";
-            const localidad = x.localidad || "";
-            const provincia = x.provincia || "";
-            return{...c, asesorAtClte, vendedor, fechaInstalacion, localidad, provincia};
+            return{
+              ...c,
+              asesorAtClte:    x.asesorAtClte     || "",
+              vendedor:        x.vendedor         || "",
+              fechaInstalacion:x.fechaInstalacion || "",
+              localidad:       x.localidad        || "",
+              provincia:       x.provincia        || "",
+            };
           });
         const cobIds=new Set(cobClientes.map(c=>c.id));
         const soloComodato=[...c1,...c2,...c3,...c4].filter(c=>!cobIds.has(c.id));
