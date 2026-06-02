@@ -881,7 +881,10 @@ function App(){
         const{map:m4,clientes:c4}=parseComodato(rComOff,"AQA Office");
         const cmap={...m1,...m2,...m3,...m4};
         const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")]
-          .map(c=>{const x=cmap[c.id]||{};return{...c,asesorAtClte:x.asesorAtClte||"",vendedor:x.vendedor||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||""};});
+          .map(c=>{
+            const x=cmap[c.id]||cmap[c.nombre?.toLowerCase()]||{};
+            return{...c,asesorAtClte:x.asesorAtClte||"",vendedor:x.vendedor||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||""};
+          });
         const cobIds=new Set(cobClientes.map(c=>c.id));
         const soloComodato=[...c1,...c2,...c3,...c4].filter(c=>!cobIds.has(c.id));
         const all=[...cobClientes,...soloComodato];
@@ -973,7 +976,7 @@ function App(){
             <div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div>
             <div style={{minWidth:0}}>
               <p style={{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</p>
-              <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}{c.cartera==="Interior"&&c.localidad?` · ${c.localidad}`:""}{c.cartera==="Interior"&&c.provincia?`, ${c.provincia}`:""}</p>
+              <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}{c.cartera==="Interior"&&c.localidad?` · ${c.localidad}`:""}{c.cartera==="Interior"&&c.provincia?`, ${c.provincia}`:""}{c.vendedor?` · ${c.vendedor}`:""}</p>
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
