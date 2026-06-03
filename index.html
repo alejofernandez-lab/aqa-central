@@ -113,7 +113,7 @@ function generarDOCX(f,tipo){
     document.head.appendChild(s);
     return;
   }
-  const{Document,Paragraph,TextRun,AlignmentType,PageBreak,convertInchesToTwip}=window.docx;
+  const{Document,Paragraph,TextRun,AlignmentType,PageBreak,convertInchesToTwip,UnderlineType}=window.docx;
   const isH=tipo.startsWith("Hielogic"),isO=tipo==="AQA Office",isI=tipo.startsWith("Interior"),hasCO2=!tipo.includes("sin CO2");
   const loc=isO?"Aquaimport S.R.L.":"Fadefil S.A.",locMay=isO?"AQUAIMPORT S.R.L.":"FADEFIL S.A.";
   const cuit=isO?"30-71805428-8":"30-71295020-6",rep=isO?"Luciano Szuldman":"Ignacio Musmanno";
@@ -123,15 +123,18 @@ function generarDOCX(f,tipo){
   const vm=parseInt(f.mensual)||0,ci=parseInt(f.instalacion)||0,cb=parseInt(f.botellas)||0;
   const aj=(f.ajuste||"").toLowerCase(),ajP={trimestral:"trimestre",bimestral:"bimestre",cuatrimestral:"cuatrimestre",semestral:"semestre"}[aj]||aj;
   const fecha=`${f.dia} de ${f.mes} de 2026`;
-  const N=t=>new TextRun({text:String(t||""),bold:true,font:"Calibri",size:20});
-  const R=t=>new TextRun({text:String(t||""),font:"Calibri",size:20});
+  const FONT="Times New Roman", SZ=24; // 12pt = 24 half-points
+  const N=t=>new TextRun({text:String(t||""),bold:true,font:FONT,size:SZ});
+  const R=t=>new TextRun({text:String(t||""),font:FONT,size:SZ});
   const p=(ch,al,ind,af)=>new Paragraph({children:ch,alignment:al||AlignmentType.JUSTIFIED,spacing:{after:af??120},indent:ind?{left:convertInchesToTwip(ind)}:undefined});
   const pc=ch=>p(ch,AlignmentType.CENTER);
   const pl=(ch,af)=>p(ch,AlignmentType.LEFT,0,af);
-  const tit=t=>new Paragraph({children:[N(t)],alignment:AlignmentType.LEFT,spacing:{before:200,after:120}});
+  const tit=t=>new Paragraph({children:[new TextRun({text:t.toUpperCase(),bold:true,underline:{type:UnderlineType.SINGLE},font:FONT,size:SZ})],alignment:AlignmentType.LEFT,spacing:{before:200,after:120}});
   const g=ch=>p([R("    - "),...ch],AlignmentType.JUSTIFIED,0.3,80);
   const pb=()=>new Paragraph({children:[new PageBreak()],spacing:{after:0}});
   const botDesc=isH?"":`${hasCO2?"2 (dos) cilindros CO2 los cuales son rotativos en base al requerimiento del Locatorio y ":""}${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una`;
+  // Márgenes: Superior 2.36cm, Inferior 0.49cm, Izq/Der 2.96cm
+  const cmToTwip=cm=>Math.round(cm*567);
 
   const children=[
     // HOJA 1
