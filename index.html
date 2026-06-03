@@ -169,24 +169,39 @@ function generarDOCX(f,tipo){
   const botDesc=isH?"":`${hasCO2?"2 (dos) cilindros CO2 los cuales son rotativos en base al requerimiento del Locatorio y ":""}${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una`;
   const cmToTwip=cm=>Math.round(cm*567);
 
+  // Alineación derecha para la fecha (como en el boceto original)
+  const pr=ch=>p(ch,AlignmentType.RIGHT);
+
   const children=[
     // HOJA 1
-    pc([R("Ciudad Autónoma de Buenos Aires, "),N(fecha)]),
+    pr([R("Ciudad Autónoma de Buenos Aires, "),N(fecha)]),
     pl([N("Señores")],0),pl([N(f.razonSocial)],0),pl([N(f.direccion)],0),pl([N("Presente")]),
     pl([R("Ref: Oferta de prestación de servicios N°"),N(f.nro)]),
     p([R(`${loc} CUIT ${cuit}, representada por el Sr. ${rep}, DNI N°${dni}, en su carácter de ${car} con domicilio en ${dom}, de esta Ciudad, ("${loc}" y/o el "Locador"), se dirige a `),N(f.razonSocial),R(" CUIT "),N(f.cuit),R(" representado en este acto por el Sr. "),N(f.firmante),R(", con DNI "),N(f.dni),R(`, en su carácter de Representante con domicilio en `),N(f.direccion),R(` (el "Locatario" y junto con ${loc} y/o el Proveedor las "Partes" e individualmente la "Parte") a fin de efectuar la oferta de prestación de servicio de entrega en comodato e instalación de los equipos y/o sus adicionales, en el domicilio sito en `),N(f.direccion),R(` (la "Oferta"):`)]),
-    g([R("La Oferta podrá ser aceptada por Uds. dentro de los 5 (cinco) días corridos de recibida.")]),
-    g([R(`La Oferta se considerará aceptada por Uds. con la entrega de una carta de aceptación que contenga la siguiente fórmula: `),N(`"Por la presente aceptamos su oferta de fecha ${fecha}".`)]),
-    g([R(`Una vez aceptada por Uds. la Oferta conforme al párrafo 2 precedente, la relación comercial resultante entre las Partes será regida por los términos y condiciones que se adjuntan como `),N("Anexo I.")]),
+    p([new TextRun({text:"1.",font:FONT,size:SZ}),R("\t"),R("La Oferta podrá ser aceptada por Uds. dentro de los 5 (cinco) días corridos de recibida.")],AlignmentType.JUSTIFIED,0.3,80),
+    p([new TextRun({text:"2.",font:FONT,size:SZ}),R("\t"),R(`La Oferta se considerará aceptada por Uds. con la entrega de una carta de aceptación que contenga la siguiente fórmula: `),N(`"Por la presente aceptamos su oferta de fecha ${fecha}".`)],AlignmentType.JUSTIFIED,0.3,80),
+    p([new TextRun({text:"3.",font:FONT,size:SZ}),R("\t"),R(`Una vez aceptada por Uds. la Oferta conforme al párrafo 2 precedente, la relación comercial resultante entre las Partes será regida por los términos y condiciones que se adjuntan como `),N("Anexo I.")],AlignmentType.JUSTIFIED,0.3,80),
     ...(isH?[g([R("La Oferta se regirá por las leyes de la República Argentina y toda controversia que pueda generarse será resuelta por los Tribunales Nacionales Ordinarios de la Ciudad Autónoma de Buenos Aires.")])]:[]),
     pl([R("Atentamente,")]),pl([R(`p/${loc}`)],0),
     pl([N(`Aclaración: ${rep}`),R("   "),N(`DNI: ${dni}`)],0),
     pl([R(`Carácter: ${car}`)]),
 
-    // ANEXO I
-    pb(),pc([N("ANEXO I")]),pc([N("Términos y Condiciones de la Oferta")]),
+    // ANEXO I — título y subtítulo subrayados centrados
+    pb(),
+    new Paragraph({
+      children:[new TextRun({text:"ANEXO I",bold:true,font:FONT,size:SZ,underline:{type:UnderlineType.SINGLE,color:"000000"}})],
+      alignment:AlignmentType.CENTER,spacing:{after:60}
+    }),
+    new Paragraph({
+      children:[new TextRun({text:"Términos y Condiciones de la Oferta",bold:true,font:FONT,size:SZ,underline:{type:UnderlineType.SINGLE,color:"000000"}})],
+      alignment:AlignmentType.CENTER,spacing:{after:160}
+    }),
     p([R("Entre, por una parte, "),N(locMay),R(`, CUIT ${cuit}, representado en este acto por el Sr. ${rep} con DNI ${dni}, en su carácter de ${car}, con domicilio constituido en la calle ${dom}, de la Ciudad Autónoma de Buenos Aires (el "Locador" y/o ${loc.split(" ")[0]}); y por la otra parte `),N(f.razonSocial),R(" CUIT "),N(f.cuit),R(", representado en este acto por el Sr. "),N(f.firmante),R(" DNI "),N(f.dni),R(`, en su carácter de Representante (el "Locatario" y junto con ${loc.split(" ")[0]} y/o el Locador las "Partes" e individualmente la "Parte"), con domicilio constituido en `),N(f.direccion),R(".")]),
-    pl([N("CONSIDERANDO:")]),
+    // CONSIDERANDO con subrayado
+    new Paragraph({
+      children:[new TextRun({text:"CONSIDERANDO:",bold:true,font:FONT,size:SZ,underline:{type:UnderlineType.SINGLE,color:"000000"}})],
+      alignment:AlignmentType.LEFT,spacing:{before:120,after:80}
+    }),
     g([R(`Que el Locador es una sociedad ${isO?"de responsabilidad limitada":"anónima"} constituida de conformidad con las leyes de la República Argentina, que brinda servicios profesionales de instalación y mantenimiento de ${isH?"equipos fabricadores de hielo":"dispensadores y purificadores de agua potable, que se conectan a la red de agua corriente"}.`)]),
     isH?g([R("Que el Locatario es "),N(f.tipoSociedad),R(" para el cual requiere contratar el servicio de entrega en comodato de un equipo fabricador de hielo, conforme se detalla en la Oferta.")])
        :g([R("Que el Locatario es "),N(f.tipoSociedad),R(` para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" correspondiente al equipo descripto en la presente Oferta y que incluye la provisión de ${botDesc}.`)]),
@@ -352,7 +367,7 @@ function generarDOCX(f,tipo){
 
     // CARTA DE ACEPTACIÓN
     pb(),
-    pc([R("Ciudad Autónoma de Buenos Aires, "),N(fecha)]),
+    pr([R("Ciudad Autónoma de Buenos Aires, "),N(fecha)]),
     pl([R("Sres.")],0),pl([N(loc)],0),pl([R(`${dom}, CABA`)],0),pl([R(`At.: Sr. ${rep},`)]),
     pc([N(`Re: Aceptación de Oferta de prestación de servicios N°${f.nro}/26`)]),
     pl([R("De nuestra consideración:")]),
