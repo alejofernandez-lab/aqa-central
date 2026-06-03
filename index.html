@@ -234,17 +234,290 @@ const numLetras=n=>{
 };
 
 // ── PDF Generator ─────────────────────────────────────────────────
-function generarPDF(f,tipo){
-  // Forzar recarga limpia de jsPDF
-  window._jspdfLoaded = window._jspdfLoaded || false;
-  if(!window._jspdfLoaded || !window.jspdf){
-    window._jspdfLoaded = false;
-    const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?v="+Date.now();
-    s.onload=()=>{window._jspdfLoaded=true; generarPDF(f,tipo);};
+function generarDOCX(f, tipo) {
+  if (!window.docx) {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js";
+    s.onload = () => generarDOCX(f, tipo);
     document.head.appendChild(s);
     return;
   }
+
+  const { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak, Tab,
+          HeadingLevel, BorderStyle, convertInchesToTwip, LevelFormat } = window.docx;
+
+  const isH = tipo.startsWith("Hielogic");
+  const isO = tipo === "AQA Office";
+  const isI = tipo.startsWith("Interior");
+  const hasCO2 = !tipo.includes("sin CO2");
+
+  const loc    = isO ? "Aquaimport S.R.L." : "Fadefil S.A.";
+  const locMay = isO ? "AQUAIMPORT S.R.L." : "FADEFIL S.A.";
+  const cuit   = isO ? "30-71805428-8" : "30-71295020-6";
+  const rep    = isO ? "Luciano Szuldman" : "Ignacio Musmanno";
+  const dni    = isO ? "37.276.675" : "37.988.431";
+  const car    = isO ? "presidente" : "apoderado";
+  const dom    = isO ? "Caldas N°1445" : "Camarones N°1975";
+  const cbu    = isO ? "1910043855004301248378" : isI ? "1910043855004301128614" : isH ? "1910043855004300590296" : "1910043855004300999628";
+
+  const usdList = isH ? USD_HIELOGIC : USD_AQA;
+  const usd  = usdList.find(o => o.value === f.valorUsd) || { value:"—", letras:"—" };
+  const vm   = parseInt(f.mensual) || 0;
+  const ci   = parseInt(f.instalacion) || 0;
+  const cb   = parseInt(f.botellas) || 0;
+  const aj   = (f.ajuste || "").toLowerCase();
+  const ajP  = { trimestral:"trimestre", bimestral:"bimestre", cuatrimestral:"cuatrimestre", semestral:"semestre" }[aj] || aj;
+  const fecha = `${f.dia} de ${f.mes} de 2026`;
+
+  // Helpers de formato
+  const N = (text) => new TextRun({ text: String(text||""), bold: true, font: "Calibri", size: 20 });
+  const R = (text) => new TextRun({ text: String(text||""), font: "Calibri", size: 20 });
+  const NL = () => new TextRun({ text: "", break: 1 });
+
+  const para = (children, opts = {}) => new Paragraph({
+    children,
+    alignment: opts.align || AlignmentType.JUSTIFIED,
+    spacing: { after: opts.after ?? 120, before: opts.before ?? 0 },
+    indent: opts.indent ? { left: convertInchesToTwip(opts.indent) } : undefined,
+  });
+
+  const paraCenter = (children) => para(children, { align: AlignmentType.CENTER });
+  const paraLeft   = (children, after) => para(children, { align: AlignmentType.LEFT, after: after ?? 120 });
+
+  const titulo = (text) => new Paragraph({
+    children: [new TextRun({ text, bold: true, font: "Calibri", size: 20 })],
+    alignment: AlignmentType.LEFT,
+    spacing: { before: 200, after: 120 },
+  });
+
+  const guion = (children) => para(
+    [R("- "), ...children],
+    { indent: 0.3, after: 80 }
+  );
+
+  const pageBreak = () => new Paragraph({
+    children: [new PageBreak()],
+    spacing: { after: 0 }
+  });
+
+  // ── HOJA 1 ──────────────────────────────────────────────────────
+  const hoja1 = [
+    paraCenter([R(`Ciudad Autónoma de Buenos Aires, `), N(fecha)]),
+    paraLeft([N("Señores")], 0),
+    paraLeft([N(f.razonSocial)], 0),
+    paraLeft([N(f.direccion)], 0),
+    paraLeft([N("Presente")]),
+    paraLeft([R(`Ref: Oferta de prestación de servicios N°`), N(f.nro)]),
+    para([
+      R(`${loc} CUIT ${cuit}, representada por el Sr. ${rep}, DNI N°${dni}, en su carácter de ${car} con domicilio en ${dom}, de esta Ciudad, ("${loc}" y/o el "Locador"), se dirige a `),
+      N(f.razonSocial), R(` CUIT `), N(f.cuit),
+      R(` representado en este acto por el Sr. `), N(f.firmante),
+      R(`, con DNI `), N(f.dni),
+      R(`, en su carácter de Representante con domicilio en `), N(f.direccion),
+      R(` (el "Locatario" y junto con ${loc} y/o el Proveedor las "Partes" e individualmente la "Parte") a fin de efectuar la oferta de prestación de servicio de entrega en comodato e instalación de los equipos y/o sus adicionales, en el domicilio sito en `),
+      N(f.direccion), R(` (la "Oferta"):`),
+    ]),
+    guion([R(`La Oferta podrá ser aceptada por Uds. dentro de los 5 (cinco) días corridos de recibida.`)]),
+    guion([R(`La Oferta se considerará aceptada por Uds. con la entrega de una carta de aceptación que contenga la siguiente fórmula: `), N(`"Por la presente aceptamos su oferta de fecha ${fecha}".`)]),
+    guion([R(`Una vez aceptada por Uds. la Oferta conforme al párrafo 2 precedente, la relación comercial resultante entre las Partes será regida por los términos y condiciones que se adjuntan como `), N("Anexo I.")]),
+    ...(isH ? [guion([R(`La Oferta se regirá por las leyes de la República Argentina y toda controversia que pueda generarse será resuelta por los Tribunales Nacionales Ordinarios de la Ciudad Autónoma de Buenos Aires.`)])] : []),
+    paraLeft([R("Atentamente,")]),
+    paraLeft([R(`p/${loc}`)], 0),
+    paraLeft([N(`Aclaración: ${rep}`), R(`   `), N(`DNI: ${dni}`)], 0),
+    paraLeft([R(`Carácter: ${car}`)]),
+  ];
+
+  // ── ANEXO I ─────────────────────────────────────────────────────
+  const co2txt = hasCO2 ? `2 (dos) cilindros CO2 los cuales son rotativos en base al requerimiento del Locatorio y ` : "";
+  const botDesc = isH ? "" : `${co2txt}${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una`;
+
+  const anexo = [
+    pageBreak(),
+    paraCenter([N("ANEXO I")]),
+    paraCenter([N("Términos y Condiciones de la Oferta")]),
+    para([
+      R(`Entre, por una parte, `), N(locMay), R(`, CUIT ${cuit}, representado en este acto por el Sr. ${rep} con DNI ${dni}, en su carácter de ${car}, con domicilio constituido en la calle ${dom}, de la Ciudad Autónoma de Buenos Aires (el "Locador" y/o ${loc.split(" ")[0]}); y por la otra parte `),
+      N(f.razonSocial), R(` CUIT `), N(f.cuit),
+      R(`, representado en este acto por el Sr. `), N(f.firmante), R(` DNI `), N(f.dni),
+      R(`, en su carácter de Representante (el "Locatario" y junto con ${loc.split(" ")[0]} y/o el Locador las "Partes" e individualmente la "Parte"), con domicilio constituido en `), N(f.direccion), R(`.`),
+    ]),
+    paraLeft([N("CONSIDERANDO:")]),
+    guion([R(`Que el Locador es una sociedad ${isO?"de responsabilidad limitada":"anónima"} constituida de conformidad con las leyes de la República Argentina, que brinda servicios profesionales de instalación y mantenimiento de ${isH?"equipos fabricadores de hielo":"dispensadores y purificadores de agua potable, que se conectan a la red de agua corriente"}.`)]),
+    isH
+      ? guion([R(`Que el Locatario es `), N(f.tipoSociedad), R(` para el cual requiere contratar el servicio de entrega en comodato de un equipo fabricador de hielo, conforme se detalla en la Oferta.`)])
+      : guion([R(`Que el Locatario es `), N(f.tipoSociedad), R(` para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" correspondiente al equipo descripto en la presente Oferta y que incluye la provisión de ${botDesc} de capacidad cada una.`)]),
+    para([R(`En consecuencia, las Partes acuerdan que, una vez aceptada la Oferta, la relación comercial resultante entre las mismas (la "Relación Comercial"), se regirá por los términos y condiciones que se indican a continuación y, en subsidio, por las disposiciones legales vigentes que le sean aplicables:`)]),
+
+    titulo("PRIMERA. OBJETO"),
+    ...(isH ? [
+      guion([R(`El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de un (1) equipo fabricador de hielo marca `), N(`"HIELOGIC"`), R(`, modelo `), N(`"${f.modelo}"`), R(` N° de serie _____________________ (el "Equipo").`)]),
+      guion([R(`El Equipo es de titularidad exclusiva de ${loc}, el cual será entregado al Locatario, en comodato, e instalado en el inmueble sito en `), N(f.direccion), R(` (el "Inmueble") para el uso y goce del mismo por parte del Locatario (el "Servicio" y/o los "Servicios").`)]),
+      guion([R(`El Servicio será prestado -única y exclusivamente- dentro de las instalaciones del Inmueble, mediante la instalación del Equipo -única y exclusivamente- por parte del personal de ${loc}, el cual se encuentra en perfecto estado de conservación y funcionamiento.`)]),
+      guion([R(`Las Partes acuerdan que, a partir de la instalación del Equipo, el Locador asistirá al Inmueble cada noventa (90) días a fin de efectuar la revisión, mantenimiento, cambio de filtros y/o reposición -en caso de corresponder- del Equipo, previa coordinación con el Locatario de fecha y hora de visita.`)]),
+      guion([R(`El servicio de mantenimiento incluye la reparación del Equipo -sin costos adicionales al Precio acordado en el presente- ante cualquier desperfecto que presentare el Equipo como resultado de su uso adecuado, el cual deberá ser notificado por medio fehaciente al Locador dentro de las noventa y seis (96) horas de haber tomado conocimiento del desperfecto.`)]),
+      guion([R(`En el supuesto que la reparación implique el traslado del Equipo a los talleres del Locador, éste último proporcionará al Locatario otro equipo por todo el tiempo que demore la reparación del mismo.`)]),
+      guion([R(`Asimismo, el servicio de mantenimiento incluye: a) servicio técnico telefónico permanente dentro de las veinticuatro (24) horas; b) servicio técnico presencial con cargo adicional; c) sanitización cuatrimestral del Equipo y cambios de filtros de aire; d) limpieza de compresor, condensador y gabinete; e) cambios de filtro de agua en forma anual o cada 15.000 litros de agua, lo que ocurra primero; f) cambio de Equipo en caso de ser necesario y mano de obra incluida; g) capacitación inicial al personal del establecimiento del Locatario respecto al correcto uso del Equipo.`)]),
+      guion([N(loc), R(` se encuentra facultado -a su exclusivo arbitrio- a modificar y/o reemplazar en cualquier momento el Equipo instalado en el Inmueble, previa comunicación fehaciente al mismo.`)]),
+      guion([R(`Las reparaciones y/o mantenimiento del Equipo podrán ser realizados, única y exclusivamente, por el personal a cargo de ${loc}.`)]),
+    ] : [
+      guion([R(`El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de dispensadores y purificadores de agua potable correspondiente a la máquina `), N(`"${f.modelo}"`), R(` de marca `), N(`"AQA"`), R(` (la "Máquina") que incluye la provisión de ${botDesc} (los "Equipos").`)]),
+      guion([R(`La Máquina es de titularidad exclusiva de ${loc}, la cual será entregada al Locatario, en comodato, e instalada en el inmueble sito en `), N(`Calle ${f.direccion}`), R(` (el "Inmueble") para el uso y goce de la misma por parte del Locatario (el "Servicio" y/o los "Servicios").`)]),
+      guion([R(`El Servicio será prestado -única y exclusivamente- dentro de las instalaciones del Inmueble, mediante la instalación de la Máquina por parte del personal de ${loc}, la cual se encuentran en perfecto estado de conservación y funcionamiento.`)]),
+      guion([R(`Las Partes acuerdan que, a partir de la instalación de la Máquina, el Locador asistirá al Inmueble cada noventa (90) días a fin de efectuar la revisión, mantenimiento, cambio de filtros y/o reposición - en caso de corresponder- de la Máquina, previa coordinación con el Locatario de fecha y hora de visita.`)]),
+      guion([R(`En el supuesto que la reparación implique el traslado de la Máquina a los talleres del Locador, éste último proporcionará al Locatario otro equipo por todo el tiempo que demore la reparación de la misma.`)]),
+      guion([R(`Asimismo, el servicio de mantenimiento de la Máquina incluye: a) servicio técnico telefónico permanente dentro de las veinticuatro (24) horas; b) servicio técnico presencial c) mantenimiento trimestral  con control de calidad del agua; d) cambio de  filtros  siempre que el Locador lo considere necesario a su exclusivo criterio; e) cambio de equipo en caso de ser necesario y mano de obra incluida; f) capacitación inicial al personal del establecimiento del Locatario respecto al correcto uso de la Máquina y en relación a los conocimientos esenciales de la prestación del Servicio; g) la reparación -sin costos adicionales al Precio- ante cualquier desperfecto que presentare la Máquina como resultado de su uso adecuado. Cualquier desperfecto que presentare la Máquina deberá ser notificado por medio fehaciente al Locador dentro de las cuarenta y ocho (48) horas de haber tomado conocimiento del mismo para proceder a su inmediata reparación. Asimismo, las reparaciones y/o mantenimiento de la Máquina podrán ser realizados, única y exclusivamente, por el personal a cargo de ${loc}.`)]),
+      guion([N(loc), R(` se encuentra facultado -a su exclusivo arbitrio- a modificar y/o reemplazar en cualquier momento la Máquina instalada en el Inmueble, previa comunicación fehaciente al mismo.`)]),
+    ]),
+
+    titulo("SEGUNDA. PLAZO"),
+    guion([R(`La relación contractual entre las Partes entrará en vigencia a partir de la fecha de entrega de los Equipos e instalación de la Máquina en el Inmueble y se mantendrá vigente por el plazo de 12 (doces) meses (el "Plazo de Vigencia Inicial").`)]),
+    guion([R(`El Plazo de Vigencia Inicial se renovará automáticamente a su vencimiento por periodos de 24 (veinticuatro) meses (la "Prórroga"), salvo que alguna de las Partes notifique a la otra Parte su voluntad de no renovar con 30 (treinta) días de antelación a la fecha de vencimiento del Plazo de Vigencia Inicial o de la Prórroga en caso de corresponder.`)]),
+    guion([R(`Finalizado el Plazo de Vigencia Inicial o de la Prórroga, la Relación Comercial entre las Partes concluirá de pleno derecho, sin necesidad de interpelación judicial y/o extrajudicial alguna y sin que ello implique derecho a indemnización y/o compensación alguna a favor de la otra Parte.`)]),
+    guion([R(`Las Partes establecen que el contrato de comodato suscripto entre las Partes en referencia a la Máquina es accesorio y complementario a la presente, en consecuencia, el plazo de vigencia del contrato de comodato (el "Plazo del Comodato") se encuentra sujeto al Plazo de Vigencia de la presente Relación Comercial. A tales fines, el Plazo del Comodato finalizará indefectiblemente en la misma fecha de terminación y/o rescisión de la presente, sin que ello implique derecho a indemnización y/o compensación alguna a favor del Locatario.`)]),
+
+    titulo("TERCERA. PRECIO"),
+    guion([R(`Las Partes convienen, por la prestación del servicio, la suma mensual de `), N(`${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)})`), R(` más IVA (el "Precio")`)]),
+    guion([R(`El Precio será actualizado en forma `), N(aj), R(`, conforme la variación del índice de precios al consumidor ("IPC") acumulada durante el `), N(ajP), R(` inmediato posterior al último mes actualizado. Para la primera actualización se tomará como base de cálculo la suma del precio inicial de `), N(`${vm.toLocaleString("es-AR")} (Pesos ${numLetras(vm)})`), R(` y luego para las siguientes actualizaciones se considerará la suma abonada el último mes inmediato anterior a la actualización.`)]),
+    guion([R(`En caso de que el Locatario solicite un cambio de la Máquina por un modelo distinto, previa conformidad expresa del Locador, se actualizará automáticamente el Precio de conformidad con el nuevo modelo de máquina solicitado por el Locatario.`)]),
+    guion([R(`El costo de la instalación inicial de la Máquina se encuentra a cargo exclusivamente del Locatario, el cual asciende a la suma total de `), N(`${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)})`), R(` más IVA (el "Costo de instalación")`)]),
+    guion([R(`El Locatario declara -expresa e irrevocablemente- conocer el valor total de los Equipos entregados en comodato (el "Valor de Reposición"), el cual al día de la fecha ascienden a las sumas detalladas a continuación:`)]),
+    para([
+      isH
+        ? R(`   Equipo fabricador de hielo "HIELOGIC" "${f.modelo}": `)
+        : R(`   Máquina `),
+      ...(isH ? [] : [N(`"AQA" "${f.modelo}"`)]),
+      R(` USD ${usd.value} (dólares estadounidenses ${usd.letras}) + IVA`),
+    ], { indent: 0.5, after: 80 }),
+    ...(hasCO2 && !isH ? [para([R(`   Cilindros de CO2 –: USD 350 - (dólares estadounidenses trescientos cincuenta) + IVA`)], { indent: 0.5, after: 80 })] : []),
+    guion([R(`El Locatario declara y garantiza expresamente que, ante la pérdida, robo, hurto, destrucción total y/o parcial y/o falta de restitución de la Máquina, abonará a ${loc}, dentro del plazo máximo de diez (10) días hábiles contados a partir la fecha de intimación fehaciente, el Valor de Reposición.`)]),
+    ...(!isH ? [guion([R(`El costo de reposición correspondiente a las botellas de AQA, por unidad, asciende a la suma de USD 2 (dólar estadounidense dos) más IVA (valor unitario), y la suma de USD 0,20 (veinte centavos de dólar) más IVA en concepto de reposición de las tapas (valor unitario). El importe será determinado conforme a la cotización oficial del dólar, del Banco de la Nación Argentina, vigente a la fecha de emisión de la factura.`)])] : []),
+
+    titulo("CUARTA. FACTURACIÓN Y PAGO"),
+    guion([N(loc), R(` facturará la prestación de sus Servicios de forma mensual, emitiendo la correspondiente factura${isO||tipo==="Buenos Aires"?" por mes adelantado,":""} en formato electrónico (la "Factura").`)]),
+    guion([R(`La Factura será abonada por el Locatario, dentro de los cinco (5) días corridos contados desde la fecha de su emisión, mediante transferencia bancaria a la cuenta de titularidad de ${loc}, del Banco Credicoop CBU: `), N(cbu), R(`.`)]),
+
+    titulo("QUINTA. PERSONAL. AUTONOMÍA DE LAS PARTES."),
+    guion([R(`Las Partes declaran que revisten el carácter de independientes la una respecto de la otra y que esta Oferta no constituye la formación de una sociedad de hecho ni accidental, ni una relación de dependencia entre las mismas, o sus dependientes, siendo que cada una de las Partes, en su carácter de comerciante independiente, tendrá en todo momento la plena responsabilidad de la conducción de su negocio, debiendo tener especialmente en cuenta el cumplimiento de todas las obligaciones impuestas por las normas legales vigentes.`)]),
+    guion([R(`Las Partes acuerdan que no podrán generarse obligaciones de ninguna índole respecto del personal y/o terceros y/o contratistas y/o subcontratistas de la otra Parte. En consecuencia, las Partes quedan expresamente eximidas de toda responsabilidad u obligación de cualquier índole derivada de los hechos o actos del personal y/o terceros y/o contratistas y/o subcontratistas de la otra Parte. En virtud de lo expuesto cada una de las Partes asume plena y total responsabilidad frente a terceros y a su propio personal de las obligaciones civiles, penales, laborales, previsionales, administrativas, etc., por las actividades desarrolladas, incluyéndose aquéllas ocasionadas por actos lícitos o ilícitos de cualquier cosa o persona. También se obligan a mantener indemne y a restituir a la otra Parte cualquier suma de dinero que ésta pudiera verse obligada a abonar por tales conceptos.`)]),
+
+    titulo("SEXTA. MARCAS"),
+    paraLeft([N("6.1."), R(` Ninguna de las Partes podrá utilizar el nombre comercial de la otra Parte. El presente no autoriza ni otorga derecho alguno al Locatario a utilizar las marcas de titularidad exclusiva de ${loc} (las "Marcas")`)]),
+    paraLeft([N("6.2."), R(` Las Marcas son y seguirán siendo exclusivas y de irrestricta propiedad de ${loc}, bajo la protección de la legislación nacional e internacional sobre propiedad intelectual. Se prohíbe todo uso y/o explotación comercial de las Marcas.`)]),
+    ...(!isH ? [paraLeft([N("6.3."), R(` Sin perjuicio de lo expuesto en los apartados 6.1. y 6.2. ${loc} autoriza al Locatario a incluir en los menús y redes sociales el logo de la marca "AQA" única y exclusivamente para la promoción del servicio objeto de la presente y durante el plazo de vigencia de la misma.`)])] : [paraLeft([N("6.3."), R(` El Locatario tiene pleno conocimiento de que el presente no le otorga ningún derecho de propiedad sobre las Marcas y/o el Equipo.`)])]),
+    guion([R(`El incumplimiento por parte del Locatario de las provisiones de la presente cláusula habilitará a ${loc} y/o a sus sucesores o continuadores a iniciar las acciones legales que correspondan, incluyendo, pero no limitándose a daños y perjuicios, denuncias penales y medidas cautelares, aún finalizada la vigencia de la presente Relación Comercial.`)]),
+
+    titulo("SÉPTIMA. OBLIGACIONES DE LAS PARTES"),
+    guion([R(`Durante la vigencia del presente será obligación de ${loc} realizar la prestación de los Servicios poniendo en su ejecución la máxima diligencia y eficiencia, de conformidad con las sanas prácticas profesionales y las reglas de su buen arte y oficio y cumpliendo los términos del presente. Asimismo, deberá respetar y encuadrar su conducta de acuerdo con los términos del presente, y realizar las prestaciones a su cargo ajustadas a las disposiciones legales vigentes.`)]),
+    paraLeft([N("7.2."), R(` ${loc} declara y garantiza contar con la capacidad técnica y económica para cumplir con el Servicio.`)]),
+    paraLeft([N("7.3."), R(` El Locatario declara y garantiza que posee una estructura eléctrica y conexión de agua adecuada para la instalación de los Equipos quedando a exclusivo cargo, costo y riesgo el mantenimiento y conservación de dichas instalaciones.`)]),
+    paraLeft([N("7.4."), R(` El Locatario reconoce expresamente que la Máquina es de exclusiva propiedad de ${loc} quien la recibe -única y exclusivamente- en comodato, sin que ello implique transferencia del derecho de propiedad sobre la Maquina, botellas de vidrio reutilizables y/o los cilindros de CO2 debiendo devolver inmediatamente los mismos en caso de rescisión y/o terminación de la presente, en las mismas condiciones de entrega, salvo el deterioro originado por el buen uso y el transcurso del tiempo.`)]),
+    paraLeft([N("7.5."), R(` El Locatario se obliga -expresa e irrevocablemente- a utilizar los Equipos -única y exclusivamente- en el Inmueble y a no ceder, transferir, distribuir, comercializar, ampliar, alterar, desactivar, retener ni trasladar los Equipos, caso contrario El Locatario se obliga a abonar un importe correspondiente al 50% de la mensualidad vigente en concepto de incumplimiento de cláusula. En caso de que sea necesario se obliga a solicitar autorización previa y por escrito de ${loc}; siendo ello condición esencial de la presente.`)]),
+    paraLeft([N("7.6."), R(` El Locatario se obliga a notificar de forma fehaciente a ${loc} cualquier medida judicial o extrajudicial que afectare a los Equipos y/o lugar de instalación de los mismos en el plazo de veinticuatro (24) horas de notificada u ocurrida la misma, lo que primero tuviere lugar. De lo contrario, asume -expresa e irrevocablemente- la responsabilidad de los daños y perjuicios ocasionados.`)]),
+    paraLeft([N("7.7."), R(` El Locatario se compromete a implementar un protector de tensión en el tomacorriente que ocupará la Máquina. Asimismo, el Locatario deberá cerrar las llaves de paso y desenchufar la Máquina en caso de ausentarse del Inmueble por un período superior a dos (2) días corridos.`)]),
+    ...(!isH ? [
+      paraLeft([N("7.8."), R(` El Locatario se compromete a realizar la correcta limpieza y sanitizado de botellas, operar la Máquina bajo personal capacitado y proveer a la misma con agua potable de red.`)]),
+      paraLeft([N("7.9."), R(` El Locatario deberá cumplir con las condiciones necesarias para desarrollar su actividad en forma reglamentaria y segura. A tales efectos declara y garantiza que posee todas las habilitaciones exigidas por las leyes y reglamentaciones vigentes, tanto a nivel nacional, como provincial y municipal para el desarrollo de su actividad y para mantener instalado y operar en su Inmueble tubos sometidos a presión.`)]),
+      paraLeft([N("7.10."), R(` El Locatario deberá utilizar las botellas de AQA -única y exclusivamente- para servir agua del Equipo, no pudiendo servir en las mismas cualquier otra bebida, tales como limonadas y/o jugos.`)]),
+    ] : []),
+
+    titulo("OCTAVA. RESPONSABILIDAD DE LAS PARTES"),
+    guion([R(`Cada una de las Partes será responsable exclusiva por los daños ocasionados que les sean imputables por su acción u omisión, en virtud de las obligaciones asumidas por cada una por medio de la presente.`)]),
+    guion([R(`Las Partes se garantizan recíprocamente, indemnidad total por los daños y perjuicios que ocasionen a terceros de todo tipo, aplicando el criterio de responsabilidad establecido en el apartado 8.1. precedente.`)]),
+
+    titulo("NOVENA. MORA. INCUMPLIMIENTO. RESCISIÓN. RESOLUCIÓN ANTICIPADA"),
+    guion([R(`La mora en el cumplimiento de las obligaciones previstas en la Oferta se producirá en forma automática y de pleno derecho, sin necesidad de intimación previa judicial o extrajudicial.`)]),
+    guion([R(`En caso de que el Locatario incurra en mora en los pagos del Precio al Locador, se devengará un interés equivalente a una vez y media tasa activa del Banco de la Nación Argentina para el descuento de documentos comerciales, en forma mensual, desde la fecha de mora hasta la fecha del efectivo pago.`)]),
+    guion([R(`Las Partes acuerdan que, dentro de los primeros treinta (30) días corridos contados desde la fecha de aceptación de la presente Oferta, las Partes podrán resolver la Relación Comercial, en forma anticipada, unilateral y sin expresión de causa, mediante notificación fehaciente y con un preaviso de quince (15) días corridos a la fecha de la efectiva rescisión, sin que ello implique indemnización y/o compensación alguna a favor de la otra parte. Sin perjuicio de ello, el Locatario deberá: (i) abonar a ${loc} el monto proporcional correspondiente al servicio efectivamente prestado hasta la fecha de la efectiva rescisión y; (ii) restituir a ${loc} los Equipos entregados en el mismo estado en que fueron recibidos.`)]),
+    guion([R(`Asimismo, las Partes podrán rescindir la presente Relación Comercial en los siguientes casos:`)]),
+    guion([R(`Sin expresión de causa:`)]),
+    guion([N(loc), R(` tendrá derecho a terminar la Relación Comercial, resultante de la aceptación de la Oferta, en forma anticipada, unilateral y sin expresión de causa, en cualquier momento, mediante notificación fehaciente a la otra Parte, mediando un preaviso de 15 (quince) días corridos a la fecha en que ${loc} desee poner fin a la presente, sin que ello genere derecho a indemnización alguna a favor del Locatario.`)]),
+    guion([R(`El Locatario podrá rescindir la Relación Comercial, en forma anticipada, unilateral y sin causa, en cualquier momento, mediante notificación fehaciente a la otra Parte, mediando un preaviso de 15 (quince) días corridos a la fecha de la efectiva rescisión. Sin perjuicio de ello, el Locatario abonará a ${loc} el Precio hasta la fecha de la efectiva terminación de la Relación Comercial, y procederá a la inmediata devolución de los Equipos en las mismas condiciones y estado de uso en el que fueron entregados al inicio de la Relación Comercial.`)]),
+    guion([R(`En caso de que el Locatario opte por rescindir la Relación Comercial dentro de los primeros seis (6) meses del Plazo de Vigencia Inicial, deberá abonar al Locador el 50% de las mensualidades pendientes de pago hasta completar el primer año del Plazo de Vigencia Inicial. Si el Locatario decide dar por finalizado la una vez transcurridos los primeros seis (6) meses y hasta el mes doce (12) correspondiente al Plazo de Vigencia Inicial abonará al Locador el 25% de las mensualidades pendientes de pago hasta completar el primer año del Plazo de Vigencia Inicial.`)]),
+    guion([R(`En caso de que el Locatario opte por rescindir la Relación Comercial a partir del mes trece (13) y hasta el mes veinticuatro (24) correspondiente a la Prórroga, abonará a ${loc} el 50% de las mensualidades pendientes de pago correspondientes al segundo año de la Prórroga con más el 25% de las mensualidades pendientes de pago correspondientes al tercer año de la Prórroga.`)]),
+    guion([R(`En caso de que el Locatario opte por rescindir la Relación Comercial a partir del mes veinticinco (25) abonará a ${loc} el 25% de las mensualidades pendientes de pago hasta la fecha de vencimiento de la Prórroga.`)]),
+    guion([N(`Incumplimiento de alguna de las Partes a cualquiera de las obligaciones de la Oferta`), R(`: siempre que el incumplimiento persistiera luego de transcurridos 15 (quince) días corridos de la fecha en que la parte cumplidora intime fehacientemente a su subsanación. De persistir el incumplimiento luego de transcurrido el plazo de subsanación, la parte cumplidora podrá rescindir la Relación Comercial de pleno derecho y sin necesidad de notificación o aviso alguno, quedando a salvo su derecho de reclamar los daños y perjuicios ocasionados por el incumplimiento.`)]),
+    paraLeft([N("9.4"), R(` Producida la terminación de la Relación Comercial, caducará de pleno derecho la prestación de los Servicios, en consecuencia, el Locatario deberá proceder a la inmediata restitución de los Equipos y la totalidad de insumos entregados en comodato dentro del plazo máximo de cinco (5) días contados desde la fecha de la efectiva rescisión, en el domicilio de ${loc} denunciado en el encabezado del presente. En caso de que no se proceda a la devolución de la totalidad de los insumos entregados en comodato, se procederá a cobrar al Locatario el valor correspondiente a los insumos faltantes. Asimismo, queda terminantemente prohibido la utilización de la marca AQA o cualquiera de sus componentes una vez rescindido el contrato.`)]),
+    paraLeft([N("9.5"), R(` Toda obligación de cualquiera de las Partes que en forma expresa o por naturaleza propia subsista a la extinción o rescisión de la presente, se mantendrá plenamente vigente sin perjuicio de dicha extinción o rescisión, hasta que sea debidamente cumplida en su totalidad o que por su naturaleza se extinga.`)]),
+
+    titulo("DÉCIMA. CONFIDENCIALIDAD"),
+    para([R(`Ambas partes acuerdan mantener la confidencialidad de la información que se utilice a los fines y en el marco de la ejecución de la presente y durante la vigencia de la misma y hasta un plazo de dos (2) años contados a partir de la terminación de la Relación Comercial.`)]),
+
+    titulo("DÉCIMA PRIMERA. ANEXOS Y SELLADOS"),
+    paraLeft([N("11.1."), R(` Los anexos que se mencionan a lo largo del presente se encuentran adjuntos al final de este documento y, para todos los efectos, forman parte integrante del mismo.`)]),
+    paraLeft([N("11.2."), R(` De corresponder el pago del impuesto de sellos, el mismo será soportado por las Partes por mitades.`)]),
+
+    titulo("DÉCIMA SEGUNDA. CESIÓN"),
+    para([R(`Queda expresa e irrevocablemente convenido que el Locatario no podrá ceder ni transferir en todo o en parte la relación que surja de la presente Oferta, ni sus derechos y obligaciones, sin previa conformidad por escrito de la Locadora, bajo apercibimiento de resolución, quedando a salvo su derecho de reclamar los daños y perjuicios ocasionados por el incumplimiento.`)]),
+
+    titulo("DÉCIMO TERCERA. NULIDAD PARCIAL. ACUERDO COMPLETO."),
+    paraLeft([N("13.1."), R(` Si se considerara que cualquier disposición de esta Oferta es ilegal, inaplicable o inejecutable por decisión de una autoridad competente, dicha estipulación no afectará ninguna otra disposición o disposiciones contenidas en esta Oferta ni tornará inválidas, inaplicables o inejecutables tales otras disposiciones.`)]),
+    paraLeft([N("13.2."), R(` La presente Oferta con sus anexos: (a) constituye el acuerdo principal entre las Partes para la prestación del Servicio; (b) sustituye todo acuerdo anterior entre las Partes con relación al Servicio; y (c) no será modificada o complementada ni ninguna de sus obligaciones serán renunciadas, excepto mediante instrumento escrito firmado por ambas Partes en soporte papel a través de un apoderado con facultades suficientes.`)]),
+
+    titulo(`DÉCIMO CUARTA. NO EXCLUSIVIDAD DE ${loc.toUpperCase().split(" ")[0]}.`),
+    paraLeft([N("14.1."), R(` La presente Oferta no implica exclusividad para ${loc}. En tal sentido, ${loc} podrá prestar libremente el Servicio a cualquier otra persona, empresa o entidad.`)]),
+    paraLeft([N("14.2."), R(` Sin perjuicio de lo expuesto, en el apartado 14.1. precedente el Locatario no podrá contratar el objeto del Servicio y/o tareas similares con otro u otros proveedores.`)]),
+
+    titulo("DÉCIMO QUINTA. DOMICILIOS"),
+    para([R(`A todos los efectos, las Partes constituyen domicilios especiales en los lugares que a continuación se detallan, domicilios donde se tendrán por válidas todas las notificaciones que las Partes practicaren (sean judiciales o extrajudiciales) y subsistirán hasta tanto la contraria no fuese notificada en forma fehaciente respecto de su modificación. Las notificaciones se efectuarán siempre por escrito, con constancia de recepción por la otra Parte. A tal efecto, las partes constituyen domicilio en:`)]),
+    guion([N(loc), R(`, constituye domicilio especial físico en ${dom}, Ciudad Autónoma de Buenos Aires.`)]),
+    guion([R(`El Locatario constituye domicilio especial físico en `), N(f.direccion)]),
+
+    titulo("DÉCIMO SEXTA. LEGISLACIÓN Y JURISDICCIÓN"),
+    paraLeft([N("16.1."), R(` La presente Oferta se regirá por las leyes de la República Argentina y será interpretada de conformidad con las mismas.`)]),
+    paraLeft([N("16.2."), R(` Las Partes acuerdan que toda controversia que se suscite entre las Partes con relación al presente acuerdo, su existencia, validez, calificación, interpretación, alcance, cumplimiento o resolución, se resolverá definitivamente por los Tribunales Nacionales Ordinarios con asiento en la Ciudad Autónoma de Buenos Aires renunciando a cualquier otro fuero que pudiese corresponderles.`)]),
+  ];
+
+  // ── CARTA DE ACEPTACIÓN ─────────────────────────────────────────
+  const carta = [
+    pageBreak(),
+    paraCenter([R(`Ciudad Autónoma de Buenos Aires, `), N(fecha)]),
+    paraLeft([R("Sres.")], 0),
+    paraLeft([N(loc)], 0),
+    paraLeft([R(`${dom}, CABA`)], 0),
+    paraLeft([R(`At.: Sr. ${rep},`)]),
+    paraCenter([N(`Re: Aceptación de Oferta de prestación de servicios N°${f.nro}/26`)]),
+    paraLeft([R("De nuestra consideración:")]),
+    para([
+      N(loc), R(`, con domicilio en ${dom}, Ciudad Autónoma de Buenos Aires, por la presente nos dirigimos a Uds. a fin de notificarles nuestra decisión de aceptar vuestra `),
+      N(`"Oferta de prestación de servicios N°${f.nro}/26"`),
+      R(` de fecha `), N(fecha),
+    ]),
+    paraLeft([R("Los saludo atentamente.")]),
+    paraLeft([R("")], 400),
+    paraLeft([R("_________________")], 0),
+    paraLeft([N("FIRMA")], 200),
+    paraLeft([R("_________________")], 0),
+    paraLeft([N("ACLARACIÓN")], 200),
+    paraLeft([R("_________________")], 0),
+    paraLeft([N("DNI")]),
+  ];
+
+  const doc = new window.docx.Document({
+    sections: [{
+      properties: {
+        page: {
+          margin: {
+            top: convertInchesToTwip(1),
+            right: convertInchesToTwip(1.18),
+            bottom: convertInchesToTwip(1),
+            left: convertInchesToTwip(1.18),
+          }
+        }
+      },
+      children: [...hoja1, ...anexo, ...carta],
+    }],
+  });
+
+  window.docx.Packer.toBlob(doc).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const nombre = (f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
+    a.download = `Contrato_${tipo.replace(/\s+/g,"_")}_${nombre}_${f.dia}${(f.mes||"").slice(0,3)}2026.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:"mm",format:"a4"});
   const W=210,ML=20,MR=20,TW=W-ML-MR;
@@ -666,7 +939,7 @@ function GeneradorContratos(){
   );
   const generar=()=>{
     if(!parseInt(f.mensual)||!f.razonSocial||!f.firmante||!f.modelo){alert("Completá todos los campos obligatorios");return;}
-    generarPDF(f,tipo);setOk(true);
+    generarDOCX(f,tipo);setOk(true);
   };
   if(step==="tipo")return(
     <div>
@@ -1083,7 +1356,7 @@ function App(){
           <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:20}}>{filteredCob.map((c,i)=><ClienteCard key={c.id+i} c={c}/>)}</div>
           <p style={{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Resumen por asesor</p>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {resumen.map(r=>(
+                                {resumen.map(r=>(
               <div key={r.cob} style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,padding:"12px 16px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                   <p style={{margin:0,fontSize:14,fontWeight:500}}>{r.cob}</p>
