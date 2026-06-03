@@ -107,8 +107,9 @@ const numLetras=n=>{if(!n||n===0)return"cero";const M={1:"uno",2:"dos",3:"tres",
 function generarDOCX(f,tipo){
   if(!window.docx){
     const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js";
+    s.src="https://unpkg.com/docx@8.5.0/build/index.umd.js";
     s.onload=()=>generarDOCX(f,tipo);
+    s.onerror=()=>alert("Error cargando la librería. Verificá tu conexión a internet.");
     document.head.appendChild(s);
     return;
   }
