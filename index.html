@@ -411,12 +411,13 @@ function ClienteChat({clienteId,clienteNombre,onClose}){const fb=useFirebase();c
 
 // ── Generador de Contratos ────────────────────────────────────────
 function GeneradorContratos(){
-  const{user,login}=useAuth();
-  const EMAIL_PERMITIDO="administracion@aqa.com.ar";
-  const autorizado=user&&user.email===EMAIL_PERMITIDO;
+  const{user,loadingAuth,login}=useAuth();
+  const EMAILS_PERMITIDOS=["administracion@aqa.com.ar","alejo.fernandez@aqa.com.ar"];
+  const autorizado=user&&EMAILS_PERMITIDOS.includes(user.email);
 
+  if(loadingAuth){return(<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Verificando acceso...</div>);}
   if(!user){return(<div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",border:"1px solid #dce6f5",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,marginBottom:8}}>🔒 Acceso restringido</p><p style={{fontSize:13,color:"#6b7a99",marginBottom:16}}>El Generador de Contratos es de uso exclusivo de Administración.</p><button onClick={login} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Iniciar sesión con Google</button></div>);}
-  if(!autorizado){return(<div style={{background:"#FCEBEB",borderRadius:12,padding:"2rem",border:"1px solid #f5c6c6",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,color:"#791F1F",marginBottom:8}}>⛔ Sin permiso</p><p style={{fontSize:13,color:"#791F1F"}}>Tu cuenta <strong>{user.email}</strong> no tiene acceso al Generador de Contratos.</p></div>);}
+  if(!autorizado){return(<div style={{background:"#FCEBEB",borderRadius:12,padding:"2rem",border:"1px solid #f5c6c6",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,color:"#791F1F",marginBottom:8}}>⛔ Sin permiso</p><p style={{fontSize:13,color:"#791F1F"}}>Tu cuenta <strong>{user.email}</strong> no tiene acceso al Generador de Contratos. Contactá a Administración.</p></div>);}
 
   const[tipo,setTipo]=useState("");const[step,setStep]=useState("tipo");
   const[f,setF]=useState({dia:"",mes:"",nro:"",razonSocial:"",cuit:"",tipoSociedad:"",firmante:"",dni:"",direccion:"",modelo:"",botellas:"",valorUsd:"",mensual:"",ajuste:"",instalacion:"0"});
