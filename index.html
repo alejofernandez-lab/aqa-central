@@ -413,7 +413,7 @@ function ClienteChat({clienteId,clienteNombre,onClose}){const fb=useFirebase();c
 function GeneradorContratos(){
   const{user,loadingAuth,login}=useAuth();
   const EMAILS_PERMITIDOS=["administracion@aqa.com.ar","alejo.fernandez@aqa.com.ar"];
-  const autorizado=user&&EMAILS_PERMITIDOS.includes(user.email);
+  const autorizado=user&&EMAILS_PERMITIDOS.includes(user.email.toLowerCase());
 
   if(loadingAuth){return(<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Verificando acceso...</div>);}
   if(!user){return(<div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",border:"1px solid #dce6f5",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,marginBottom:8}}>🔒 Acceso restringido</p><p style={{fontSize:13,color:"#6b7a99",marginBottom:16}}>El Generador de Contratos es de uso exclusivo de Administración.</p><button onClick={login} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Iniciar sesión con Google</button></div>);}
