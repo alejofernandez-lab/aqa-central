@@ -166,6 +166,8 @@ function generarDOCX(f,tipo){
   const g=ch=>p([R("    - "),...ch],AlignmentType.JUSTIFIED,0.3,80);
 
   const pb=()=>new Paragraph({children:[new PageBreak()],spacing:{after:0}});
+  const SOCIEDAD_LABELS={"S.A.":"Sociedad Anónima","S.R.L.":"Sociedad de Responsabilidad Limitada","S.A.S.":"Sociedad por Acciones Simplificada","Responsable Inscripto":"Responsable Inscripto","Monotributista":"Monotributista","Asociación Civil":"Asociación Civil"};
+  const tipoSociedadLabel=SOCIEDAD_LABELS[f.tipoSociedad]||f.tipoSociedad;
   const botDesc=isH?"":`${hasCO2?"2 (dos) cilindros CO2 los cuales son rotativos en base al requerimiento del Locatorio y ":""}${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una`;
   const cmToTwip=cm=>Math.round(cm*567);
 
@@ -210,8 +212,8 @@ function generarDOCX(f,tipo){
       alignment:AlignmentType.LEFT,spacing:{before:120,after:80}
     }),
     p([R("I. "),R(`Que el Locador es una sociedad ${isO?"de responsabilidad limitada":"anónima"} constituida de conformidad con las leyes de la República Argentina, que brinda servicios profesionales de instalación y mantenimiento de ${isH?"equipos fabricadores de hielo":"dispensadores y purificadores de agua potable, que se conectan a la red de agua corriente"}.`)]),
-    isH?p([R("II. "),R("Que el Locatario es "),N(f.tipoSociedad),R(" para el cual requiere contratar el servicio de entrega en comodato de un equipo fabricador de hielo, conforme se detalla en la Oferta.")])
-       :p([R("II. "),R("Que el Locatario es "),N(f.tipoSociedad),R(` para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" correspondiente al equipo descripto en la presente Oferta y que incluye la provisión de ${botDesc}.`)]),
+    isH?p([R("II. "),R("Que el Locatario es "),N(tipoSociedadLabel),R(" para el cual requiere contratar el servicio de entrega en comodato de un equipo fabricador de hielo, conforme se detalla en la Oferta.")])
+       :p([R("II. "),R("Que el Locatario es "),N(tipoSociedadLabel),R(` para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" correspondiente al equipo descripto en la presente Oferta y que incluye la provisión de ${botDesc}.`)]),
     p([R(`En consecuencia, las Partes acuerdan que, una vez aceptada la Oferta, la relación comercial resultante entre las mismas (la "Relación Comercial"), se regirá por los términos y condiciones que se indican a continuación y, en subsidio, por las disposiciones legales vigentes que le sean aplicables:`)]),
 
     // ── PRIMERA ──
@@ -383,10 +385,17 @@ function generarDOCX(f,tipo){
     pl([R("De nuestra consideración:")]),
     p([N(loc),R(`, con domicilio en ${dom}, Ciudad Autónoma de Buenos Aires, por la presente nos dirigimos a Uds. a fin de notificarles nuestra decisión de aceptar vuestra `),N(`"Oferta de prestación de servicios N°${f.nro}/26"`),R(" de fecha "),N(fecha)]),
     pl([R("Los saludo atentamente.")]),
+    // Espacio + razón social centrada
+    pl([R("")],200),
+    pc([N(f.razonSocial)]),
     pl([R("")],400),
-    pl([R("_________________")],0),pl([N("FIRMA")],200),
-    pl([R("_________________")],0),pl([N("ACLARACIÓN")],200),
-    pl([R("_________________")],0),pl([N("DNI")]),
+    // Firma centrada
+    pc([R("_________________")]),
+    new Paragraph({children:[new TextRun({text:"FIRMA",bold:true,font:FONT,size:SZ})],alignment:AlignmentType.CENTER,spacing:{after:200}}),
+    pc([R("_________________")]),
+    new Paragraph({children:[new TextRun({text:"ACLARACIÓN",bold:true,font:FONT,size:SZ})],alignment:AlignmentType.CENTER,spacing:{after:200}}),
+    pc([R("_________________")]),
+    new Paragraph({children:[new TextRun({text:"DNI",bold:true,font:FONT,size:SZ})],alignment:AlignmentType.CENTER,spacing:{after:0}}),
   ];
 
   const doc=new window.docx.Document({sections:[{properties:{page:{margin:{top:cmToTwip(2.36),bottom:cmToTwip(0.49),left:cmToTwip(2.96),right:cmToTwip(2.96)}}},children}]});
