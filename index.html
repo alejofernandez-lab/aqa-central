@@ -175,15 +175,22 @@ function generarDOCX(f,tipo){
   const children=[
     // HOJA 1
     pr([R("Ciudad Autónoma de Buenos Aires, "),N(fecha)]),
-    pl([N("Señores")],0),pl([N(f.razonSocial)],0),pl([N(f.direccion)],0),pl([N("Presente")]),
-    pl([R("Ref: Oferta de prestación de servicios N°"),N(f.nro)]),
+    pl([N("Señores")],0),pl([N(f.razonSocial)],0),pl([N(f.direccion)],0),
+    // "Presente" en bold + subrayado
+    new Paragraph({children:[new TextRun({text:"Presente",bold:true,font:FONT,size:SZ,underline:{type:UnderlineType.SINGLE,color:"000000"}})],alignment:AlignmentType.LEFT,spacing:{after:120}}),
+    // "Ref:" subrayado
+    new Paragraph({children:[new TextRun({text:"                                                                  ",font:FONT,size:SZ}),new TextRun({text:"Ref",bold:true,font:FONT,size:SZ,underline:{type:UnderlineType.SINGLE,color:"000000"}}),new TextRun({text:`: Oferta de prestación de servicios N°${f.nro}`,bold:true,font:FONT,size:SZ,underline:{type:UnderlineType.SINGLE,color:"000000"}})],alignment:AlignmentType.LEFT,spacing:{after:120}}),
     p([R(`${loc} CUIT ${cuit}, representada por el Sr. ${rep}, DNI N°${dni}, en su carácter de ${car} con domicilio en ${dom}, de esta Ciudad, ("${loc}" y/o el "Locador"), se dirige a `),N(f.razonSocial),R(" CUIT "),N(f.cuit),R(" representado en este acto por el Sr. "),N(f.firmante),R(", con DNI "),N(f.dni),R(`, en su carácter de Representante con domicilio en `),N(f.direccion),R(` (el "Locatario" y junto con ${loc} y/o el Proveedor las "Partes" e individualmente la "Parte") a fin de efectuar la oferta de prestación de servicio de entrega en comodato e instalación de los equipos y/o sus adicionales, en el domicilio sito en `),N(f.direccion),R(` (la "Oferta"):`)]),
     p([new TextRun({text:"1.",font:FONT,size:SZ}),R("\t"),R("La Oferta podrá ser aceptada por Uds. dentro de los 5 (cinco) días corridos de recibida.")],AlignmentType.JUSTIFIED,0.3,80),
     p([new TextRun({text:"2.",font:FONT,size:SZ}),R("\t"),R(`La Oferta se considerará aceptada por Uds. con la entrega de una carta de aceptación que contenga la siguiente fórmula: `),N(`"Por la presente aceptamos su oferta de fecha ${fecha}".`)],AlignmentType.JUSTIFIED,0.3,80),
     p([new TextRun({text:"3.",font:FONT,size:SZ}),R("\t"),R(`Una vez aceptada por Uds. la Oferta conforme al párrafo 2 precedente, la relación comercial resultante entre las Partes será regida por los términos y condiciones que se adjuntan como `),N("Anexo I.")],AlignmentType.JUSTIFIED,0.3,80),
     ...(isH?[g([R("La Oferta se regirá por las leyes de la República Argentina y toda controversia que pueda generarse será resuelta por los Tribunales Nacionales Ordinarios de la Ciudad Autónoma de Buenos Aires.")])]:[]),
-    pl([R("Atentamente,")]),pl([R(`p/${loc}`)],0),
-    pl([N(`Aclaración: ${rep}`),R("   "),N(`DNI: ${dni}`)],0),
+    pl([R("Atentamente,")]),
+    pl([R(`p/${loc}`)],0),
+    // Espacio para firma de Nacho
+    pl([R("")],300),
+    pl([N(`Aclaración: ${rep}`)],0),
+    pl([N(`DNI: ${dni}`)],0),
     pl([R(`Carácter: ${car}`)]),
 
     // ANEXO I — título y subtítulo subrayados centrados
@@ -202,9 +209,9 @@ function generarDOCX(f,tipo){
       children:[new TextRun({text:"CONSIDERANDO:",bold:true,font:FONT,size:SZ,underline:{type:UnderlineType.SINGLE,color:"000000"}})],
       alignment:AlignmentType.LEFT,spacing:{before:120,after:80}
     }),
-    g([R(`Que el Locador es una sociedad ${isO?"de responsabilidad limitada":"anónima"} constituida de conformidad con las leyes de la República Argentina, que brinda servicios profesionales de instalación y mantenimiento de ${isH?"equipos fabricadores de hielo":"dispensadores y purificadores de agua potable, que se conectan a la red de agua corriente"}.`)]),
-    isH?g([R("Que el Locatario es "),N(f.tipoSociedad),R(" para el cual requiere contratar el servicio de entrega en comodato de un equipo fabricador de hielo, conforme se detalla en la Oferta.")])
-       :g([R("Que el Locatario es "),N(f.tipoSociedad),R(` para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" correspondiente al equipo descripto en la presente Oferta y que incluye la provisión de ${botDesc}.`)]),
+    p([R("I. "),R(`Que el Locador es una sociedad ${isO?"de responsabilidad limitada":"anónima"} constituida de conformidad con las leyes de la República Argentina, que brinda servicios profesionales de instalación y mantenimiento de ${isH?"equipos fabricadores de hielo":"dispensadores y purificadores de agua potable, que se conectan a la red de agua corriente"}.`)]),
+    isH?p([R("II. "),R("Que el Locatario es "),N(f.tipoSociedad),R(" para el cual requiere contratar el servicio de entrega en comodato de un equipo fabricador de hielo, conforme se detalla en la Oferta.")])
+       :p([R("II. "),R("Que el Locatario es "),N(f.tipoSociedad),R(` para el cual requiere contratar el servicio de entrega en comodato de un equipo dispensador y purificador de agua marca "AQA" correspondiente al equipo descripto en la presente Oferta y que incluye la provisión de ${botDesc}.`)]),
     p([R(`En consecuencia, las Partes acuerdan que, una vez aceptada la Oferta, la relación comercial resultante entre las mismas (la "Relación Comercial"), se regirá por los términos y condiciones que se indican a continuación y, en subsidio, por las disposiciones legales vigentes que le sean aplicables:`)]),
 
     // ── PRIMERA ──
@@ -304,15 +311,18 @@ function generarDOCX(f,tipo){
     ...(()=>{newSec();return[
       pt([R("La mora en el cumplimiento de las obligaciones previstas en la Oferta se producirá en forma automática y de pleno derecho, sin necesidad de intimación previa judicial o extrajudicial.")]),
       pt([R("En caso de que el Locatario incurra en mora en los pagos del Precio al Locador, se devengará un interés equivalente a una vez y media tasa activa del Banco de la Nación Argentina para el descuento de documentos comerciales, en forma mensual, desde la fecha de mora hasta la fecha del efectivo pago.")]),
-      pt([R(`Las Partes acuerdan que, dentro de los primeros treinta (30) días corridos contados desde la fecha de aceptación de la presente Oferta, las Partes podrán resolver la Relación Comercial, en forma anticipada, unilateral y sin expresión de causa, mediante notificación fehaciente y con un preaviso de quince (15) días corridos a la fecha de la efectiva rescisión, sin que ello implique indemnización y/o compensación alguna a favor de la otra parte.`)]),
+      // (i) como subítem de 9.2
+      p([R("(i)\t"),R(`Las Partes acuerdan que, dentro de los primeros treinta (30) días corridos contados desde la fecha de aceptación de la presente Oferta, las Partes podrán resolver la Relación Comercial, en forma anticipada, unilateral y sin expresión de causa, mediante notificación fehaciente y con un preaviso de quince (15) días corridos a la fecha de la efectiva rescisión, sin que ello implique indemnización y/o compensación alguna a favor de la otra parte.`)],AlignmentType.JUSTIFIED,0.4,100),
       pt([R("Asimismo, las Partes podrán rescindir la presente Relación Comercial en los siguientes casos:")]),
-      pt([R("Sin expresión de causa:")]),
-      pt([N(loc),R(` tendrá derecho a terminar la Relación Comercial en forma anticipada, unilateral y sin expresión de causa, en cualquier momento, mediante notificación fehaciente a la otra Parte, mediando un preaviso de 15 (quince) días corridos, sin que ello genere derecho a indemnización alguna a favor del Locatario.`)]),
-      pt([R(`El Locatario podrá rescindir la Relación Comercial, en forma anticipada, unilateral y sin causa, en cualquier momento, mediante notificación fehaciente a la otra Parte, mediando un preaviso de 15 (quince) días corridos a la fecha de la efectiva rescisión. Sin perjuicio de ello, el Locatario abonará a ${loc} el Precio hasta la fecha de la efectiva terminación de la Relación Comercial, y procederá a la inmediata devolución de los Equipos en las mismas condiciones y estado de uso en el que fueron entregados al inicio de la Relación Comercial.`)]),
-      pt([R("En caso de que el Locatario opte por rescindir la Relación Comercial dentro de los primeros seis (6) meses del Plazo de Vigencia Inicial, deberá abonar al Locador el 50% de las mensualidades pendientes de pago hasta completar el primer año del Plazo de Vigencia Inicial. Si el Locatario decide dar por finalizado la una vez transcurridos los primeros seis (6) meses y hasta el mes doce (12) correspondiente al Plazo de Vigencia Inicial abonará al Locador el 25% de las mensualidades pendientes de pago hasta completar el primer año del Plazo de Vigencia Inicial.")]),
-      pt([R(`En caso de que el Locatario opte por rescindir la Relación Comercial a partir del mes trece (13) y hasta el mes veinticuatro (24) correspondiente a la Prórroga, abonará a ${loc} el 50% de las mensualidades pendientes de pago correspondientes al segundo año de la Prórroga con más el 25% de las mensualidades pendientes de pago correspondientes al tercer año de la Prórroga.`)]),
-      pt([R(`En caso de que el Locatario opte por rescindir la Relación Comercial a partir del mes veinticinco (25) abonará a ${loc} el 25% de las mensualidades pendientes de pago hasta la fecha de vencimiento de la Prórroga.`)]),
-      pt([N("Incumplimiento de alguna de las Partes a cualquiera de las obligaciones de la Oferta"),R(": siempre que el incumplimiento persistiera luego de transcurridos 15 (quince) días corridos de la fecha en que la parte cumplidora intime fehacientemente a su subsanación. De persistir el incumplimiento luego de transcurrido el plazo de subsanación, la parte cumplidora podrá rescindir la Relación Comercial de pleno derecho y sin necesidad de notificación o aviso alguno, quedando a salvo su derecho de reclamar los daños y perjuicios ocasionados por el incumplimiento.")]),
+      // a) Sin expresión de causa
+      p([new TextRun({text:"a)",bold:true,font:FONT,size:SZ}),R("\tSin expresión de causa:")],AlignmentType.JUSTIFIED,0.3,80),
+      p([R("(ii)\t"),N(loc),R(` tendrá derecho a terminar la Relación Comercial en forma anticipada, unilateral y sin expresión de causa, en cualquier momento, mediante notificación fehaciente a la otra Parte, mediando un preaviso de 15 (quince) días corridos, sin que ello genere derecho a indemnización alguna a favor del Locatario.`)],AlignmentType.JUSTIFIED,0.4,100),
+      p([R("(iii)\t"),R(`El Locatario podrá rescindir la Relación Comercial, en forma anticipada, unilateral y sin causa, en cualquier momento, mediante notificación fehaciente a la otra Parte, mediando un preaviso de 15 (quince) días corridos a la fecha de la efectiva rescisión. Sin perjuicio de ello, el Locatario abonará a ${loc} el Precio hasta la fecha de la efectiva terminación de la Relación Comercial, y procederá a la inmediata devolución de los Equipos en las mismas condiciones y estado de uso en el que fueron entregados al inicio de la Relación Comercial.`)],AlignmentType.JUSTIFIED,0.4,100),
+      p([R("(a)\t"),R("En caso de que el Locatario opte por rescindir la Relación Comercial dentro de los primeros seis (6) meses del Plazo de Vigencia Inicial, deberá abonar al Locador el 50% de las mensualidades pendientes de pago hasta completar el primer año del Plazo de Vigencia Inicial. Si el Locatario decide dar por finalizado la una vez transcurridos los primeros seis (6) meses y hasta el mes doce (12) correspondiente al Plazo de Vigencia Inicial abonará al Locador el 25% de las mensualidades pendientes de pago hasta completar el primer año del Plazo de Vigencia Inicial.")],AlignmentType.JUSTIFIED,0.5,100),
+      p([R("(b)\t"),R(`En caso de que el Locatario opte por rescindir la Relación Comercial a partir del mes trece (13) y hasta el mes veinticuatro (24) correspondiente a la Prórroga, abonará a ${loc} el 50% de las mensualidades pendientes de pago correspondientes al segundo año de la Prórroga con más el 25% de las mensualidades pendientes de pago correspondientes al tercer año de la Prórroga.`)],AlignmentType.JUSTIFIED,0.5,100),
+      p([R("(c)\t"),R(`En caso de que el Locatario opte por rescindir la Relación Comercial a partir del mes veinticinco (25) abonará a ${loc} el 25% de las mensualidades pendientes de pago hasta la fecha de vencimiento de la Prórroga.`)],AlignmentType.JUSTIFIED,0.5,100),
+      // b) Incumplimiento — con subrayado
+      p([new TextRun({text:"b)",font:FONT,size:SZ}),R("\t"),new TextRun({text:"Incumplimiento de alguna de las Partes a cualquiera de las obligaciones de la Oferta",bold:true,font:FONT,size:SZ,underline:{type:UnderlineType.SINGLE,color:"000000"}}),R(": siempre que el incumplimiento persistiera luego de transcurridos 15 (quince) días corridos de la fecha en que la parte cumplidora intime fehacientemente a su subsanación. De persistir el incumplimiento luego de transcurrido el plazo de subsanación, la parte cumplidora podrá rescindir la Relación Comercial de pleno derecho y sin necesidad de notificación o aviso alguno, quedando a salvo su derecho de reclamar los daños y perjuicios ocasionados por el incumplimiento.")],AlignmentType.JUSTIFIED,0.3,100),
       pt([R(`Producida la terminación de la Relación Comercial, caducará de pleno derecho la prestación de los Servicios, en consecuencia, el Locatario deberá proceder a la inmediata restitución de los Equipos y la totalidad de insumos entregados en comodato dentro del plazo máximo de cinco (5) días contados desde la fecha de la efectiva rescisión, en el domicilio de ${loc} denunciado en el encabezado del presente.`)]),
       pt([R("Toda obligación de cualquiera de las Partes que en forma expresa o por naturaleza propia subsista a la extinción o rescisión de la presente, se mantendrá plenamente vigente sin perjuicio de dicha extinción o rescisión, hasta que sea debidamente cumplida en su totalidad o que por su naturaleza se extinga.")]),
     ];})(),
@@ -401,6 +411,13 @@ function ClienteChat({clienteId,clienteNombre,onClose}){const fb=useFirebase();c
 
 // ── Generador de Contratos ────────────────────────────────────────
 function GeneradorContratos(){
+  const{user,login}=useAuth();
+  const EMAIL_PERMITIDO="administracion@aqa.com.ar";
+  const autorizado=user&&user.email===EMAIL_PERMITIDO;
+
+  if(!user){return(<div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",border:"1px solid #dce6f5",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,marginBottom:8}}>🔒 Acceso restringido</p><p style={{fontSize:13,color:"#6b7a99",marginBottom:16}}>El Generador de Contratos es de uso exclusivo de Administración.</p><button onClick={login} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Iniciar sesión con Google</button></div>);}
+  if(!autorizado){return(<div style={{background:"#FCEBEB",borderRadius:12,padding:"2rem",border:"1px solid #f5c6c6",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,color:"#791F1F",marginBottom:8}}>⛔ Sin permiso</p><p style={{fontSize:13,color:"#791F1F"}}>Tu cuenta <strong>{user.email}</strong> no tiene acceso al Generador de Contratos.</p></div>);}
+
   const[tipo,setTipo]=useState("");const[step,setStep]=useState("tipo");
   const[f,setF]=useState({dia:"",mes:"",nro:"",razonSocial:"",cuit:"",tipoSociedad:"",firmante:"",dni:"",direccion:"",modelo:"",botellas:"",valorUsd:"",mensual:"",ajuste:"",instalacion:"0"});
   const[ok,setOk]=useState(false);
