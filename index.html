@@ -413,13 +413,11 @@ function ClienteChat({clienteId,clienteNombre,onClose}){const fb=useFirebase();c
 function GeneradorContratos(){
   const{user,loadingAuth,login}=useAuth();
   const EMAILS_PERMITIDOS=["administracion@aqa.com.ar","alejo.fernandez@aqa.com.ar"];
-  const autorizado=user&&EMAILS_PERMITIDOS.includes(user.email.toLowerCase());
+  const autorizado=user&&EMAILS_PERMITIDOS.includes((user.email||"").toLowerCase());
 
-  if(loadingAuth){return(<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Verificando acceso...</div>);}
-  if(!user){return(<div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",border:"1px solid #dce6f5",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,marginBottom:8}}>🔒 Acceso restringido</p><p style={{fontSize:13,color:"#6b7a99",marginBottom:16}}>El Generador de Contratos es de uso exclusivo de Administración.</p><button onClick={login} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Iniciar sesión con Google</button></div>);}
-  if(!autorizado){return(<div style={{background:"#FCEBEB",borderRadius:12,padding:"2rem",border:"1px solid #f5c6c6",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,color:"#791F1F",marginBottom:8}}>⛔ Sin permiso</p><p style={{fontSize:13,color:"#791F1F"}}>Tu cuenta <strong>{user.email}</strong> no tiene acceso al Generador de Contratos. Contactá a Administración.</p></div>);}
-
-  const[tipo,setTipo]=useState("");const[step,setStep]=useState("tipo");
+  // ── TODOS los hooks ANTES de cualquier return condicional ──
+  const[tipo,setTipo]=useState("");
+  const[step,setStep]=useState("tipo");
   const[f,setF]=useState({dia:"",mes:"",nro:"",razonSocial:"",cuit:"",tipoSociedad:"",firmante:"",dni:"",direccion:"",modelo:"",botellas:"",valorUsd:"",mensual:"",ajuste:"",instalacion:"0"});
   const[ok,setOk]=useState(false);
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -427,6 +425,12 @@ function GeneradorContratos(){
   const modelosDisp=isH?MODELOS_HIELOGIC:MODELOS_AQA;
   const usdDisp=isH?USD_HIELOGIC:USD_AQA;
   useEffect(()=>{if(isH&&f.modelo){const m=USD_HIELOGIC.find(u=>u.label.startsWith(f.modelo));if(m)setF(p=>({...p,valorUsd:m.value}));}},[f.modelo,isH]);
+
+  // ── Returns condicionales DESPUÉS de todos los hooks ──
+  if(loadingAuth){return(<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Verificando acceso...</div>);}
+  if(!user){return(<div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",border:"1px solid #dce6f5",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,marginBottom:8}}>🔒 Acceso restringido</p><p style={{fontSize:13,color:"#6b7a99",marginBottom:16}}>El Generador de Contratos es de uso exclusivo de Administración.</p><button onClick={login} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Iniciar sesión con Google</button></div>);}
+  if(!autorizado){return(<div style={{background:"#FCEBEB",borderRadius:12,padding:"2rem",border:"1px solid #f5c6c6",textAlign:"center"}}><p style={{fontSize:14,fontWeight:600,color:"#791F1F",marginBottom:8}}>⛔ Sin permiso</p><p style={{fontSize:13,color:"#791F1F"}}>Tu cuenta <strong>{user.email}</strong> no tiene acceso al Generador de Contratos.</p></div>);}
+
   const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
   const inp=(k,ph,type="text")=><input type={type} value={f[k]} onChange={e=>set(k,e.target.value)} placeholder={ph} style={SS}/>;
   const sel=(k,opts)=><select value={f[k]} onChange={e=>set(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{opts.map(o=>typeof o==="string"?<option key={o}>{o}</option>:<option key={o.value} value={o.value}>{o.label}</option>)}</select>;
@@ -535,8 +539,8 @@ function App(){
     {tab==="Administración"&&(<div>
       <TabBar tabs={ADM_TABS} active={admTab} onChange={setAdmTab} color="#1F3864"/>
       {admTab==="Generador de Contratos"&&<GeneradorContratos/>}
-      {["Intimaciones","Cartas Documento","Veraz"].includes(admTab)&&(loadingAdm?<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>:admData[admTab]&&(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{background:ADM_COLORS[admTab]+"22",color:ADM_COLORS[admTab],borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}}>{(admData[admTab].rows||[]).length} registros · {admTab}</span><button onClick={()=>setAdmData(p=>{const n={...p};delete n[admTab];return n;})} style={{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}}>↻ Actualizar</button></div><GenericTable data={admData[admTab]} headerBg={ADM_COLORS[admTab]}/></div>))}
-      {admTab==="Score Crediticio"&&(<div><TabBar tabs={["Buenos Aires","Interior","Hielogic"]} active={scoreTab} onChange={setScoreTab} color="#1a5c3a"/>{loadingAdm?<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>:admData["Score Crediticio"]?.[scoreTab]&&(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}}>{(admData["Score Crediticio"][scoreTab].rows||[]).length} clientes · {scoreTab}</span><button onClick={()=>setAdmData(p=>{const n={...p};delete n["Score Crediticio"];return n;})} style={{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}}>↻ Actualizar</button></div><ScoreTable data={admData["Score Crediticio"][scoreTab]}/></div>)}</div>)}
+      {["Intimaciones","Cartas Documento","Veraz"].includes(admTab)&&(loadingAdm?<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>:<div>{admData[admTab]?(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{background:ADM_COLORS[admTab]+"22",color:ADM_COLORS[admTab],borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}}>{(admData[admTab].rows||[]).length} registros · {admTab}</span><button onClick={()=>setAdmData(p=>{const n={...p};delete n[admTab];return n;})} style={{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}}>↻ Actualizar</button></div><GenericTable data={admData[admTab]} headerBg={ADM_COLORS[admTab]}/></div>):<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Sin datos</div>}</div>)}
+      {admTab==="Score Crediticio"&&(<div><TabBar tabs={["Buenos Aires","Interior","Hielogic"]} active={scoreTab} onChange={setScoreTab} color="#1a5c3a"/>{loadingAdm?<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>:<div>{admData["Score Crediticio"]?.[scoreTab]?(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}}>{(admData["Score Crediticio"][scoreTab].rows||[]).length} clientes · {scoreTab}</span><button onClick={()=>setAdmData(p=>{const n={...p};delete n["Score Crediticio"];return n;})} style={{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}}>↻ Actualizar</button></div><ScoreTable data={admData["Score Crediticio"][scoreTab]}/></div>):<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Sin datos</div>}</div>}</div>)}
     </div>)}
   </div>);
 }
