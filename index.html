@@ -187,10 +187,10 @@ function generarDOCX(f,tipo){
     p([new TextRun({text:"2.",font:FONT,size:SZ}),R("\t"),R(`La Oferta se considerará aceptada por Uds. con la entrega de una carta de aceptación que contenga la siguiente fórmula: `),N(`"Por la presente aceptamos su oferta de fecha ${fecha}".`)],AlignmentType.JUSTIFIED,0.3,80),
     p([new TextRun({text:"3.",font:FONT,size:SZ}),R("\t"),R(`Una vez aceptada por Uds. la Oferta conforme al párrafo 2 precedente, la relación comercial resultante entre las Partes será regida por los términos y condiciones que se adjuntan como `),N("Anexo I.")],AlignmentType.JUSTIFIED,0.3,80),
     ...(isH?[g([R("La Oferta se regirá por las leyes de la República Argentina y toda controversia que pueda generarse será resuelta por los Tribunales Nacionales Ordinarios de la Ciudad Autónoma de Buenos Aires.")])]:[]),
-    pl([R("")],400),
+    pl([R("")],600),
     pl([R("Atentamente,")]),
     // Espacio grande para firma (imagen JPG de Nacho)
-    pl([R("")],2000),
+    pl([R("")],4000),
     pl([N("_______________")],0),
     pl([N(`p/${loc}`)],0),
     pl([N(`Aclaración: ${rep}`)],0),
