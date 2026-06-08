@@ -188,12 +188,13 @@ function generarDOCX(f,tipo){
     p([new TextRun({text:"3.",font:FONT,size:SZ}),R("\t"),R(`Una vez aceptada por Uds. la Oferta conforme al párrafo 2 precedente, la relación comercial resultante entre las Partes será regida por los términos y condiciones que se adjuntan como `),N("Anexo I.")],AlignmentType.JUSTIFIED,0.3,80),
     ...(isH?[g([R("La Oferta se regirá por las leyes de la República Argentina y toda controversia que pueda generarse será resuelta por los Tribunales Nacionales Ordinarios de la Ciudad Autónoma de Buenos Aires.")])]:[]),
     pl([R("Atentamente,")]),
-    pl([R(`p/${loc}`)],0),
-    // Espacio para firma de Nacho
-    pl([R("")],300),
+    // Espacio grande para firma de Nacho
+    pl([R("")],600),
+    pl([N("_______________")],0),
+    pl([N(`p/${loc}`)],0),
     pl([N(`Aclaración: ${rep}`)],0),
     pl([N(`DNI: ${dni}`)],0),
-    pl([R(`Carácter: ${car}`)]),
+    pl([N(`Carácter: ${car}`)]),
 
     // ANEXO I — título y subtítulo subrayados centrados
     pb(),
@@ -229,7 +230,7 @@ function generarDOCX(f,tipo){
       pt([N(loc),R(" se encuentra facultado -a su exclusivo arbitrio- a modificar y/o reemplazar en cualquier momento el Equipo instalado en el Inmueble, previa comunicación fehaciente al mismo.")]),
       pt([R(`Las reparaciones y/o mantenimiento del Equipo podrán ser realizados, única y exclusivamente, por el personal a cargo de ${loc}.`)]),
     ]:[
-      pt([R(`El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de dispensadores y purificadores de agua potable correspondiente a la máquina `),N(`"${f.modelo}"`),R(` de marca `),N('"AQA"'),R(` (la "Máquina") que incluye la provisión de ${botDesc} (los "Equipos").`)]),
+      pt([R(`El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de dispensadores y purificadores de agua potable correspondiente a la máquina `),N(`"${f.modelo}"`),R(` de marca `),N('"AQA"'),R(` (la "Máquina")${isO?`, incluyendo la provisión de 1 (un) cilindro de CO2 y 20 (veinte) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una (los "Equipos"). La oferta contempla 6 (seis) recargas de CO2 bonificadas por año. Las unidades adicionales serán facturadas según la mensualidad vigente.`:` que incluye la provisión de ${botDesc} (los "Equipos").`}`)]),
       pt([R(`La Máquina es de titularidad exclusiva de ${loc}, la cual será entregada al Locatario, en comodato, e instalada en el inmueble sito en `),N(`Calle ${f.direccion}`),R(` (el "Inmueble") para el uso y goce de la misma por parte del Locatario (el "Servicio" y/o los "Servicios").`)]),
       pt([R(`El Servicio será prestado -única y exclusivamente- dentro de las instalaciones del Inmueble, mediante la instalación de la Máquina por parte del personal de ${loc}, la cual se encuentran en perfecto estado de conservación y funcionamiento.`)]),
       pt([R("Las Partes acuerdan que, a partir de la instalación de la Máquina, el Locador asistirá al Inmueble cada noventa (90) días a fin de efectuar la revisión, mantenimiento, cambio de filtros y/o reposición - en caso de corresponder- de la Máquina, previa coordinación con el Locatario de fecha y hora de visita.")]),
