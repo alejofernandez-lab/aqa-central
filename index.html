@@ -485,18 +485,26 @@ function GeneradorContratos(){
   </div>);
 }
 
-// ── Form Modal de Comercial (fuera del componente para evitar re-mount) ──
-function CierreFormModal({form,setF,editandoId,guardar,cancelar,modalVendedor,setModalVendedor,modalProvincia,setModalProvincia}){
+// ── Form Modal de Comercial (estado interno para no perder foco) ──
+function CierreFormModal({initialForm,editandoId,onGuardar,onCancelar,fb}){
+  const[form,setForm]=useState({...CIERRE_VACIO,...(initialForm||{})});
+  const[modalVendedor,setModalVendedor]=useState(false);
+  const[modalProvincia,setModalProvincia]=useState(false);
+  const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
   const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
   const inp=(k,ph,type="text")=><input type={type} value={form[k]||""} onChange={e=>setF(k,e.target.value)} placeholder={ph} style={SS}/>;
   const sel=(k,opts,ph="Seleccionar...")=><select value={form[k]||""} onChange={e=>setF(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}</select>;
   const campo=(label,child,full=false)=><div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</label>{child}</div>;
+  const guardar=async()=>{
+    if(!form.nombreFantasia){alert("Completá al menos el Nombre de Fantasía");return;}
+    await onGuardar(form,editandoId);
+  };
   return(
-    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")cancelar();}}>
+    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onCancelar();}}>
       <div className="modal" style={{maxWidth:600}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <p style={{margin:0,fontSize:15,fontWeight:600}}>{editandoId?"✏️ Editar Cierre":"+ Nuevo Cierre"}</p>
-          <button onClick={cancelar} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+          <button onClick={onCancelar} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
         </div>
         {modalVendedor&&<ModalLista titulo="Seleccionar Vendedor" items={VENDEDORES} onSelect={v=>setF("vendedor",v)} onClose={()=>setModalVendedor(false)}/>}
         {modalProvincia&&<ModalLista titulo="Seleccionar Provincia" items={PROVINCIAS} onSelect={v=>setF("provincia",v)} onClose={()=>setModalProvincia(false)}/>}
@@ -543,7 +551,7 @@ function Comercial({onNuevoCierre}){
   const[loading,setLoading]=useState(true);
   const[showForm,setShowForm]=useState(false);
   const[editandoId,setEditandoId]=useState(null);
-  const[form,setForm]=useState(CIERRE_VACIO);
+  const[initialForm,setInitialForm]=useState(CIERRE_VACIO);
   const[expandedId,setExpandedId]=useState(null);
   const[fVendedor,setFVendedor]=useState("Todos");
   const[fProvincia,setFProvincia]=useState("Todas");
@@ -563,16 +571,15 @@ function Comercial({onNuevoCierre}){
 
   const filteredCierres=useMemo(()=>cierres.filter(c=>{const sq=qCom.toLowerCase();return(c.nombreFantasia||"").toLowerCase().includes(sq)||(c.razonSocial||"").toLowerCase().includes(sq)||(c.vendedor||"").toLowerCase().includes(sq);}).filter(c=>fVendedor==="Todos"||(c.vendedor||"")===fVendedor).filter(c=>fProvincia==="Todas"||(c.provincia||"")===fProvincia).filter(c=>fClasif==="Todas"||(c.clasificacion||"")===fClasif).filter(c=>fModelo==="Todos"||(c.modelo||"")===fModelo).filter(c=>fAsesorCom==="Todos"||(c.asesor||"")===fAsesorCom),[cierres,qCom,fVendedor,fProvincia,fClasif,fModelo,fAsesorCom]);
 
-  const abrirNuevo=()=>{setEditandoId(null);setForm(CIERRE_VACIO);setShowForm(true);};
-  const abrirEdicion=(c)=>{setEditandoId(c.id);setForm({...CIERRE_VACIO,...c});setShowForm(true);setExpandedId(null);};
-  const cancelar=()=>{setShowForm(false);setEditandoId(null);setForm(CIERRE_VACIO);};
+  const abrirNuevo=()=>{setEditandoId(null);setInitialForm(CIERRE_VACIO);setShowForm(true);};
+  const abrirEdicion=(c)=>{setEditandoId(c.id);setInitialForm({...CIERRE_VACIO,...c});setShowForm(true);setExpandedId(null);};
+  const cancelar=()=>{setShowForm(false);setEditandoId(null);};
 
-  const guardar=async()=>{
-    if(!form.nombreFantasia){alert("Completá al menos el Nombre de Fantasía");return;}
+  const guardar=async(form,eid)=>{
     if(!fb){alert("Firebase no disponible");return;}
     const{db,collection,addDoc,doc,setDoc}=fb;
-    if(editandoId){
-      await setDoc(doc(db,"cierres",editandoId),{...form},{merge:true});
+    if(eid){
+      await setDoc(doc(db,"cierres",eid),{...form},{merge:true});
     } else {
       const nuevo={...form,ts:Date.now(),fecha:new Date().toLocaleDateString("es-AR")};
       const ref=await addDoc(collection(db,"cierres"),nuevo);
@@ -594,7 +601,7 @@ function Comercial({onNuevoCierre}){
   if(loading||!fb)return <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>{!fb?"Conectando a Firebase...":"Cargando cierres..."}</div>;
 
   return(<div>
-    {showForm&&<CierreFormModal form={form} setF={setF} editandoId={editandoId} guardar={guardar} cancelar={cancelar} modalVendedor={modalVendedor} setModalVendedor={setModalVendedor} modalProvincia={modalProvincia} setModalProvincia={setModalProvincia}/>}
+    {showForm&&<CierreFormModal initialForm={initialForm} editandoId={editandoId} onGuardar={guardar} onCancelar={cancelar} fb={fb}/>}
     {modalAsesor&&<ModalLista titulo="Asignar Asesor At. Cliente" items={ASESORES_ATCLTE} onSelect={a=>asignarAsesor(modalAsesor,a)} onClose={()=>setModalAsesor(null)}/>}
     {chatCierreId&&(()=>{const c=cierres.find(x=>x.id===chatCierreId);return c?<ClienteChat clienteId={`cierre_${chatCierreId}`} clienteNombre={c.nombreFantasia} onClose={()=>setChatCierreId(null)}/>:null;})()}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
