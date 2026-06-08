@@ -485,6 +485,53 @@ function GeneradorContratos(){
   </div>);
 }
 
+// ── Form Modal de Comercial (fuera del componente para evitar re-mount) ──
+function CierreFormModal({form,setF,editandoId,guardar,cancelar,modalVendedor,setModalVendedor,modalProvincia,setModalProvincia}){
+  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+  const inp=(k,ph,type="text")=><input type={type} value={form[k]||""} onChange={e=>setF(k,e.target.value)} placeholder={ph} style={SS}/>;
+  const sel=(k,opts,ph="Seleccionar...")=><select value={form[k]||""} onChange={e=>setF(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}</select>;
+  const campo=(label,child,full=false)=><div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</label>{child}</div>;
+  return(
+    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")cancelar();}}>
+      <div className="modal" style={{maxWidth:600}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <p style={{margin:0,fontSize:15,fontWeight:600}}>{editandoId?"✏️ Editar Cierre":"+ Nuevo Cierre"}</p>
+          <button onClick={cancelar} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+        </div>
+        {modalVendedor&&<ModalLista titulo="Seleccionar Vendedor" items={VENDEDORES} onSelect={v=>setF("vendedor",v)} onClose={()=>setModalVendedor(false)}/>}
+        {modalProvincia&&<ModalLista titulo="Seleccionar Provincia" items={PROVINCIAS} onSelect={v=>setF("provincia",v)} onClose={()=>setModalProvincia(false)}/>}
+        <p style={{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>📋 Datos del Cliente</p>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+          {campo("Clasificación",sel("clasificacion",CLASIFICACIONES))}
+          {campo("Vendedor",<div style={{display:"flex",gap:6,alignItems:"center"}}><div style={{flex:1,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",fontSize:13,color:form.vendedor?"#1a2340":"#9baabf",minHeight:38}}>{form.vendedor||"Sin seleccionar"}</div><button onClick={()=>setModalVendedor(true)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"9px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Elegir</button></div>)}
+          {campo("Nombre de Fantasía",inp("nombreFantasia","Ej: LOI SUITES"),true)}
+          {campo("Razón Social",inp("razonSocial","Ej: LOITEGUI SA"),true)}
+          {campo("Dirección",inp("direccion","Dirección de instalación"),true)}
+          {campo("Provincia",<div style={{display:"flex",gap:6,alignItems:"center"}}><div style={{flex:1,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",fontSize:13,color:form.provincia?"#1a2340":"#9baabf",minHeight:38}}>{form.provincia||"Sin seleccionar"}</div><button onClick={()=>setModalProvincia(true)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"9px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Elegir</button></div>)}
+          {campo("Correo",inp("correo","email@ejemplo.com"))}
+          {campo("Nombre del Contacto",inp("contactoNombre","Ej: Juan Pérez"))}
+          {campo("Cargo",inp("contactoCargo","Ej: Gerente"))}
+          {campo("Teléfono",inp("contactoTel","Ej: 11-1234-5678"))}
+          {campo("Fecha de Solicitud",inp("fechaSolicitud","","date"))}
+        </div>
+        <p style={{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>💧 Condiciones Comerciales</p>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+          {campo("Modelo",sel("modelo",MODELOS_ALL))}
+          {campo("Valor / Acuerdo",inp("valor","Ej: $350.000"))}
+          {campo("Instalación",inp("instalacion","Ej: Bonificada 100%"))}
+          {campo("Insumos",inp("insumos","Ej: 200 botellas"))}
+          {campo("Contrato",inp("contrato","Ej: 24 meses"))}
+          {campo("Ajuste",sel("ajuste",AJUSTES))}
+          {campo("Observaciones",<textarea value={form.observaciones||""} onChange={e=>setF("observaciones",e.target.value)} rows={2} style={{...SS,resize:"vertical"}}/>,true)}
+        </div>
+        <button onClick={guardar} style={{width:"100%",background:editandoId?"#1a5c3a":"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer"}}>
+          {editandoId?"✔ Guardar cambios":"✔ Guardar Cierre"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Comercial ─────────────────────────────────────────────────────
 const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",provincia:"",correo:"",contactoNombre:"",contactoCargo:"",contactoTel:"",fechaSolicitud:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:""};
 const EMAILS_ADMIN=["administracion@aqa.com.ar","alejo.fernandez@aqa.com.ar"];
@@ -495,7 +542,7 @@ function Comercial({onNuevoCierre}){
   const[cierres,setCierres]=useState([]);
   const[loading,setLoading]=useState(true);
   const[showForm,setShowForm]=useState(false);
-  const[editandoId,setEditandoId]=useState(null); // null = nuevo, string = editando
+  const[editandoId,setEditandoId]=useState(null);
   const[form,setForm]=useState(CIERRE_VACIO);
   const[expandedId,setExpandedId]=useState(null);
   const[fVendedor,setFVendedor]=useState("Todos");
@@ -517,12 +564,7 @@ function Comercial({onNuevoCierre}){
   const filteredCierres=useMemo(()=>cierres.filter(c=>{const sq=qCom.toLowerCase();return(c.nombreFantasia||"").toLowerCase().includes(sq)||(c.razonSocial||"").toLowerCase().includes(sq)||(c.vendedor||"").toLowerCase().includes(sq);}).filter(c=>fVendedor==="Todos"||(c.vendedor||"")===fVendedor).filter(c=>fProvincia==="Todas"||(c.provincia||"")===fProvincia).filter(c=>fClasif==="Todas"||(c.clasificacion||"")===fClasif).filter(c=>fModelo==="Todos"||(c.modelo||"")===fModelo).filter(c=>fAsesorCom==="Todos"||(c.asesor||"")===fAsesorCom),[cierres,qCom,fVendedor,fProvincia,fClasif,fModelo,fAsesorCom]);
 
   const abrirNuevo=()=>{setEditandoId(null);setForm(CIERRE_VACIO);setShowForm(true);};
-  const abrirEdicion=(c)=>{
-    setEditandoId(c.id);
-    setForm({...CIERRE_VACIO,...c}); // precarga todos los campos
-    setShowForm(true);
-    setExpandedId(null);
-  };
+  const abrirEdicion=(c)=>{setEditandoId(c.id);setForm({...CIERRE_VACIO,...c});setShowForm(true);setExpandedId(null);};
   const cancelar=()=>{setShowForm(false);setEditandoId(null);setForm(CIERRE_VACIO);};
 
   const guardar=async()=>{
@@ -530,10 +572,8 @@ function Comercial({onNuevoCierre}){
     if(!fb){alert("Firebase no disponible");return;}
     const{db,collection,addDoc,doc,setDoc}=fb;
     if(editandoId){
-      // Editar existente
       await setDoc(doc(db,"cierres",editandoId),{...form},{merge:true});
     } else {
-      // Nuevo
       const nuevo={...form,ts:Date.now(),fecha:new Date().toLocaleDateString("es-AR")};
       const ref=await addDoc(collection(db,"cierres"),nuevo);
       onNuevoCierre({...nuevo,id:ref.id});
@@ -550,51 +590,11 @@ function Comercial({onNuevoCierre}){
   };
 
   const asignarAsesor=async(id,a)=>{if(!fb)return;const{db,doc,setDoc}=fb;await setDoc(doc(db,"cierres",id),{asesor:a},{merge:true});};
-  const inp=(k,ph,type="text")=><input type={type} value={form[k]||""} onChange={e=>setF(k,e.target.value)} placeholder={ph} style={SS}/>;
-  const sel=(k,opts,ph="Seleccionar...")=><select value={form[k]||""} onChange={e=>setF(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}</select>;
-  const campo=(label,child,full=false)=><div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</label>{child}</div>;
 
   if(loading||!fb)return <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>{!fb?"Conectando a Firebase...":"Cargando cierres..."}</div>;
 
-  // Formulario (nuevo o edición) como overlay modal
-  const FormModal=()=>(<div className="overlay" onClick={e=>{if(e.target.className==="overlay")cancelar();}}><div className="modal" style={{maxWidth:600}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-      <p style={{margin:0,fontSize:15,fontWeight:600}}>{editandoId?"✏️ Editar Cierre":"+ Nuevo Cierre"}</p>
-      <button onClick={cancelar} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
-    </div>
-    {modalVendedor&&<ModalLista titulo="Seleccionar Vendedor" items={VENDEDORES} onSelect={v=>setF("vendedor",v)} onClose={()=>setModalVendedor(false)}/>}
-    {modalProvincia&&<ModalLista titulo="Seleccionar Provincia" items={PROVINCIAS} onSelect={v=>setF("provincia",v)} onClose={()=>setModalProvincia(false)}/>}
-    <p style={{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>📋 Datos del Cliente</p>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-      {campo("Clasificación",sel("clasificacion",CLASIFICACIONES))}
-      {campo("Vendedor",<div style={{display:"flex",gap:6,alignItems:"center"}}><div style={{flex:1,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",fontSize:13,color:form.vendedor?"#1a2340":"#9baabf",minHeight:38}}>{form.vendedor||"Sin seleccionar"}</div><button onClick={()=>setModalVendedor(true)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"9px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Elegir</button></div>)}
-      {campo("Nombre de Fantasía",inp("nombreFantasia","Ej: LOI SUITES"),true)}
-      {campo("Razón Social",inp("razonSocial","Ej: LOITEGUI SA"),true)}
-      {campo("Dirección",inp("direccion","Dirección de instalación"),true)}
-      {campo("Provincia",<div style={{display:"flex",gap:6,alignItems:"center"}}><div style={{flex:1,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",fontSize:13,color:form.provincia?"#1a2340":"#9baabf",minHeight:38}}>{form.provincia||"Sin seleccionar"}</div><button onClick={()=>setModalProvincia(true)} style={{background:"#1F3864",color:"white",border:"none",borderRadius:8,padding:"9px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Elegir</button></div>)}
-      {campo("Correo",inp("correo","email@ejemplo.com"))}
-      {campo("Nombre del Contacto",inp("contactoNombre","Ej: Juan Pérez"))}
-      {campo("Cargo",inp("contactoCargo","Ej: Gerente"))}
-      {campo("Teléfono",inp("contactoTel","Ej: 11-1234-5678"))}
-      {campo("Fecha de Solicitud",inp("fechaSolicitud","","date"))}
-    </div>
-    <p style={{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>💧 Condiciones Comerciales</p>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-      {campo("Modelo",sel("modelo",MODELOS_ALL))}
-      {campo("Valor / Acuerdo",inp("valor","Ej: $350.000"))}
-      {campo("Instalación",inp("instalacion","Ej: Bonificada 100%"))}
-      {campo("Insumos",inp("insumos","Ej: 200 botellas"))}
-      {campo("Contrato",inp("contrato","Ej: 24 meses"))}
-      {campo("Ajuste",sel("ajuste",AJUSTES))}
-      {campo("Observaciones",<textarea value={form.observaciones||""} onChange={e=>setF("observaciones",e.target.value)} rows={2} style={{...SS,resize:"vertical"}}/>,true)}
-    </div>
-    <button onClick={guardar} style={{width:"100%",background:editandoId?"#1a5c3a":"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer"}}>
-      {editandoId?"✔ Guardar cambios":"✔ Guardar Cierre"}
-    </button>
-  </div></div>);
-
   return(<div>
-    {showForm&&<FormModal/>}
+    {showForm&&<CierreFormModal form={form} setF={setF} editandoId={editandoId} guardar={guardar} cancelar={cancelar} modalVendedor={modalVendedor} setModalVendedor={setModalVendedor} modalProvincia={modalProvincia} setModalProvincia={setModalProvincia}/>}
     {modalAsesor&&<ModalLista titulo="Asignar Asesor At. Cliente" items={ASESORES_ATCLTE} onSelect={a=>asignarAsesor(modalAsesor,a)} onClose={()=>setModalAsesor(null)}/>}
     {chatCierreId&&(()=>{const c=cierres.find(x=>x.id===chatCierreId);return c?<ClienteChat clienteId={`cierre_${chatCierreId}`} clienteNombre={c.nombreFantasia} onClose={()=>setChatCierreId(null)}/>:null;})()}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -610,7 +610,7 @@ function Comercial({onNuevoCierre}){
       <select value={fModelo} onChange={e=>setFModelo(e.target.value)} style={SS}><option value="Todos">Todos los modelos</option>{MODELOS_ALL.map(m=><option key={m}>{m}</option>)}</select>
     </div>
     <p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{filteredCierres.length} de {cierres.length} cierres</p>
-    {cierres.length===0&&!showForm&&<div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",textAlign:"center",border:"1px solid #dce6f5"}}><p style={{margin:0,fontSize:13,color:"#6b7a99"}}>No hay cierres.</p></div>}
+    {cierres.length===0&&<div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",textAlign:"center",border:"1px solid #dce6f5"}}><p style={{margin:0,fontSize:13,color:"#6b7a99"}}>No hay cierres.</p></div>}
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
       {filteredCierres.map(c=>{
         const open=expandedId===c.id,sinAsesor=!c.asesor;
