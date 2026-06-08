@@ -188,8 +188,8 @@ function generarDOCX(f,tipo){
     p([new TextRun({text:"3.",font:FONT,size:SZ}),R("\t"),R(`Una vez aceptada por Uds. la Oferta conforme al párrafo 2 precedente, la relación comercial resultante entre las Partes será regida por los términos y condiciones que se adjuntan como `),N("Anexo I.")],AlignmentType.JUSTIFIED,0.3,80),
     ...(isH?[g([R("La Oferta se regirá por las leyes de la República Argentina y toda controversia que pueda generarse será resuelta por los Tribunales Nacionales Ordinarios de la Ciudad Autónoma de Buenos Aires.")])]:[]),
     pl([R("Atentamente,")]),
-    // Espacio grande para firma de Nacho
-    pl([R("")],600),
+    // Espacio grande para firma (imagen JPG de Nacho)
+    pl([R("")],1200),
     pl([N("_______________")],0),
     pl([N(`p/${loc}`)],0),
     pl([N(`Aclaración: ${rep}`)],0),
