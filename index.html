@@ -166,6 +166,17 @@ function generarDOCX(f,tipo){
   const g=ch=>p([R("    - "),...ch],AlignmentType.JUSTIFIED,0.3,80);
 
   const pb=()=>new Paragraph({children:[new PageBreak()],spacing:{after:0}});
+
+  // ── Mapeo sigla → nombre completo para el contrato ──
+  const MODELO_LABELS={
+    "SM 30":"SOBRE MESADA 30","SM 80":"SOBRE MESADA 80",
+    "BM 80":"BAJO MESADA 80","RBF":"REBEL FIZZ 30",
+    "WL7":"WL7","RBL":"REBEL","OFF20":"OFF 20",
+    "Ecochic":"ECOCHIC",
+    "31A":"31A","120P":"120P","210P":"210P","420P":"420P","700P":"700P","1500P":"1500P",
+    "A Definir":"A DEFINIR"
+  };
+  const modeloLabel=(MODELO_LABELS[f.modelo]||f.modelo).toUpperCase();
   const SOCIEDAD_LABELS={"S.A.":"Sociedad Anónima","S.R.L.":"Sociedad de Responsabilidad Limitada","S.A.S.":"Sociedad por Acciones Simplificada","Responsable Inscripto":"Responsable Inscripto","Monotributista":"Monotributista","Asociación Civil":"Asociación Civil"};
   const tipoSociedadLabel=SOCIEDAD_LABELS[f.tipoSociedad]||f.tipoSociedad;
   const botDesc=isH?"":`${hasCO2?"2 (dos) cilindros CO2 los cuales son rotativos en base al requerimiento del Locatorio y ":""}${cb} (${numLetras(cb)}) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una`;
@@ -221,7 +232,7 @@ function generarDOCX(f,tipo){
     // ── PRIMERA ──
     tit("PRIMERA. OBJETO"),
     ...(()=>{newSec();return isH?[
-      pt([R(`El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de un (1) equipo fabricador de hielo marca `),N('"HIELOGIC"'),R(`, modelo `),N(`"${f.modelo}"`),R(` N° de serie _____________________ (el "Equipo").`)]),
+      pt([R(`El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de un (1) equipo fabricador de hielo marca `),N('"HIELOGIC"'),R(`, modelo `),N(`"${modeloLabel}"`),R(` N° de serie _____________________ (el "Equipo").`)]),
       pt([R(`El Equipo es de titularidad exclusiva de ${loc}, el cual será entregado al Locatario, en comodato, e instalado en el inmueble sito en `),N(f.direccion),R(` (el "Inmueble") para el uso y goce del mismo por parte del Locatario (el "Servicio" y/o los "Servicios").`)]),
       pt([R(`El Servicio será prestado -única y exclusivamente- dentro de las instalaciones del Inmueble, mediante la instalación del Equipo -única y exclusivamente- por parte del personal de ${loc}, el cual se encuentra en perfecto estado de conservación y funcionamiento.`)]),
       pt([R("Las Partes acuerdan que, a partir de la instalación del Equipo, el Locador asistirá al Inmueble cada noventa (90) días a fin de efectuar la revisión, mantenimiento, cambio de filtros y/o reposición -en caso de corresponder- del Equipo, previa coordinación con el Locatario de fecha y hora de visita.")]),
@@ -231,7 +242,7 @@ function generarDOCX(f,tipo){
       pt([N(loc),R(" se encuentra facultado -a su exclusivo arbitrio- a modificar y/o reemplazar en cualquier momento el Equipo instalado en el Inmueble, previa comunicación fehaciente al mismo.")]),
       pt([R(`Las reparaciones y/o mantenimiento del Equipo podrán ser realizados, única y exclusivamente, por el personal a cargo de ${loc}.`)]),
     ]:[
-      pt([R(`El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de dispensadores y purificadores de agua potable correspondiente a la máquina `),N(`"${f.modelo}"`),R(` de marca `),N('"AQA"'),R(` (la "Máquina")${isO?`, incluyendo la provisión de 1 (un) cilindro de CO2 y 20 (veinte) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una (los "Equipos"). La oferta contempla 6 (seis) recargas de CO2 bonificadas por año. Las unidades adicionales serán facturadas según la mensualidad vigente.`:` que incluye la provisión de ${botDesc} (los "Equipos").`}`)]),
+      pt([R(`El Objeto de la presente Oferta es la prestación del servicio de entrega en comodato y mantenimiento de dispensadores y purificadores de agua potable correspondiente a la máquina `),N(`"${modeloLabel}"`),R(` de marca `),N('"AQA"'),R(` (la "Máquina")${isO?`, incluyendo la provisión de 1 (un) cilindro de CO2 y 20 (veinte) botellas de vidrio reutilizables marca "AQA" de 500 ml de capacidad cada una (los "Equipos"). La oferta contempla 6 (seis) recargas de CO2 bonificadas por año. Las unidades adicionales serán facturadas según la mensualidad vigente.`:` que incluye la provisión de ${botDesc} (los "Equipos").`}`)]),
       pt([R(`La Máquina es de titularidad exclusiva de ${loc}, la cual será entregada al Locatario, en comodato, e instalada en el inmueble sito en `),N(`Calle ${f.direccion}`),R(` (el "Inmueble") para el uso y goce de la misma por parte del Locatario (el "Servicio" y/o los "Servicios").`)]),
       pt([R(`El Servicio será prestado -única y exclusivamente- dentro de las instalaciones del Inmueble, mediante la instalación de la Máquina por parte del personal de ${loc}, la cual se encuentran en perfecto estado de conservación y funcionamiento.`)]),
       pt([R("Las Partes acuerdan que, a partir de la instalación de la Máquina, el Locador asistirá al Inmueble cada noventa (90) días a fin de efectuar la revisión, mantenimiento, cambio de filtros y/o reposición - en caso de corresponder- de la Máquina, previa coordinación con el Locatario de fecha y hora de visita.")]),
@@ -257,7 +268,7 @@ function generarDOCX(f,tipo){
       pt([R("En caso de que el Locatario solicite un cambio de la Máquina por un modelo distinto, previa conformidad expresa del Locador, se actualizará automáticamente el Precio de conformidad con el nuevo modelo de máquina solicitado por el Locatario.")]),
       pt([R("El costo de la instalación inicial de la Máquina se encuentra a cargo exclusivamente del Locatario, el cual asciende a la suma total de "),N(`$${ci.toLocaleString("es-AR")} (Pesos ${numLetras(ci)})`),R(" más IVA (el \"Costo de instalación\")")]),
       pt([R("El Locatario declara -expresa e irrevocablemente- conocer el valor total de los Equipos entregados en comodato (el \"Valor de Reposición\"), el cual al día de la fecha ascienden a las sumas detalladas a continuación:")]),
-      p([R("   "),isH?R(`Equipo fabricador de hielo "HIELOGIC" "${f.modelo}": `):R("Máquina "),N(`"AQA" "${f.modelo}"`),R(` USD ${usd.value} (dólares estadounidenses ${usd.letras}) + IVA`)],AlignmentType.JUSTIFIED,0.5,80),
+      p([R("   "),isH?R(`Equipo fabricador de hielo "HIELOGIC" "${modeloLabel}": `):R("Máquina "),N(`"AQA" "${modeloLabel}"`),R(` USD ${usd.value} (dólares estadounidenses ${usd.letras}) + IVA`)],AlignmentType.JUSTIFIED,0.5,80),
       ...(hasCO2&&!isH?[p([R("   Cilindros de CO2: USD 350 (dólares estadounidenses trescientos cincuenta) + IVA")],AlignmentType.JUSTIFIED,0.5,80)]:[]),
       pt([R(`El Locatario declara y garantiza expresamente que, ante la pérdida, robo, hurto, destrucción total y/o parcial y/o falta de restitución de la Máquina, abonará a ${loc}, dentro del plazo máximo de diez (10) días hábiles contados a partir la fecha de intimación fehaciente, el Valor de Reposición.`)]),
       ...(!isH?[pt([R("El costo de reposición correspondiente a las botellas de AQA, por unidad, asciende a la suma de USD 2 (dólar estadounidense dos) más IVA (valor unitario), y la suma de USD 0,20 (veinte centavos de dólar) más IVA en concepto de reposición de las tapas (valor unitario). El importe será determinado conforme a la cotización oficial del dólar, del Banco de la Nación Argentina, vigente a la fecha de emisión de la factura.")])]:[]),
@@ -403,9 +414,8 @@ function generarDOCX(f,tipo){
       pt([R("Las Partes acuerdan que toda controversia que se suscite entre las Partes con relación al presente acuerdo, su existencia, validez, calificación, interpretación, alcance, cumplimiento o resolución, se resolverá definitivamente por los Tribunales Nacionales Ordinarios con asiento en la Ciudad Autónoma de Buenos Aires renunciando a cualquier otro fuero que pudiese corresponderles.")]),
     ];})(),
 
-    // CARTA DE ACEPTACIÓN
-    pb(),
-    pr([R("Ciudad Autónoma de Buenos Aires, "),N(fecha)]),
+    // CARTA DE ACEPTACIÓN — pageBreakBefore en el primer párrafo para evitar hoja en blanco
+    new Paragraph({children:[R("Ciudad Autónoma de Buenos Aires, "),N(fecha)],alignment:AlignmentType.RIGHT,spacing:{after:120},pageBreakBefore:true}),
     pl([R("Sres.")],0),pl([N(loc)],0),pl([R(`${dom}, CABA`)],0),pl([R(`At.: Sr. ${rep},`)]),
     pc([N(`Re: Aceptación de Oferta de prestación de servicios N°${f.nro}/26`)]),
     pl([R("De nuestra consideración:")]),
@@ -429,8 +439,11 @@ function generarDOCX(f,tipo){
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
     a.href=url;
-    const nombre=(f.razonSocial||"cliente").replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
-    a.download=`Contrato_${tipo.replace(/\s+/g,"_")}_${nombre}_${f.dia}${(f.mes||"").slice(0,3)}2026.docx`;
+    // Formato: NroOferta - Carta de Acuerdo - RazonSocial - [Provincia si Interior] - Modelo siglas - Unidad
+    const unidad=isH?(isI?"Hielogic Interior":"Hielogic Buenos Aires"):isO?"AQA Office":isI?"AQA Interior":"AQA Buenos Aires";
+    const rs=(f.razonSocial||f.razonSocial||"Cliente").replace(/[/\\:*?"<>|]/g,"").trim();
+    const partes=[f.nro,"Carta de Acuerdo",rs,...(isI&&f.provincia?[f.provincia]:[]),f.modelo,unidad];
+    a.download=partes.join(" - ")+".docx";
     a.click();URL.revokeObjectURL(url);
   });
 }
