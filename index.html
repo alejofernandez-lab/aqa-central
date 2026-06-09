@@ -534,6 +534,7 @@ function CierreFormModal({initialForm,editandoId,onGuardar,onCancelar,fb}){
           {campo("Cargo",inp("contactoCargo","Ej: Gerente"))}
           {campo("Teléfono",inp("contactoTel","Ej: 11-1234-5678"))}
           {campo("Fecha de Solicitud",inp("fechaSolicitud","","date"))}
+          {campo("Estado",<select value={form.estadoCierre||"Pendiente"} onChange={e=>setF("estadoCierre",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="Pendiente">🟡 Pendiente</option><option value="Instalado">🟢 Instalado</option><option value="Baja">🔴 Baja</option></select>)}
         </div>
         <p style={{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>💧 Condiciones Comerciales</p>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
@@ -554,7 +555,7 @@ function CierreFormModal({initialForm,editandoId,onGuardar,onCancelar,fb}){
 }
 
 // ── Comercial ─────────────────────────────────────────────────────
-const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",provincia:"",correo:"",contactoNombre:"",contactoCargo:"",contactoTel:"",fechaSolicitud:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:""};
+const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",provincia:"",correo:"",contactoNombre:"",contactoCargo:"",contactoTel:"",fechaSolicitud:"",modelo:"",valor:"",instalacion:"",insumos:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",estadoCierre:"Pendiente"};
 const EMAILS_ADMIN=["administracion@aqa.com.ar","alejo.fernandez@aqa.com.ar"];
 function Comercial({onNuevoCierre}){
   const fb=useFirebase();
@@ -571,6 +572,7 @@ function Comercial({onNuevoCierre}){
   const[fClasif,setFClasif]=useState("Todas");
   const[fModelo,setFModelo]=useState("Todos");
   const[fAsesorCom,setFAsesorCom]=useState("Todos");
+  const[fEstadoCierre,setFEstadoCierre]=useState("Todos");
   const[qCom,setQCom]=useState("");
   const[modalVendedor,setModalVendedor]=useState(false);
   const[modalAsesor,setModalAsesor]=useState(null);
@@ -582,7 +584,7 @@ function Comercial({onNuevoCierre}){
   useEffect(()=>{if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const q=query(collection(db,"cierres"),orderBy("ts","desc"));const unsub=onSnapshot(q,snap=>{setCierres(snap.docs.map(d=>({id:d.id,...d.data()})));setLoading(false);});return()=>unsub();},[fb]);
   useEffect(()=>{if(fb&&loading)setLoading(false);},[fb]);
 
-  const filteredCierres=useMemo(()=>cierres.filter(c=>{const sq=qCom.toLowerCase();return(c.nombreFantasia||"").toLowerCase().includes(sq)||(c.razonSocial||"").toLowerCase().includes(sq)||(c.vendedor||"").toLowerCase().includes(sq);}).filter(c=>fVendedor==="Todos"||(c.vendedor||"")===fVendedor).filter(c=>fProvincia==="Todas"||(c.provincia||"")===fProvincia).filter(c=>fClasif==="Todas"||(c.clasificacion||"")===fClasif).filter(c=>fModelo==="Todos"||(c.modelo||"")===fModelo).filter(c=>fAsesorCom==="Todos"||(c.asesor||"")===fAsesorCom),[cierres,qCom,fVendedor,fProvincia,fClasif,fModelo,fAsesorCom]);
+  const filteredCierres=useMemo(()=>cierres.filter(c=>{const sq=qCom.toLowerCase();return(c.nombreFantasia||"").toLowerCase().includes(sq)||(c.razonSocial||"").toLowerCase().includes(sq)||(c.vendedor||"").toLowerCase().includes(sq);}).filter(c=>fVendedor==="Todos"||(c.vendedor||"")===fVendedor).filter(c=>fProvincia==="Todas"||(c.provincia||"")===fProvincia).filter(c=>fClasif==="Todas"||(c.clasificacion||"")===fClasif).filter(c=>fModelo==="Todos"||(c.modelo||"")===fModelo).filter(c=>fAsesorCom==="Todos"||(c.asesor||"")===fAsesorCom).filter(c=>fEstadoCierre==="Todos"||(c.estadoCierre||"Pendiente")===fEstadoCierre),[cierres,qCom,fVendedor,fProvincia,fClasif,fModelo,fAsesorCom,fEstadoCierre]);
 
   const abrirNuevo=()=>{setEditandoId(null);setInitialForm(CIERRE_VACIO);setShowForm(true);};
   const abrirEdicion=(c)=>{setEditandoId(c.id);setInitialForm({...CIERRE_VACIO,...c});setShowForm(true);setExpandedId(null);};
@@ -623,6 +625,7 @@ function Comercial({onNuevoCierre}){
     </div>
     <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
       <input placeholder="Buscar cliente..." value={qCom} onChange={e=>setQCom(e.target.value)} style={{...SS,flex:1,minWidth:140}}/>
+      <select value={fEstadoCierre} onChange={e=>setFEstadoCierre(e.target.value)} style={SS}><option value="Todos">Todos los estados</option><option value="Pendiente">🟡 Pendiente</option><option value="Instalado">🟢 Instalado</option><option value="Baja">🔴 Baja</option></select>
       <select value={fAsesorCom} onChange={e=>setFAsesorCom(e.target.value)} style={SS}><option value="Todos">Todos los asesores</option><option value="">Sin asignar</option>{ASESORES_ATCLTE.map(a=><option key={a}>{a}</option>)}</select>
       <select value={fVendedor} onChange={e=>setFVendedor(e.target.value)} style={SS}><option value="Todos">Todos los vendedores</option>{VENDEDORES.map(v=><option key={v}>{v}</option>)}</select>
       <select value={fProvincia} onChange={e=>setFProvincia(e.target.value)} style={SS}><option value="Todas">Todas las provincias</option>{PROVINCIAS.map(p=><option key={p}>{p}</option>)}</select>
@@ -634,7 +637,11 @@ function Comercial({onNuevoCierre}){
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
       {filteredCierres.map(c=>{
         const open=expandedId===c.id,sinAsesor=!c.asesor;
-        return(<div key={c.id} style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${sinAsesor?"#EF9F27":"#2E75B6"}`}}>
+        const est=c.estadoCierre||"Pendiente";
+        const estColor=est==="Instalado"?"#2E75B6":est==="Baja"?"#791F1F":"#EF9F27";
+        const estBg=est==="Instalado"?"#e8f1fb":est==="Baja"?"#FCEBEB":"#FAEEDA";
+        const estIcon=est==="Instalado"?"🟢":est==="Baja"?"🔴":"🟡";
+        return(<div key={c.id} style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${estColor}`}}>
           <div onClick={()=>setExpandedId(open?null:c.id)} style={{padding:"12px 14px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
             <div style={{minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -645,6 +652,7 @@ function Comercial({onNuevoCierre}){
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
               <button onClick={e=>{e.stopPropagation();setChatCierreId(c.id);}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬</button>
+              <span style={{background:estBg,color:estColor,fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:600}}>{estIcon} {est}</span>
               {esAdmin&&<button onClick={e=>{e.stopPropagation();abrirEdicion(c);}} style={{background:"#f0f4ff",color:"#1F3864",border:"1px solid #c5d3f0",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>✏️ Editar</button>}
               {esAdmin&&<button onClick={e=>{e.stopPropagation();eliminar(c.id,c.nombreFantasia);}} style={{background:"#FCEBEB",color:"#791F1F",border:"1px solid #f5c6c6",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>🗑</button>}
               <span style={{background:"#e8f1fb",color:"#1F3864",fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:500}}>{c.fecha}</span>
