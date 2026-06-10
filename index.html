@@ -597,14 +597,9 @@ Si un campo no está, dejá "". Si no encontrás el mail respondé: {"error":"no
           {campo("Ajuste",sel("ajuste",AJUSTES))}
           {campo("Observaciones",<textarea value={form.observaciones||""} onChange={e=>setF("observaciones",e.target.value)} rows={2} style={{...SS,resize:"vertical"}}/>,true)}
         </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={guardar} style={{flex:1,background:editandoId?"#1a5c3a":"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer"}}>
-            {editandoId?"✔ Guardar cambios":"✔ Guardar Cierre"}
-          </button>
-          <button onClick={buscarMail} disabled={buscandoMail} style={{background:"#e8f1fb",color:"#1F3864",border:"1px solid #c5d3f0",borderRadius:10,padding:"13px 16px",fontSize:13,fontWeight:600,cursor:buscandoMail?"not-allowed":"pointer",whiteSpace:"nowrap",opacity:buscandoMail?0.6:1}}>
-            {buscandoMail?"🔍 Buscando...":"📧 Buscar mail"}
-          </button>
-        </div>
+        <button onClick={guardar} style={{width:"100%",background:editandoId?"#1a5c3a":"#1F3864",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer"}}>
+          {editandoId?"✔ Guardar cambios":"✔ Guardar Cierre"}
+        </button>
       </div>
     </div>
   );
