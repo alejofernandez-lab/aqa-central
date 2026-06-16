@@ -499,49 +499,15 @@ function GeneradorContratos(){
 }
 
 // ── Form Modal de Comercial (estado interno para no perder foco) ──
-function CierreFormModal({initialForm,editandoId,onGuardar,onCancelar,fb}){
+function CierreFormModal({initialForm,editandoId,onGuardar,onCancelar}){
   const[form,setForm]=useState({...CIERRE_VACIO,...(initialForm||{})});
   const[modalVendedor,setModalVendedor]=useState(false);
   const[modalProvincia,setModalProvincia]=useState(false);
-  const[buscandoMail,setBuscandoMail]=useState(false);
-  const[mailPreview,setMailPreview]=useState(null);
   const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
   const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
   const inp=(k,ph,type="text")=><input type={type} value={form[k]||""} onChange={e=>setF(k,e.target.value)} placeholder={ph} style={SS}/>;
   const sel=(k,opts,ph="Seleccionar...")=><select value={form[k]||""} onChange={e=>setF(k,e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">{ph}</option>{opts.map(o=><option key={o}>{o}</option>)}</select>;
   const campo=(label,child,full=false)=><div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.5px"}}>{label}</label>{child}</div>;
-
-  const CAMPO_LABELS={razonSocial:"Razón Social",direccion:"Dirección",correo:"Correo",contactoNombre:"Contacto",contactoTel:"Teléfono",valor:"Valor",instalacion:"Instalación",insumos:"Insumos",contrato:"Contrato",ajuste:"Ajuste",provincia:"Provincia",observaciones:"Observaciones"};
-
-  const buscarMail=async()=>{
-    if(!form.nombreFantasia){alert("Completá el Nombre de Fantasía primero");return;}
-    setBuscandoMail(true);setMailPreview(null);
-    try{
-      const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",max_tokens:1000,
-        system:`Sos un asistente que busca mails de cierre comercial de AQA/Hielogic en Gmail y extrae datos estructurados.
-Buscá en Gmail el mail de cierre del cliente "${form.nombreFantasia}". Los mails tienen asunto tipo "Cerrado - Alquiler AQA - [cliente]" o "ALTA DE CLIENTE HIELOGIC - [cliente]" o "[cliente] CERRADO".
-Extraé los datos del bloque estructurado. Respondé ÚNICAMENTE con JSON válido sin markdown con estas keys exactas:
-razonSocial, direccion, correo, contactoNombre, contactoTel, valor, instalacion, insumos, contrato, ajuste, provincia, observaciones
-Si un campo no está, dejá "". Si no encontrás el mail respondé: {"error":"no encontrado"}`,
-        messages:[{role:"user",content:`Buscá el mail de cierre para: ${form.nombreFantasia}`}],
-        mcp_servers:[{type:"url",url:"https://gmailmcp.googleapis.com/mcp/v1",name:"gmail"}]
-      })});
-      const data=await resp.json();
-      const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
-      const clean=text.replace(/```json|```/g,"").trim();
-      const parsed=JSON.parse(clean);
-      if(parsed.error) alert(`No encontré el mail de cierre para "${form.nombreFantasia}".`);
-      else setMailPreview(parsed);
-    }catch(e){alert("Error: "+e.message);}
-    setBuscandoMail(false);
-  };
-
-  const aplicarPreview=()=>{
-    setForm(prev=>{const next={...prev};Object.keys(mailPreview).forEach(k=>{if(mailPreview[k]&&!prev[k])next[k]=mailPreview[k];});return next;});
-    setMailPreview(null);
-  };
-
   const guardar=async()=>{
     if(!form.nombreFantasia){alert("Completá al menos el Nombre de Fantasía");return;}
     await onGuardar(form,editandoId);
@@ -555,23 +521,6 @@ Si un campo no está, dejá "". Si no encontrás el mail respondé: {"error":"no
         </div>
         {modalVendedor&&<ModalLista titulo="Seleccionar Vendedor" items={VENDEDORES} onSelect={v=>setF("vendedor",v)} onClose={()=>setModalVendedor(false)}/>}
         {modalProvincia&&<ModalLista titulo="Seleccionar Provincia" items={PROVINCIAS} onSelect={v=>setF("provincia",v)} onClose={()=>setModalProvincia(false)}/>}
-        {mailPreview&&(
-          <div style={{background:"#EAF3DE",border:"1px solid #7bc44c",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
-            <p style={{margin:"0 0 8px",fontSize:12,fontWeight:600,color:"#27500A"}}>📧 Datos encontrados en Gmail — solo se aplicarán los campos vacíos:</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:10}}>
-              {Object.entries(mailPreview).filter(([,v])=>v).map(([k,v])=>(
-                <div key={k} style={{background:"#fff",borderRadius:6,padding:"5px 8px",opacity:form[k]?0.4:1}}>
-                  <p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{CAMPO_LABELS[k]||k}{form[k]?" (ya tiene dato)":""}</p>
-                  <p style={{margin:0,fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v}</p>
-                </div>
-              ))}
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={aplicarPreview} style={{background:"#27500A",color:"white",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer"}}>✔ Aplicar</button>
-              <button onClick={()=>setMailPreview(null)} style={{background:"transparent",color:"#791F1F",border:"1px solid #791F1F",borderRadius:8,padding:"8px 16px",fontSize:12,cursor:"pointer"}}>✕ Descartar</button>
-            </div>
-          </div>
-        )}
         <p style={{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>📋 Datos del Cliente</p>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
           {campo("Clasificación",sel("clasificacion",CLASIFICACIONES))}
@@ -667,7 +616,7 @@ function Comercial({onNuevoCierre}){
   if(loading||!fb)return <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>{!fb?"Conectando a Firebase...":"Cargando cierres..."}</div>;
 
   return(<div>
-    {showForm&&<CierreFormModal initialForm={initialForm} editandoId={editandoId} onGuardar={guardar} onCancelar={cancelar} fb={fb}/>}
+    {showForm&&<CierreFormModal initialForm={initialForm} editandoId={editandoId} onGuardar={guardar} onCancelar={cancelar}/>}
     {modalAsesor&&<ModalLista titulo="Asignar Asesor At. Cliente" items={ASESORES_ATCLTE} onSelect={a=>asignarAsesor(modalAsesor,a)} onClose={()=>setModalAsesor(null)}/>}
     {chatCierreId&&(()=>{const c=cierres.find(x=>x.id===chatCierreId);return c?<ClienteChat clienteId={`cierre_${chatCierreId}`} clienteNombre={c.nombreFantasia} onClose={()=>setChatCierreId(null)}/>:null;})()}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
