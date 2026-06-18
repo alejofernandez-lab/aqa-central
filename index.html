@@ -153,72 +153,6 @@ function ModalTipoBotellas({cantActual,tipoActual,onConfirm,onClose}){
   );
 }
 
-function LinksDocumentacionModal({cierreId,archivosActuales,onClose}){
-  const fb=useFirebase();
-  const[links,setLinks]=useState(archivosActuales||[]);
-  const[nuevoNombre,setNuevoNombre]=useState("");
-  const[nuevoUrl,setNuevoUrl]=useState("");
-  const[guardando,setGuardando]=useState(false);
-  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
-
-  const agregar=async()=>{
-    if(!nuevoUrl.trim()){alert("Pegá el link de Drive");return;}
-    if(!fb)return;
-    setGuardando(true);
-    const nombre=nuevoNombre.trim()||"Documento";
-    const nuevo={nombre,url:nuevoUrl.trim(),ts:Date.now()};
-    const nuevos=[...links,nuevo];
-    const{db,doc,setDoc}=fb;
-    await setDoc(doc(db,"cierres",cierreId),{archivos:nuevos},{merge:true});
-    setLinks(nuevos);
-    setNuevoNombre("");setNuevoUrl("");
-    setGuardando(false);
-  };
-
-  const eliminar=async(idx)=>{
-    if(!fb||!confirm("¿Eliminar este link?"))return;
-    const nuevos=links.filter((_,i)=>i!==idx);
-    const{db,doc,setDoc}=fb;
-    await setDoc(doc(db,"cierres",cierreId),{archivos:nuevos},{merge:true});
-    setLinks(nuevos);
-  };
-
-  return(
-    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}>
-      <div className="modal" style={{maxWidth:480}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <div>
-            <p style={{margin:0,fontSize:15,fontWeight:600}}>📎 Documentación</p>
-            <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>{links.length} link{links.length!==1?"s":""} guardado{links.length!==1?"s":""}</p>
-          </div>
-          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
-        </div>
-
-        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
-          {links.length===0&&<p style={{textAlign:"center",color:"#9baabf",fontSize:12,padding:"1rem 0"}}>Sin documentos todavía</p>}
-          {links.map((l,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:10,background:"#f4f7fb",borderRadius:8,padding:"8px 12px"}}>
-              <span style={{fontSize:18}}>📄</span>
-              <a href={l.url} target="_blank" rel="noreferrer" style={{flex:1,fontSize:12,color:"#1F3864",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textDecoration:"none"}}>{l.nombre}</a>
-              <button onClick={()=>eliminar(i)} style={{background:"none",border:"none",cursor:"pointer",color:"#dc3545",fontSize:15,flexShrink:0}}>🗑</button>
-            </div>
-          ))}
-        </div>
-
-        <div style={{borderTop:"1px solid #dce6f5",paddingTop:14,display:"flex",flexDirection:"column",gap:8}}>
-          <p style={{margin:0,fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>Agregar link de Drive</p>
-          <input value={nuevoNombre} onChange={e=>setNuevoNombre(e.target.value)} placeholder="Nombre del documento (ej: DNI Juan Pérez)" style={SS}/>
-          <input value={nuevoUrl} onChange={e=>setNuevoUrl(e.target.value)} placeholder="Pegá el link de Google Drive..." style={SS}/>
-          <button onClick={agregar} disabled={guardando} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:guardando?"not-allowed":"pointer",opacity:guardando?.7:1}}>
-            {guardando?"Guardando...":"+ Agregar link"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 function CadenaInput({value,onChange,cadenas}){
   const[inputVal,setInputVal]=useState(value||"");
   const[showSugg,setShowSugg]=useState(false);
@@ -376,7 +310,7 @@ function CierreFormModal({initialForm,editandoId,onGuardar,onCancelar,todosLosCi
   );
 }
 
-const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",provincia:"",correo:"",contactoNombre:"",contactoCargo:"",contactoTel:"",fechaSolicitud:"",modelo:"",valor:"",instalacion:"",cantBotellas:"",tipoBotellas:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",estadoCierre:"Pendiente",cadena:"",archivos:[]};
+const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",provincia:"",correo:"",contactoNombre:"",contactoCargo:"",contactoTel:"",fechaSolicitud:"",modelo:"",valor:"",instalacion:"",cantBotellas:"",tipoBotellas:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",estadoCierre:"Pendiente",cadena:""};
 const EMAILS_ADMIN=["administracion@aqa.com.ar","alejo.fernandez@aqa.com.ar","santiago.puigmarti@aqa.com.ar"];
 function Comercial({onNuevoCierre}){
   const fb=useFirebase();
@@ -398,7 +332,6 @@ function Comercial({onNuevoCierre}){
   const[qCom,setQCom]=useState("");
   const[modalAsesor,setModalAsesor]=useState(null);
   const[chatCierreId,setChatCierreId]=useState(null);
-  const[archivosCierreId,setArchivosCierreId]=useState(null);
   const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
 
   useEffect(()=>{if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const q=query(collection(db,"cierres"),orderBy("ts","desc"));const unsub=onSnapshot(q,snap=>{setCierres(snap.docs.map(d=>({id:d.id,...d.data()})));setLoading(false);});return()=>unsub();},[fb]);
@@ -441,7 +374,7 @@ function Comercial({onNuevoCierre}){
     {showForm&&<CierreFormModal initialForm={initialForm} editandoId={editandoId} onGuardar={guardar} onCancelar={cancelar} todosLosCierres={cierres}/>}
     {modalAsesor&&<ModalLista titulo="Asignar Asesor At. Cliente" items={ASESORES_ATCLTE} onSelect={a=>asignarAsesor(modalAsesor,a)} onClose={()=>setModalAsesor(null)}/>}
     {chatCierreId&&(()=>{const c=cierres.find(x=>x.id===chatCierreId);return c?<ClienteChat clienteId={`cierre_${chatCierreId}`} clienteNombre={c.nombreFantasia} onClose={()=>setChatCierreId(null)}/>:null;})()}
-    {archivosCierreId&&<LinksDocumentacionModal cierreId={archivosCierreId} archivosActuales={cierres.find(x=>x.id===archivosCierreId)?.archivos||[]} onClose={()=>setArchivosCierreId(null)}/>}
+    
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
       <div><p style={{margin:0,fontSize:14,fontWeight:600}}>Comercial</p><p style={{margin:0,fontSize:12,color:"#6b7a99"}}>{cierres.length} cierres · tiempo real 🟢</p></div>
       <button onClick={abrirNuevo} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"9px 18px",fontSize:13,fontWeight:600,cursor:"pointer"}}>+ Nuevo Cierre</button>
@@ -465,7 +398,6 @@ function Comercial({onNuevoCierre}){
         const estColor=est==="Instalado"?"#2E75B6":est==="Baja"?"#791F1F":"#EF9F27";
         const estBg=est==="Instalado"?"#e8f1fb":est==="Baja"?"#FCEBEB":"#FAEEDA";
         const estIcon=est==="Instalado"?"🟢":est==="Baja"?"🔴":"🟡";
-        const nArchivos=(c.archivos||[]).length;
         return(<div key={c.id} style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${estColor}`}}>
           <div onClick={()=>setExpandedId(open?null:c.id)} style={{padding:"12px 14px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
             <div style={{minWidth:0}}>
@@ -478,7 +410,7 @@ function Comercial({onNuevoCierre}){
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
               <button onClick={e=>{e.stopPropagation();setChatCierreId(c.id);}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬</button>
-              <button onClick={e=>{e.stopPropagation();setArchivosCierreId(c.id);}} style={{background:nArchivos>0?"#e6f4ec":"#f4f7fb",color:nArchivos>0?"#1a5c3a":"#6b7a99",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>📎{nArchivos>0?` ${nArchivos}`:""}</button>
+
               <span style={{background:estBg,color:estColor,fontSize:11,padding:"2px 8px",borderRadius:6,fontWeight:600}}>{estIcon} {est}</span>
               {esAdmin&&<button onClick={e=>{e.stopPropagation();abrirEdicion(c);}} style={{background:"#f0f4ff",color:"#1F3864",border:"1px solid #c5d3f0",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>✏️ Editar</button>}
               {esAdmin&&<button onClick={e=>{e.stopPropagation();eliminar(c.id,c.nombreFantasia);}} style={{background:"#FCEBEB",color:"#791F1F",border:"1px solid #f5c6c6",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>🗑</button>}
@@ -498,7 +430,7 @@ function Comercial({onNuevoCierre}){
               </div>
             </div>
             {c.observaciones&&<div style={{background:"#fffbe6",borderRadius:8,padding:"7px 10px",border:"1px solid #f0d060",marginTop:8}}><p style={{margin:0,fontSize:10,color:"#856404"}}>Observaciones</p><p style={{margin:0,fontSize:12,fontWeight:500}}>{c.observaciones}</p></div>}
-            {(c.archivos||[]).length>0&&<div style={{marginTop:8}}><p style={{margin:"0 0 6px",fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>Documentación adjunta</p><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{(c.archivos||[]).map((a,i)=><a key={i} href={a.url} target="_blank" rel="noreferrer" style={{background:"#e8f1fb",color:"#1F3864",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:500,textDecoration:"none"}}>📎 {a.nombre}</a>)}</div></div>}
+
           </div>)}
         </div>);
       })}
@@ -513,8 +445,13 @@ function splitLine(line){const cols=[];let cur="",inQ=false;for(let i=0;i<line.l
 function parseCSVText(text){const norm=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");const logical=[];let cur="",inQ=false;for(let i=0;i<norm.length;i++){const ch=norm[i];if(ch==='"'){inQ=!inQ;cur+=ch;}else if(ch==='\n'&&!inQ){logical.push(cur);cur="";}else{cur+=ch;}}if(cur)logical.push(cur);if(logical.length<2)return{headers:[],rows:[]};const headers=splitLine(logical[0]).map(h=>h.replace(/"/g,"").trim()).filter(Boolean);const rows=logical.slice(1).map(line=>{const cols=splitLine(line);const row={};headers.forEach((h,i)=>{row[h]=(cols[i]||"").replace(/"/g,"").replace(/\n/g," ").trim();});return row;}).filter(r=>Object.values(r).some(v=>v));return{headers,rows};}
 function parseNum(s){const clean=(s||"").trim().replace(/\$/g,"").replace(/\s/g,"");if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(clean))return parseFloat(clean.replace(/\./g,"").replace(",","."))||0;if(/,/.test(clean)&&!/\./.test(clean))return parseFloat(clean.replace(",","."))||0;return parseFloat(clean.replace(",",""))||0;}
 function parseEstado(f,g){const check=s=>{const sl=(s||"").toLowerCase();if(sl.includes("inhabilitado"))return"inhabilitado";if(sl.includes("facturas")||sl.includes("pendiente"))return"pendiente";return"habilitado";};const ef=check(f),eg=check(g);if(ef==="inhabilitado"||eg==="inhabilitado")return"inhabilitado";if(ef==="pendiente"||eg==="pendiente")return"pendiente";return"habilitado";}
-function parseCob(text,cartera){const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");if(lines.length<2)return[];return lines.slice(1).map(line=>{const c=splitLine(line);const[asesorCob,id,modelo,abono,nombre,colF,colG,deudaRaw,fcRaw,mensRaw]=c;if(!id?.trim()||!nombre?.trim())return null;return{id:id.trim(),nombre:nombre.trim(),modelo:modelo||"",asesorCob:asesorCob||"",abono:parseNum(abono),estado:parseEstado(colF,colG),deuda:parseNum(deudaRaw),fc:parseInt(fcRaw)||0,mens:parseInt(mensRaw)||0,cartera,asesorAtClte:"",fechaInstalacion:"",localidad:"",provincia:""};}).filter(Boolean);}
-function parseComodato(text,cartera){const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");if(lines.length<2)return{map:{},clientes:[]};const map={},clientes=[];const cfg={"Buenos Aires":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:8,localidad:-1,provincia:-1},"Interior":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:6,provincia:7},"Hielogic":{asesor:0,vendedor:2,modelo:3,nombre:4,id:5,razonSocial:6,fecha:9,localidad:-1,provincia:-1},"AQA Office":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:-1,provincia:-1}};const idx=cfg[cartera]||cfg["Buenos Aires"];lines.slice(1).forEach(line=>{const cols=splitLine(line);const asesorAtClte=(cols[0]||"").trim();const vendedor=(cols[1]||"").trim();const modelo=(cols[idx.modelo]||"").trim();const nombre=(cols[idx.nombre]||"").replace(/"/g,"").trim();const idPersat=(cols[idx.id]||"").trim();const razonSocial=idx.razonSocial>=0?(cols[idx.razonSocial]||"").replace(/"/g,"").trim():"";const fechaInstalacion=(cols[idx.fecha]||"").trim();const localidad=idx.localidad>=0?(cols[idx.localidad]||"").trim():"";const provincia=idx.provincia>=0?(cols[idx.provincia]||"").trim():"";if(!nombre&&!idPersat)return;const entry={asesorAtClte,vendedor,razonSocial,fechaInstalacion,localidad,provincia};if(idPersat){map[idPersat]=entry;map[String(parseInt(idPersat)||0)]=entry;}if(nombre)map[nombre.toLowerCase()]=entry;if(nombre)clientes.push({id:idPersat||nombre,nombre,modelo,razonSocial,asesorCob:"—",asesorAtClte,vendedor,abono:0,estado:"habilitado",deuda:0,fc:0,mens:0,cartera,fechaInstalacion,localidad,provincia,_soloComodato:true});});return{map,clientes};}
+function parseCob(text,cartera){const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");if(lines.length<2)return[];
+const headers=splitLine(lines[0]).map(h=>h.replace(/"/g,"").trim().toLowerCase());
+const iUlt=headers.findIndex(h=>h.includes("lt")&&h.includes("ajus"));
+const iProx=headers.findIndex(h=>h.includes("rox")&&h.includes("ajus"));
+const iTipo=headers.findIndex(h=>h.includes("tipo")&&h.includes("ajus"));
+return lines.slice(1).map(line=>{const c=splitLine(line);const[asesorCob,id,modelo,abono,nombre,colF,colG,deudaRaw,fcRaw,mensRaw]=c;if(!id?.trim()||!nombre?.trim())return null;return{id:id.trim(),nombre:nombre.trim(),modelo:modelo||"",asesorCob:asesorCob||"",abono:parseNum(abono),estado:parseEstado(colF,colG),deuda:parseNum(deudaRaw),fc:parseInt(fcRaw)||0,mens:parseInt(mensRaw)||0,ultAjuste:iUlt>=0?(c[iUlt]||"").replace(/"/g,"").trim():"",proxAjuste:iProx>=0?(c[iProx]||"").replace(/"/g,"").trim():"",tipoAjuste:iTipo>=0?(c[iTipo]||"").replace(/"/g,"").trim():"",cartera,asesorAtClte:"",fechaInstalacion:"",localidad:"",provincia:""};}).filter(Boolean);}
+function parseComodato(text,cartera){const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");if(lines.length<2)return{map:{},clientes:[]};const map={},clientes=[];const cfg={"Buenos Aires":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:8,localidad:-1,provincia:-1,proxAjuste:10},"Interior":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:6,provincia:7,proxAjuste:9},"Hielogic":{asesor:0,vendedor:2,modelo:3,nombre:4,id:5,razonSocial:6,fecha:9,localidad:-1,provincia:-1,proxAjuste:11},"AQA Office":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:-1,provincia:-1,proxAjuste:-1}};const idx=cfg[cartera]||cfg["Buenos Aires"];lines.slice(1).forEach(line=>{const cols=splitLine(line);const asesorAtClte=(cols[0]||"").trim();const vendedor=(cols[1]||"").trim();const modelo=(cols[idx.modelo]||"").trim();const nombre=(cols[idx.nombre]||"").replace(/"/g,"").trim();const idPersat=(cols[idx.id]||"").trim();const razonSocial=idx.razonSocial>=0?(cols[idx.razonSocial]||"").replace(/"/g,"").trim():"";const fechaInstalacion=(cols[idx.fecha]||"").trim();const localidad=idx.localidad>=0?(cols[idx.localidad]||"").trim():"";const provincia=idx.provincia>=0?(cols[idx.provincia]||"").trim():"";const proxAjuste=idx.proxAjuste>=0?(cols[idx.proxAjuste]||"").trim():"";if(!nombre&&!idPersat)return;const entry={asesorAtClte,vendedor,razonSocial,fechaInstalacion,localidad,provincia,proxAjuste};if(idPersat){map[idPersat]=entry;map[String(parseInt(idPersat)||0)]=entry;}if(nombre)map[nombre.toLowerCase()]=entry;if(nombre)clientes.push({id:idPersat||nombre,nombre,modelo,razonSocial,asesorCob:"—",asesorAtClte,vendedor,abono:0,estado:"habilitado",deuda:0,fc:0,mens:0,cartera,fechaInstalacion,localidad,provincia,proxAjuste,_soloComodato:true});});return{map,clientes};}
 
 const safeFetch=url=>fetch(url).then(r=>{if(!r.ok)throw new Error();return r.text();});
 const fmt=n=>n<=0?"Sin deuda":"$"+Math.round(n).toLocaleString("es-AR");
@@ -883,7 +820,7 @@ function App(){
     const r1=parseComodato(rComBsAs,"Buenos Aires"),r2=parseComodato(rComInt,"Interior"),r3=parseComodato(rComHiel,"Hielogic"),r4=parseComodato(rComOff,"AQA Office");
     const ri1=parseComodato(rInstBsAs,"Buenos Aires"),ri2=parseComodato(rInstInt,"Interior"),ri3=parseComodato(rInstHiel,"Hielogic");
     const cmap={};[r1.map,r2.map,r3.map,r4.map,ri1.map,ri2.map,ri3.map].forEach(m=>{Object.entries(m).forEach(([k,v])=>{if(!cmap[k])cmap[k]={...v};else{if(!cmap[k].vendedor&&v.vendedor)cmap[k].vendedor=v.vendedor;if(!cmap[k].asesorAtClte&&v.asesorAtClte)cmap[k].asesorAtClte=v.asesorAtClte;if(!cmap[k].fechaInstalacion&&v.fechaInstalacion)cmap[k].fechaInstalacion=v.fechaInstalacion;}});});
-    const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmap[c.nombre?.toLowerCase()]||{};return{...c,asesorAtClte:x.asesorAtClte||"",vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||""};});
+    const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmap[c.nombre?.toLowerCase()]||{};return{...c,asesorAtClte:x.asesorAtClte||"",vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:x.proxAjuste||""};});
     const cobIds=new Set(cobClientes.map(c=>c.id));
     const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id));
     const all=[...cobClientes,...soloComodato];if(all.length>0)setClientes(all);
@@ -902,7 +839,7 @@ function App(){
 
   const SS={fontSize:13,padding:"8px 10px",borderRadius:8,border:"1px solid #dce6f5",background:"#fff",color:"#1a2340",outline:"none"};
 
-  function ClienteCard({c}){const av=avColor(c.asesorAtClte||c.asesorCob);const open=expanded?.id===c.id&&expanded?.n===c.nombre;return(<div style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${c.estado==="inhabilitado"?"#E24B4A":c.estado==="pendiente"?"#EF9F27":"#639922"}`}}><div onClick={()=>setExpanded(open?null:{id:c.id,n:c.nombre})} style={{padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}><div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}><div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div><div style={{minWidth:0}}><p style={{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</p><p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}{c.cartera==="Interior"&&c.localidad?` · ${c.localidad}`:""}{c.cartera==="Interior"&&c.provincia?`, ${c.provincia}`:""}{c.vendedor?` · 🤝 ${c.vendedor}`:""}</p></div></div><div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}><button onClick={e=>{e.stopPropagation();setChatCliente({id:`cliente_${c.id}`,nombre:c.nombre});}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬</button><Badge estado={c.estado}/><span style={{fontSize:11,color:c.deuda>500000?"#791F1F":c.deuda>0?"#633806":"#6b7a99",fontWeight:c.deuda>500000?600:400,whiteSpace:"nowrap"}}>{fmt(c.deuda)}</span></div></div>{open&&(<div style={{padding:"0 14px 12px",borderTop:"1px solid #dce6f5"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6,marginTop:10}}>{[{l:"Razón Social",v:c.razonSocial||"—"},{l:"Modelo",v:c.modelo||"—"},{l:"Vendedor",v:c.vendedor||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"},...(c.cartera==="Interior"&&c.localidad?[{l:"Localidad",v:c.localidad}]:[]),...(c.cartera==="Interior"&&c.provincia?[{l:"Provincia",v:c.provincia}]:[])].map(({l,v})=>(<div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}><p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p><p style={{margin:0,fontSize:13,fontWeight:500}}>{v}</p></div>))}</div></div>)}</div>);}
+  function ClienteCard({c}){const av=avColor(c.asesorAtClte||c.asesorCob);const open=expanded?.id===c.id&&expanded?.n===c.nombre;return(<div style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${c.estado==="inhabilitado"?"#E24B4A":c.estado==="pendiente"?"#EF9F27":"#639922"}`}}><div onClick={()=>setExpanded(open?null:{id:c.id,n:c.nombre})} style={{padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}><div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}><div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div><div style={{minWidth:0}}><p style={{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</p><p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}{c.cartera==="Interior"&&c.localidad?` · ${c.localidad}`:""}{c.cartera==="Interior"&&c.provincia?`, ${c.provincia}`:""}{c.vendedor?` · 🤝 ${c.vendedor}`:""}</p></div></div><div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}><button onClick={e=>{e.stopPropagation();setChatCliente({id:`cliente_${c.id}`,nombre:c.nombre});}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬</button><Badge estado={c.estado}/><span style={{fontSize:11,color:c.deuda>500000?"#791F1F":c.deuda>0?"#633806":"#6b7a99",fontWeight:c.deuda>500000?600:400,whiteSpace:"nowrap"}}>{fmt(c.deuda)}</span></div></div>{open&&(<div style={{padding:"0 14px 12px",borderTop:"1px solid #dce6f5"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6,marginTop:10}}>{[{l:"Razón Social",v:c.razonSocial||"—"},{l:"Modelo",v:c.modelo||"—"},{l:"Vendedor",v:c.vendedor||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"},{l:"Próx. Ajuste",v:c.proxAjuste||"—"},{l:"Últ. Ajuste",v:c.ultAjuste||"—"},{l:"Próx. Ajuste",v:c.proxAjuste||"—"},{l:"Tipo Ajuste",v:c.tipoAjuste?"cada "+c.tipoAjuste+" meses":"—"},...(c.cartera==="Interior"&&c.localidad?[{l:"Localidad",v:c.localidad}]:[]),...(c.cartera==="Interior"&&c.provincia?[{l:"Provincia",v:c.provincia}]:[])].map(({l,v})=>(<div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}><p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p><p style={{margin:0,fontSize:13,fontWeight:500}}>{v}</p></div>))}</div></div>)}</div>);}
 
   if(loading)return <div style={{padding:"3rem",textAlign:"center",color:"#6b7a99",fontSize:14}}>Cargando AQA Central...</div>;
   return(<div style={{color:"#1a2340"}}>
