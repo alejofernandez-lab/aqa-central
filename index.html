@@ -34,6 +34,21 @@ input,select,textarea{font-family:inherit}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:460px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.18)}
 .pac-container{z-index:9999!important}
+.kanban-wrap{overflow-x:auto;padding-bottom:12px}
+.kanban-board{display:flex;gap:10px;align-items:flex-start;min-width:max-content}
+.kanban-col{width:230px;background:#f0f3f8;border-radius:12px;padding:10px;flex-shrink:0}
+.kanban-col.drag-over{outline:2px dashed #8a3a00;background:#fff5f0}
+.kanban-col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.kanban-col-title{font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.kanban-col-count{font-size:11px;background:rgba(0,0,0,.1);padding:1px 6px;border-radius:8px;font-weight:700}
+.kanban-card{background:#fff;border-radius:9px;padding:10px 11px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:3px solid #dce6f5;cursor:grab;user-select:none;transition:box-shadow .15s}
+.kanban-card:hover{box-shadow:0 3px 10px rgba(0,0,0,.13)}
+.kanban-card.dragging{opacity:.4}
+.kanban-card-name{font-size:12px;font-weight:700;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kanban-card-meta{font-size:10px;color:#6b7a99;line-height:1.6}
+.kanban-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:5px;font-weight:600;margin-top:3px}
+.add-btn{width:100%;background:none;border:1.5px dashed #c5d3e8;border-radius:7px;padding:7px;font-size:11px;color:#9baabf;cursor:pointer;margin-top:3px;transition:all .15s}
+.add-btn:hover{background:#e8eef8;border-color:#8a3a00;color:#8a3a00}
 </style>
 </head>
 <body>
@@ -92,6 +107,14 @@ const TIPOS_CONTRATO=["Buenos Aires","Interior con CO2","Interior sin CO2","Hiel
 const TIPO_COLORS={"Buenos Aires":"#1F3864","Interior con CO2":"#1a5c3a","Interior sin CO2":"#2d6a4f","Hielogic Buenos Aires":"#5a1a8a","Hielogic Interior":"#7b2d8b","AQA Office":"#8a3a00"};
 const EQUIPOS_SEG={"Comercial":VENDEDORES,"Atención al Cliente":ASESORES_ATCLTE,"Logística":["Facundo Costabel","Alex Iraldi","Antonella Legname","Brian Gonzalez","Sebastian Garcia"],"Cobranzas":["Dante Briceño","Mathias Servin","Dorotea Mazzieri","Milagros Saracco"]};
 const PAL=[{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
+const LOG_ASESORES=["Agustín","Migue","Kathy","Nela","Tomi","Chuli","Anto","Pablo","Lourdes","Depósito","Logística"];
+const LOG_TIPOS_TRABAJO=["Instalación","Relevamiento","Mantenimiento","Reparación","Entrega","Cambio de Modelo","Cambio de Ubicación","Proveedores","Recambio de CO2","Desinstalación"];
+const LOG_TIPOS_CLIENTE=["AQA","Hielogic","AQA Office","Eventos","Entrega","Filtros","Venta"];
+const LOG_PLAZAS=["Alto Valle","Ushuaia","Calafate","Bariloche","Mendoza","Mar del Plata","Córdoba","Rosario","Santa Fe","Chaco","Misiones","Salta","Tucumán","La Rioja","Distancia","Uruguay"];
+const COLS_CABA=[{id:"Sin categorizar",label:"Sin categorizar",color:"#6b7a99",bg:"#edf0f7"},{id:"Solicitado",label:"Solicitado",color:"#c0392b",bg:"#fdecea"},{id:"Visto Logística",label:"Visto Logística",color:"#b8860b",bg:"#fef9e3"},{id:"En Proceso",label:"En Proceso",color:"#d35400",bg:"#fdf0e0"},{id:"Con Fecha",label:"Con Fecha",color:"#27ae60",bg:"#eafaf1"},{id:"Confirmado AC",label:"Confirmado AC",color:"#2980b9",bg:"#eaf4fb"},{id:"Realizado",label:"Realizado",color:"#1a5c3a",bg:"#e6f4ec"},{id:"Stand By",label:"Stand By",color:"#8e44ad",bg:"#f4eafb"}];
+const COLS_INT=[...COLS_CABA,{id:"ENVÍO - Solicitado",label:"ENVÍO - Solicitado",color:"#b03ab0",bg:"#fce8fc"},{id:"ENVÍO - En Proceso",label:"ENVÍO - En Proceso",color:"#8a2a8a",bg:"#f5e0f5"},{id:"ENVÍO - Despachado",label:"ENVÍO - Despachado",color:"#5a1a7a",bg:"#ece0f5"},{id:"ENVÍO - Entregado",label:"ENVÍO - Entregado",color:"#2e0a50",bg:"#e0d8f0"}];
+const ALL_STATUSES=[...new Set([...COLS_INT.map(c=>c.id)])];
+const PEDIDO_VACIO={nombreFantasia:"",tipoTrabajo:"",tipoCliente:"",asesor:"",status:"Solicitado",fechaAsignada:"",fechaYHora:"",coordinadoNombre:"",coordinadoTel:"",direccion:"",detalles:"",documentacion:"",plaza:"",zona:""};
 
 // ── NUEVO CierreFormModal con todos los cambios de Santi ──────────
 function DireccionAutocomplete({value, onChange, SS}){
@@ -837,6 +860,189 @@ function GeneradorContratos(){
   </div>);
 }
 
+
+// ── LOGÍSTICA ────────────────────────────────────────────────────
+
+function PedidoFormModal({initial,editandoId,zona,onGuardar,onCancelar}){
+  const[form,setForm]=useState({...PEDIDO_VACIO,...(initial||{}),zona});
+  const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+  const inp=(k,ph,type="text")=><input type={type} value={form[k]||""} onChange={e=>setF(k,e.target.value)} placeholder={ph} style={SS}/>;
+  const campo=(label,child,full=false)=><div style={{display:"flex",flexDirection:"column",gap:4,gridColumn:full?"1/-1":"auto"}}><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px"}}>{label}</label>{child}</div>;
+  const esInt=zona==="Interior";
+  const guardar=async()=>{if(!form.nombreFantasia){alert("Ingresá el Nombre de Fantasía");return;}await onGuardar(form,editandoId);};
+  return(
+    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onCancelar();}}>
+      <div className="modal" style={{maxWidth:580}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div><p style={{margin:0,fontSize:15,fontWeight:600}}>{editandoId?"✏️ Editar Pedido":"📦 Nuevo Pedido"}</p><p style={{margin:0,fontSize:11,color:"#6b7a99"}}>Logística {zona}</p></div>
+          <button onClick={onCancelar} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+          {campo("Nombre de Fantasía",inp("nombreFantasia","Ej: LOI SUITES"),true)}
+          {campo("Tipo de Trabajo",<select value={form.tipoTrabajo||""} onChange={e=>setF("tipoTrabajo",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{LOG_TIPOS_TRABAJO.map(t=><option key={t}>{t}</option>)}</select>)}
+          {campo("Tipo de Cliente",<select value={form.tipoCliente||""} onChange={e=>setF("tipoCliente",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{LOG_TIPOS_CLIENTE.map(t=><option key={t}>{t}</option>)}</select>)}
+          {campo("Asesor/a",<select value={form.asesor||""} onChange={e=>setF("asesor",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{LOG_ASESORES.map(a=><option key={a}>{a}</option>)}</select>)}
+          {campo("Status",<select value={form.status||"Solicitado"} onChange={e=>setF("status",e.target.value)} style={{...SS,cursor:"pointer"}}>{ALL_STATUSES.map(s=><option key={s}>{s}</option>)}</select>)}
+          {esInt&&campo("Plaza",<select value={form.plaza||""} onChange={e=>setF("plaza",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{LOG_PLAZAS.map(p=><option key={p}>{p}</option>)}</select>)}
+          {campo("Fecha Asignada (Logística)",inp("fechaAsignada","","date"))}
+          {campo("Fecha y Hora Disponible (AC)",inp("fechaYHora","Ej: Lun-Mar 9 a 12hs"))}
+          {campo("Coordinado con (nombre)",inp("coordinadoNombre","Ej: Karen"))}
+          {campo("Teléfono coordinación",inp("coordinadoTel","Ej: +54 9 11 1234-5678"))}
+          {campo("Dirección",inp("direccion","Ej: Av. Corrientes 1234"),true)}
+          {campo("Detalles / Observaciones",<textarea value={form.detalles||""} onChange={e=>setF("detalles",e.target.value)} rows={3} placeholder="Describí el pedido..." style={{...SS,resize:"vertical"}}/>,true)}
+          {campo("Documentación requerida",inp("documentacion","Ej: Habilitación municipal"),true)}
+        </div>
+        <button onClick={guardar} style={{width:"100%",background:"#8a3a00",color:"white",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer"}}>
+          {editandoId?"✔ Guardar cambios":"✔ Crear Pedido"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function KanbanCard({pedido,onEdit,onDelete}){
+  const cols=[...COLS_CABA,...COLS_INT.slice(COLS_CABA.length)];
+  const colMeta=cols.find(c=>c.id===pedido.status)||{color:"#6b7a99"};
+  const ttColors={"Instalación":"#1a5c3a","Desinstalación":"#8a2a2a","Reparación":"#8a5a00","Entrega":"#1a3a8a","Relevamiento":"#5a1a8a","Mantenimiento":"#0a5a5a","Recambio de CO2":"#4a7a00","Cambio de Modelo":"#7a4a00","Cambio de Ubicación":"#4a4a8a","Proveedores":"#6b7a99"};
+  const ttC=ttColors[pedido.tipoTrabajo]||"#6b7a99";
+  return(
+    <div className="kanban-card" draggable onDragStart={e=>e.dataTransfer.setData("pedidoId",pedido.id)} style={{borderLeftColor:colMeta.color}}>
+      <div className="kanban-card-name">{pedido.nombreFantasia||"Sin nombre"}</div>
+      {pedido.tipoTrabajo&&<span className="kanban-badge" style={{background:ttC+"22",color:ttC}}>{pedido.tipoTrabajo}</span>}
+      <div className="kanban-card-meta" style={{marginTop:4}}>
+        {pedido.asesor&&<div>👤 {pedido.asesor}</div>}
+        {pedido.fechaAsignada&&<div>📅 {pedido.fechaAsignada}</div>}
+        {pedido.tipoCliente&&<div>🏷 {pedido.tipoCliente}</div>}
+        {pedido.plaza&&<div>📍 {pedido.plaza}</div>}
+        {pedido.detalles&&<div style={{marginTop:2,color:"#8a9ab5",fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pedido.detalles}</div>}
+      </div>
+      <div style={{display:"flex",gap:4,marginTop:8}}>
+        <button onClick={()=>onEdit(pedido)} style={{flex:1,background:"#f0f4ff",color:"#1F3864",border:"none",borderRadius:6,padding:"4px",fontSize:11,cursor:"pointer"}}>✏️ Editar</button>
+        <button onClick={()=>onDelete(pedido)} style={{background:"#fef0f0",color:"#c0392b",border:"none",borderRadius:6,padding:"4px 8px",fontSize:11,cursor:"pointer"}}>🗑</button>
+      </div>
+    </div>
+  );
+}
+
+function KanbanColumn({col,pedidos,onAddCard,onEdit,onDelete,onDrop}){
+  const[dragOver,setDragOver]=useState(false);
+  return(
+    <div className={`kanban-col${dragOver?" drag-over":""}`} style={{background:dragOver?col.bg+"cc":col.bg}}
+      onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+      onDragLeave={()=>setDragOver(false)}
+      onDrop={e=>{e.preventDefault();setDragOver(false);const id=e.dataTransfer.getData("pedidoId");if(id)onDrop(id,col.id);}}>
+      <div className="kanban-col-header">
+        <span className="kanban-col-title" style={{color:col.color}}>{col.label}</span>
+        <span className="kanban-col-count" style={{color:col.color}}>{pedidos.length}</span>
+      </div>
+      {pedidos.map(p=><KanbanCard key={p.id} pedido={p} onEdit={onEdit} onDelete={onDelete}/>)}
+      <button className="add-btn" onClick={()=>onAddCard(col.id)}>+ Añadir registro</button>
+    </div>
+  );
+}
+
+function LogisticaPedidos({zona}){
+  const fb=useFirebase();
+  const coleccion=zona==="CABA"?"pedidos_caba":"pedidos_interior";
+  const cols=zona==="CABA"?COLS_CABA:COLS_INT;
+  const[pedidos,setPedidos]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[showForm,setShowForm]=useState(false);
+  const[editandoId,setEditandoId]=useState(null);
+  const[initialForm,setInitialForm]=useState({...PEDIDO_VACIO,status:"Solicitado"});
+  const[fAsesor,setFAsesor]=useState("Todos");
+  const[fTipo,setFTipo]=useState("Todos");
+  const[fPlaza,setFPlaza]=useState("Todas");
+  const[q,setQ]=useState("");
+  const SS={fontSize:12,padding:"7px 10px",borderRadius:8,border:"1px solid #dce6f5",background:"#fff",color:"#1a2340",outline:"none"};
+
+  useEffect(()=>{if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,coleccion),orderBy("ts","desc"));const unsub=onSnapshot(qr,snap=>{setPedidos(snap.docs.map(d=>({id:d.id,...d.data()})));setLoading(false);});return()=>unsub();},[fb,coleccion]);
+  useEffect(()=>{if(fb&&loading)setLoading(false);},[fb]);
+
+  const filtrados=useMemo(()=>pedidos.filter(p=>{const sq=q.toLowerCase();return((p.nombreFantasia||"").toLowerCase().includes(sq)||(p.detalles||"").toLowerCase().includes(sq))&&(fAsesor==="Todos"||(p.asesor||"")===fAsesor)&&(fTipo==="Todos"||(p.tipoTrabajo||"")===fTipo)&&(fPlaza==="Todas"||(p.plaza||"")===fPlaza);}),[pedidos,q,fAsesor,fTipo,fPlaza]);
+
+  const porCol=useMemo(()=>{const m={};cols.forEach(c=>{m[c.id]=[];});filtrados.forEach(p=>{const col=p.status||"Sin categorizar";if(m[col])m[col].push(p);else if(m["Sin categorizar"])m["Sin categorizar"].push(p);});return m;},[filtrados,cols]);
+
+  const abrirNuevo=(statusDefault="Solicitado")=>{setEditandoId(null);setInitialForm({...PEDIDO_VACIO,status:statusDefault,zona});setShowForm(true);};
+  const abrirEdicion=(p)=>{setEditandoId(p.id);setInitialForm({...PEDIDO_VACIO,...p});setShowForm(true);};
+  const guardar=async(form,eid)=>{if(!fb)return;const{db,collection,addDoc,doc,setDoc}=fb;const data={...form,zona,ts:eid?form.ts:Date.now(),updatedAt:Date.now()};if(eid)await setDoc(doc(db,coleccion,eid),data,{merge:true});else await addDoc(collection(db,coleccion),{...data,createdAt:Date.now()});setShowForm(false);setEditandoId(null);};
+  const eliminar=async(p)=>{if(!confirm(`¿Eliminar "${p.nombreFantasia}"?`))return;if(!fb)return;const{db,doc,deleteDoc}=fb;await deleteDoc(doc(db,coleccion,p.id));};
+  const onDrop=async(pedidoId,newStatus)=>{if(!fb)return;const{db,doc,setDoc}=fb;await setDoc(doc(db,coleccion,pedidoId),{status:newStatus,updatedAt:Date.now()},{merge:true});};
+
+  if(!fb||loading)return <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Conectando...</div>;
+
+  return(
+    <div>
+      {showForm&&<PedidoFormModal initial={initialForm} editandoId={editandoId} zona={zona} onGuardar={guardar} onCancelar={()=>{setShowForm(false);setEditandoId(null);}}/>}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div><p style={{margin:0,fontSize:13,fontWeight:600}}>Logística {zona}</p><p style={{margin:0,fontSize:11,color:"#6b7a99"}}>{pedidos.length} pedidos · tiempo real 🟢</p></div>
+        <button onClick={()=>abrirNuevo()} style={{background:"#8a3a00",color:"white",border:"none",borderRadius:10,padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer"}}>+ Nuevo pedido</button>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        <input placeholder="Buscar cliente..." value={q} onChange={e=>setQ(e.target.value)} style={{...SS,flex:1,minWidth:120}}/>
+        <select value={fAsesor} onChange={e=>setFAsesor(e.target.value)} style={SS}><option value="Todos">Todos los asesores</option>{LOG_ASESORES.map(a=><option key={a}>{a}</option>)}</select>
+        <select value={fTipo} onChange={e=>setFTipo(e.target.value)} style={SS}><option value="Todos">Todos los tipos</option>{LOG_TIPOS_TRABAJO.map(t=><option key={t}>{t}</option>)}</select>
+        {zona==="Interior"&&<select value={fPlaza} onChange={e=>setFPlaza(e.target.value)} style={SS}><option value="Todas">Todas las plazas</option>{LOG_PLAZAS.map(p=><option key={p}>{p}</option>)}</select>}
+      </div>
+      <div className="kanban-wrap">
+        <div className="kanban-board">
+          {cols.map(col=><KanbanColumn key={col.id} col={col} pedidos={porCol[col.id]||[]} onAddCard={s=>abrirNuevo(s)} onEdit={abrirEdicion} onDelete={eliminar} onDrop={onDrop}/>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Logistica(){
+  const[subTab,setSubTab]=useState("Pedidos");
+  const[zona,setZona]=useState(null);
+  const accent="#8a3a00";
+  return(
+    <div>
+      <TabBar tabs={["Pedidos","Stock","Mantenimientos"]} active={subTab} onChange={t=>{setSubTab(t);if(t!=="Pedidos")setZona(null);}} color={accent}/>
+      {subTab==="Pedidos"&&(
+        zona===null?(
+          <div>
+            <p style={{fontSize:13,color:"#6b7a99",marginBottom:16}}>Seleccioná la zona para gestionar los pedidos:</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <button onClick={()=>setZona("CABA")} style={{background:"#1F3864",color:"white",border:"none",borderRadius:14,padding:"28px 20px",fontSize:15,fontWeight:600,cursor:"pointer",textAlign:"left",lineHeight:1.5}}>
+                <div style={{fontSize:24,marginBottom:6}}>🏙️</div>
+                <div>Logística CABA</div>
+                <div style={{fontSize:11,opacity:.7,fontWeight:400,marginTop:2}}>Buenos Aires y alrededores</div>
+              </button>
+              <button onClick={()=>setZona("Interior")} style={{background:"#8a3a00",color:"white",border:"none",borderRadius:14,padding:"28px 20px",fontSize:15,fontWeight:600,cursor:"pointer",textAlign:"left",lineHeight:1.5}}>
+                <div style={{fontSize:24,marginBottom:6}}>🗺️</div>
+                <div>Logística Interior</div>
+                <div style={{fontSize:11,opacity:.7,fontWeight:400,marginTop:2}}>Provincias · Distancia · Uruguay</div>
+              </button>
+            </div>
+          </div>
+        ):(
+          <div>
+            <button onClick={()=>setZona(null)} style={{background:"none",border:"1px solid #dce6f5",borderRadius:8,padding:"5px 12px",fontSize:11,cursor:"pointer",color:"#6b7a99",marginBottom:12}}>← Cambiar zona</button>
+            <LogisticaPedidos zona={zona}/>
+          </div>
+        )
+      )}
+      {subTab==="Stock"&&(
+        <div style={{background:"#fff8f5",borderRadius:12,padding:"1.5rem",border:"1px dashed #d4a017",textAlign:"center"}}>
+          <div style={{fontSize:32,marginBottom:8}}>📦</div>
+          <p style={{margin:0,fontSize:14,fontWeight:600,color:accent}}>Stock — Próximamente</p>
+          <p style={{margin:"6px 0 0",fontSize:12,color:"#6b7a99"}}>Subí el archivo de Facu cuando esté listo y lo conectamos acá.</p>
+        </div>
+      )}
+      {subTab==="Mantenimientos"&&(
+        <div style={{background:"#fff8f5",borderRadius:12,padding:"1.5rem",border:"1px dashed #d4a017",textAlign:"center"}}>
+          <div style={{fontSize:32,marginBottom:8}}>🔧</div>
+          <p style={{margin:0,fontSize:14,fontWeight:600,color:accent}}>Mantenimientos — Próximamente</p>
+          <p style={{margin:"6px 0 0",fontSize:12,color:"#6b7a99"}}>Subí los archivos de tracking y lo conectamos.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── App Principal ─────────────────────────────────────────────────
 function App(){
   const[clientes,setClientes]=useState([]);const[loading,setLoading]=useState(true);const[lastUpdate,setLastUpdate]=useState("");
@@ -923,7 +1129,7 @@ function App(){
     </div>)}
 
     {tab==="Comercial"&&<Comercial onNuevoCierre={()=>{}}/>}
-    {tab==="Logística"&&<div style={{background:"#f4f7fb",borderRadius:12,padding:"1.25rem",border:"1px solid #dce6f5"}}><p style={{margin:"0 0 4px",fontSize:14,fontWeight:500}}>Próximamente</p><p style={{margin:0,fontSize:13,color:"#6b7a99"}}>Pedidos de CO2, botellas, tapas, relevos e instalaciones.</p></div>}
+    {tab==="Logística"&&<Logistica/>}
 
     {tab==="Administración"&&(<div>
       <TabBar tabs={ADM_TABS} active={admTab} onChange={setAdmTab} color="#1F3864"/>
