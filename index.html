@@ -66,6 +66,9 @@ const URLS = {
   intimaciones:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=354176531&single=true&output=csv",
   cartasDoc:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=0&single=true&output=csv",
   veraz:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=2086198383&single=true&output=csv",
+  ajusteBA:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRNn1ETmquqQWGNgY-Y3C42EO_eHdjwh8EnLymdGzFKyEazEWl8Epi6kfPUL9GbYwUTNztZgINdJJXI/pub?gid=0&single=true&output=csv",
+  ajusteInt:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQYaufxLU83qVrIUZuEazX8p4Cb0Agkb-VdblL9pcUjPt5djzLOI-OcxFlt3ULvox9c2OjTJxyKZ3rj/pub?gid=0&single=true&output=csv",
+  ajusteHiel:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQsBIhGoTDwzIGrP_LLr-yULEn_JBmlF41voThI6Fru_g9Vrxegf61Andu2-ktHpgkNokB2T9tiPd89/pub?gid=0&single=true&output=csv",
 };
 
 const LOG_URL_MAP={"Buenos Aires_Instalaciones Pendientes":"baInstPend","Buenos Aires_Comodato":"baComodato","Buenos Aires_Venta":"baVenta","Buenos Aires_Desinstalaciones":"baDesins","Interior_Instalaciones Pendientes":"intInstPend","Interior_Comodato":"intComodato","Interior_Venta":"intVenta","Interior_Desinstalaciones":"intDesins","Hielogic_Instalaciones Pendientes":"hielInstPend","Hielogic_Comodato":"hielComodato","Hielogic_Desinstalaciones":"hielDesins","AQA Office_Instalaciones Pendientes":"offInstPend","AQA Office_Comodato":"offComodato","AQA Office_Venta":"offVenta","AQA Office_Desinstalaciones":"offDesins"};
@@ -453,6 +456,37 @@ const iTipo=headers.findIndex(h=>h.includes("tipo")&&h.includes("ajus"));
 return lines.slice(1).map(line=>{const c=splitLine(line);const[asesorCob,id,modelo,abono,nombre,colF,colG,deudaRaw,fcRaw,mensRaw]=c;if(!id?.trim()||!nombre?.trim())return null;return{id:id.trim(),nombre:nombre.trim(),modelo:modelo||"",asesorCob:asesorCob||"",abono:parseNum(abono),estado:parseEstado(colF,colG),deuda:parseNum(deudaRaw),fc:parseInt(fcRaw)||0,mens:parseInt(mensRaw)||0,ultAjuste:iUlt>=0?(c[iUlt]||"").replace(/"/g,"").trim():"",proxAjuste:iProx>=0?(c[iProx]||"").replace(/"/g,"").trim():"",tipoAjuste:iTipo>=0?(c[iTipo]||"").replace(/"/g,"").trim():"",cartera,asesorAtClte:"",fechaInstalacion:"",localidad:"",provincia:""};}).filter(Boolean);}
 function parseComodato(text,cartera){const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");if(lines.length<2)return{map:{},clientes:[]};const map={},clientes=[];const cfg={"Buenos Aires":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:8,localidad:-1,provincia:-1,proxAjuste:10},"Interior":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:6,provincia:7,proxAjuste:9},"Hielogic":{asesor:0,vendedor:2,modelo:3,nombre:4,id:5,razonSocial:6,fecha:9,localidad:-1,provincia:-1,proxAjuste:11},"AQA Office":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:-1,provincia:-1,proxAjuste:-1}};const idx=cfg[cartera]||cfg["Buenos Aires"];lines.slice(1).forEach(line=>{const cols=splitLine(line);const asesorAtClte=(cols[0]||"").trim();const vendedor=(cols[1]||"").trim();const modelo=(cols[idx.modelo]||"").trim();const nombre=(cols[idx.nombre]||"").replace(/"/g,"").trim();const idPersat=(cols[idx.id]||"").trim();const razonSocial=idx.razonSocial>=0?(cols[idx.razonSocial]||"").replace(/"/g,"").trim():"";const fechaInstalacion=(cols[idx.fecha]||"").trim();const localidad=idx.localidad>=0?(cols[idx.localidad]||"").trim():"";const provincia=idx.provincia>=0?(cols[idx.provincia]||"").trim():"";const proxAjuste=idx.proxAjuste>=0?(cols[idx.proxAjuste]||"").trim():"";if(!nombre&&!idPersat)return;const entry={asesorAtClte,vendedor,razonSocial,fechaInstalacion,localidad,provincia,proxAjuste};if(idPersat){map[idPersat]=entry;map[String(parseInt(idPersat)||0)]=entry;}if(nombre)map[nombre.toLowerCase()]=entry;if(nombre)clientes.push({id:idPersat||nombre,nombre,modelo,razonSocial,asesorCob:"—",asesorAtClte,vendedor,abono:0,estado:"habilitado",deuda:0,fc:0,mens:0,cartera,fechaInstalacion,localidad,provincia,proxAjuste,_soloComodato:true});});return{map,clientes};}
 
+
+function parseAjuste(text, proxCol){
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");
+  if(lines.length<2)return{};
+  const map={};
+  lines.slice(1).forEach(line=>{
+    const cols=splitLine(line);
+    const id=(cols[0]||"").trim();
+    const prox=(cols[proxCol]||"").trim();
+    if(id&&prox){
+      map[id]=prox;
+      map[String(parseInt(id)||0)]=prox;
+    }
+  });
+  return map;
+}
+function parseAjustes(text, idCol, nombreCol, proxCol){
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");
+  if(lines.length<2)return{};
+  const map={};
+  lines.slice(1).forEach(line=>{
+    const cols=splitLine(line);
+    const id=(cols[idCol]||"").trim();
+    const nombre=(cols[nombreCol]||"").replace(/"/g,"").trim();
+    const prox=(cols[proxCol]||"").trim();
+    if(!prox)return;
+    if(id){map[id]=prox;map[String(parseInt(id)||0)]=prox;}
+    if(nombre)map[nombre.toLowerCase()]=prox;
+  });
+  return map;
+}
 const safeFetch=url=>fetch(url).then(r=>{if(!r.ok)throw new Error();return r.text();});
 const fmt=n=>n<=0?"Sin deuda":"$"+Math.round(n).toLocaleString("es-AR");
 const avColor=name=>PAL[(name||"?").split("").reduce((a,c)=>a+c.charCodeAt(0),0)%PAL.length];
@@ -812,17 +846,19 @@ function App(){
   const[expanded,setExpanded]=useState(null);const[chatCliente,setChatCliente]=useState(null);
 
   useEffect(()=>{(async()=>{try{
-    const[rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff,rInstBsAs,rInstInt,rInstHiel]=await Promise.all([
+    const[rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff,rInstBsAs,rInstInt,rInstHiel,rAjBA,rAjInt,rAjHiel]=await Promise.all([
       safeFetch(URLS.cobBsAs),safeFetch(URLS.cobInt),safeFetch(URLS.cobHiel),
       safeFetch(URLS.baComodato),safeFetch(URLS.intComodato),safeFetch(URLS.hielComodato),safeFetch(URLS.offComodato),
-      safeFetch(URLS.baInstPend),safeFetch(URLS.intInstPend),safeFetch(URLS.hielInstPend)
+      safeFetch(URLS.baInstPend),safeFetch(URLS.intInstPend),safeFetch(URLS.hielInstPend),
+      safeFetch(URLS.ajusteBA),safeFetch(URLS.ajusteInt),safeFetch(URLS.ajusteHiel)
     ]);
     const r1=parseComodato(rComBsAs,"Buenos Aires"),r2=parseComodato(rComInt,"Interior"),r3=parseComodato(rComHiel,"Hielogic"),r4=parseComodato(rComOff,"AQA Office");
     const ri1=parseComodato(rInstBsAs,"Buenos Aires"),ri2=parseComodato(rInstInt,"Interior"),ri3=parseComodato(rInstHiel,"Hielogic");
+    const ajusteMap={...parseAjustes(rAjBA,0,3,10),...parseAjustes(rAjInt,0,2,9),...parseAjustes(rAjHiel,0,3,11)};
     const cmap={};[r1.map,r2.map,r3.map,r4.map,ri1.map,ri2.map,ri3.map].forEach(m=>{Object.entries(m).forEach(([k,v])=>{if(!cmap[k])cmap[k]={...v};else{if(!cmap[k].vendedor&&v.vendedor)cmap[k].vendedor=v.vendedor;if(!cmap[k].asesorAtClte&&v.asesorAtClte)cmap[k].asesorAtClte=v.asesorAtClte;if(!cmap[k].fechaInstalacion&&v.fechaInstalacion)cmap[k].fechaInstalacion=v.fechaInstalacion;}});});
-    const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmap[c.nombre?.toLowerCase()]||{};return{...c,asesorAtClte:x.asesorAtClte||"",vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:x.proxAjuste||""};});
+    const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmap[c.nombre?.toLowerCase()]||{};return{...c,asesorAtClte:x.asesorAtClte||"",vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};});
     const cobIds=new Set(cobClientes.map(c=>c.id));
-    const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id));
+    const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id)).map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
     const all=[...cobClientes,...soloComodato];if(all.length>0)setClientes(all);
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
 
@@ -839,7 +875,7 @@ function App(){
 
   const SS={fontSize:13,padding:"8px 10px",borderRadius:8,border:"1px solid #dce6f5",background:"#fff",color:"#1a2340",outline:"none"};
 
-  function ClienteCard({c}){const av=avColor(c.asesorAtClte||c.asesorCob);const open=expanded?.id===c.id&&expanded?.n===c.nombre;return(<div style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${c.estado==="inhabilitado"?"#E24B4A":c.estado==="pendiente"?"#EF9F27":"#639922"}`}}><div onClick={()=>setExpanded(open?null:{id:c.id,n:c.nombre})} style={{padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}><div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}><div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div><div style={{minWidth:0}}><p style={{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</p><p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}{c.cartera==="Interior"&&c.localidad?` · ${c.localidad}`:""}{c.cartera==="Interior"&&c.provincia?`, ${c.provincia}`:""}{c.vendedor?` · 🤝 ${c.vendedor}`:""}</p></div></div><div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}><button onClick={e=>{e.stopPropagation();setChatCliente({id:`cliente_${c.id}`,nombre:c.nombre});}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬</button><Badge estado={c.estado}/><span style={{fontSize:11,color:c.deuda>500000?"#791F1F":c.deuda>0?"#633806":"#6b7a99",fontWeight:c.deuda>500000?600:400,whiteSpace:"nowrap"}}>{fmt(c.deuda)}</span></div></div>{open&&(<div style={{padding:"0 14px 12px",borderTop:"1px solid #dce6f5"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6,marginTop:10}}>{[{l:"Razón Social",v:c.razonSocial||"—"},{l:"Modelo",v:c.modelo||"—"},{l:"Vendedor",v:c.vendedor||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"},{l:"Próx. Ajuste",v:c.proxAjuste||"—"},{l:"Últ. Ajuste",v:c.ultAjuste||"—"},{l:"Próx. Ajuste",v:c.proxAjuste||"—"},{l:"Tipo Ajuste",v:c.tipoAjuste?"cada "+c.tipoAjuste+" meses":"—"},...(c.cartera==="Interior"&&c.localidad?[{l:"Localidad",v:c.localidad}]:[]),...(c.cartera==="Interior"&&c.provincia?[{l:"Provincia",v:c.provincia}]:[])].map(({l,v})=>(<div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}><p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p><p style={{margin:0,fontSize:13,fontWeight:500}}>{v}</p></div>))}</div></div>)}</div>);}
+  function ClienteCard({c}){const av=avColor(c.asesorAtClte||c.asesorCob);const open=expanded?.id===c.id&&expanded?.n===c.nombre;return(<div style={{background:"#fff",border:"1px solid #dce6f5",borderRadius:12,overflow:"hidden",borderLeft:`3px solid ${c.estado==="inhabilitado"?"#E24B4A":c.estado==="pendiente"?"#EF9F27":"#639922"}`}}><div onClick={()=>setExpanded(open?null:{id:c.id,n:c.nombre})} style={{padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}><div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}><div style={{width:28,height:28,borderRadius:"50%",background:av.bg,color:av.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}}>{initials(c.asesorAtClte||c.asesorCob)}</div><div style={{minWidth:0}}><p style={{margin:0,fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</p><p style={{margin:0,fontSize:11,color:"#6b7a99"}}>ID {c.id} · {c.modelo} · {c.cartera}{c.cartera==="Interior"&&c.localidad?` · ${c.localidad}`:""}{c.cartera==="Interior"&&c.provincia?`, ${c.provincia}`:""}{c.vendedor?` · 🤝 ${c.vendedor}`:""}</p></div></div><div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}><button onClick={e=>{e.stopPropagation();setChatCliente({id:`cliente_${c.id}`,nombre:c.nombre});}} style={{background:"#e8f1fb",color:"#1F3864",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:500}}>💬</button><Badge estado={c.estado}/><span style={{fontSize:11,color:c.deuda>500000?"#791F1F":c.deuda>0?"#633806":"#6b7a99",fontWeight:c.deuda>500000?600:400,whiteSpace:"nowrap"}}>{fmt(c.deuda)}</span></div></div>{open&&(<div style={{padding:"0 14px 12px",borderTop:"1px solid #dce6f5"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:6,marginTop:10}}>{[{l:"Razón Social",v:c.razonSocial||"—"},{l:"Modelo",v:c.modelo||"—"},{l:"Vendedor",v:c.vendedor||"—"},{l:"Abono s/IVA",v:c.abono>0?fmt(c.abono):"—"},{l:"Deuda",v:fmt(c.deuda)},{l:"FC pendientes",v:c.fc},{l:"Mensualidades",v:c.mens},{l:"Asesor At. Cliente",v:c.asesorAtClte||"—"},{l:"Asesor Cobranzas",v:c.asesorCob||"—"},{l:"Fecha Instalación",v:c.fechaInstalacion||"—"},{l:"Próx. Ajuste",v:c.proxAjuste||"—"},...(c.cartera==="Interior"&&c.localidad?[{l:"Localidad",v:c.localidad}]:[]),...(c.cartera==="Interior"&&c.provincia?[{l:"Provincia",v:c.provincia}]:[])].map(({l,v})=>(<div key={l} style={{background:"#f4f7fb",borderRadius:8,padding:"7px 10px"}}><p style={{margin:0,fontSize:10,color:"#6b7a99"}}>{l}</p><p style={{margin:0,fontSize:13,fontWeight:500}}>{v}</p></div>))}</div></div>)}</div>);}
 
   if(loading)return <div style={{padding:"3rem",textAlign:"center",color:"#6b7a99",fontSize:14}}>Cargando AQA Central...</div>;
   return(<div style={{color:"#1a2340"}}>
