@@ -881,7 +881,23 @@ function PedidoFormModal({initial,editandoId,zona,onGuardar,onCancelar}){
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
           {campo("Nombre de Fantasía",inp("nombreFantasia","Ej: LOI SUITES"),true)}
           {campo("Tipo de Trabajo",<select value={form.tipoTrabajo||""} onChange={e=>setF("tipoTrabajo",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{LOG_TIPOS_TRABAJO.map(t=><option key={t}>{t}</option>)}</select>)}
-          {campo("Tipo de Cliente",<select value={form.tipoCliente||""} onChange={e=>setF("tipoCliente",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{LOG_TIPOS_CLIENTE.map(t=><option key={t}>{t}</option>)}</select>)}
+          {campo("Tipo de Cliente (múltiple)",
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,paddingTop:2}}>
+              {LOG_TIPOS_CLIENTE.map(t=>{
+                const sel=Array.isArray(form.tipoCliente)?form.tipoCliente.includes(t):(form.tipoCliente===t);
+                const toggle=()=>{
+                  const cur=Array.isArray(form.tipoCliente)?form.tipoCliente:(form.tipoCliente?[form.tipoCliente]:[]);
+                  setF("tipoCliente",sel?cur.filter(x=>x!==t):[...cur,t]);
+                };
+                return(
+                  <button key={t} onClick={toggle} style={{background:sel?"#1F3864":"#f4f7fb",color:sel?"white":"#1a2340",border:`1.5px solid ${sel?"#1F3864":"#dce6f5"}`,borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",fontWeight:sel?600:400}}>
+                    {t}
+                  </button>
+                );
+              })}
+            </div>,
+            true
+          )}
           {campo("Asesor/a",<select value={form.asesor||""} onChange={e=>setF("asesor",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{LOG_ASESORES.map(a=><option key={a}>{a}</option>)}</select>)}
           {campo("Status",<select value={form.status||"Solicitado"} onChange={e=>setF("status",e.target.value)} style={{...SS,cursor:"pointer"}}>{ALL_STATUSES.map(s=><option key={s}>{s}</option>)}</select>)}
           {esInt&&campo("Plaza",<select value={form.plaza||""} onChange={e=>setF("plaza",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Seleccionar...</option>{LOG_PLAZAS.map(p=><option key={p}>{p}</option>)}</select>)}
@@ -906,16 +922,31 @@ function KanbanCard({pedido,onEdit,onDelete}){
   const colMeta=cols.find(c=>c.id===pedido.status)||{color:"#6b7a99"};
   const ttColors={"Instalación":"#1a5c3a","Desinstalación":"#8a2a2a","Reparación":"#8a5a00","Entrega":"#1a3a8a","Relevamiento":"#5a1a8a","Mantenimiento":"#0a5a5a","Recambio de CO2":"#4a7a00","Cambio de Modelo":"#7a4a00","Cambio de Ubicación":"#4a4a8a","Proveedores":"#6b7a99"};
   const ttC=ttColors[pedido.tipoTrabajo]||"#6b7a99";
+  // Status badge color
+  const statusCol=colMeta.color;
+  const statusBg=colMeta.bg||"#edf0f7";
+  // tipoCliente puede ser array o string
+  const tiposCliente=Array.isArray(pedido.tipoCliente)?pedido.tipoCliente:(pedido.tipoCliente?[pedido.tipoCliente]:[]);
   return(
     <div className="kanban-card" draggable onDragStart={e=>e.dataTransfer.setData("pedidoId",pedido.id)} style={{borderLeftColor:colMeta.color}}>
+      {/* 1. Nombre */}
       <div className="kanban-card-name">{pedido.nombreFantasia||"Sin nombre"}</div>
+      {/* 2. Tipo de Trabajo */}
       {pedido.tipoTrabajo&&<span className="kanban-badge" style={{background:ttC+"22",color:ttC}}>{pedido.tipoTrabajo}</span>}
-      <div className="kanban-card-meta" style={{marginTop:4}}>
-        {pedido.asesor&&<div>👤 {pedido.asesor}</div>}
-        {pedido.fechaAsignada&&<div>📅 {pedido.fechaAsignada}</div>}
-        {pedido.tipoCliente&&<div>🏷 {pedido.tipoCliente}</div>}
-        {pedido.plaza&&<div>📍 {pedido.plaza}</div>}
-        {pedido.detalles&&<div style={{marginTop:2,color:"#8a9ab5",fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pedido.detalles}</div>}
+      <div className="kanban-card-meta" style={{marginTop:5}}>
+        {/* 3. Fecha Asignada */}
+        {pedido.fechaAsignada&&<div>📅 <strong>{pedido.fechaAsignada}</strong></div>}
+        {/* 4. Status */}
+        <div style={{marginTop:2}}>
+          <span style={{background:statusBg,color:statusCol,fontSize:10,padding:"1px 6px",borderRadius:5,fontWeight:600}}>{pedido.status||"Solicitado"}</span>
+        </div>
+        {/* 5. Detalles */}
+        {pedido.detalles&&<div style={{marginTop:3,color:"#8a9ab5",fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pedido.detalles}</div>}
+        {/* 6. Asesor */}
+        {pedido.asesor&&<div style={{marginTop:2}}>👤 {pedido.asesor}</div>}
+        {/* Tipo cliente (chips) */}
+        {tiposCliente.length>0&&<div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:3}}>{tiposCliente.map(t=><span key={t} style={{background:"#e8f1fb",color:"#1F3864",fontSize:9,padding:"1px 5px",borderRadius:4,fontWeight:600}}>{t}</span>)}</div>}
+        {pedido.plaza&&<div style={{marginTop:2}}>📍 {pedido.plaza}</div>}
       </div>
       <div style={{display:"flex",gap:4,marginTop:8}}>
         <button onClick={()=>onEdit(pedido)} style={{flex:1,background:"#f0f4ff",color:"#1F3864",border:"none",borderRadius:6,padding:"4px",fontSize:11,cursor:"pointer"}}>✏️ Editar</button>
