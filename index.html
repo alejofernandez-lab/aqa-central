@@ -1076,6 +1076,126 @@ function Logistica(){
 }
 
 
+
+// ── MODAL SIN ASIGNAR ────────────────────────────────────────────
+function SinAsignarModal({clientes,asesores,onClose,fmt}){
+  const fb=useFirebase();
+  const[asignaciones,setAsignaciones]=useState({});// id -> asesor seleccionado
+  const[guardando,setGuardando]=useState({});
+  const[guardados,setGuardados]=useState({});
+
+  // Cargar asignaciones previas desde Firebase
+  useEffect(()=>{
+    if(!fb)return;
+    const{db,collection,getDocs}=fb;
+    getDocs(collection(db,"asesorAtClteOverride")).then(snap=>{
+      const m={};
+      snap.docs.forEach(d=>{m[d.id]=d.data().asesor||"";});
+      setAsignaciones(m);
+      setGuardados(Object.fromEntries(Object.keys(m).map(k=>[k,true])));
+    }).catch(()=>{});
+  },[fb]);
+
+  const guardar=async(cliente)=>{
+    const asesor=asignaciones[cliente.id];
+    if(!asesor||!fb)return;
+    setGuardando(p=>({...p,[cliente.id]:true}));
+    const{db,doc,setDoc}=fb;
+    await setDoc(doc(db,"asesorAtClteOverride",cliente.id),{
+      asesor,nombre:cliente.nombre,cartera:cliente.cartera||"",updatedAt:Date.now()
+    });
+    setGuardando(p=>({...p,[cliente.id]:false}));
+    setGuardados(p=>({...p,[cliente.id]:true}));
+  };
+
+  const SS={fontSize:12,padding:"5px 8px",borderRadius:7,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",cursor:"pointer"};
+
+  // Separar los que ya tienen asignación guardada vs los pendientes
+  const pendientes=clientes.filter(c=>!guardados[c.id]);
+  const resueltos=clientes.filter(c=>guardados[c.id]);
+
+  return(
+    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}>
+      <div className="modal" style={{maxWidth:680}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div>
+            <p style={{margin:0,fontSize:15,fontWeight:700}}>Sin asesor de AC asignado</p>
+            <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>
+              {pendientes.length} pendientes · {resueltos.length} resueltos
+            </p>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+        </div>
+
+        <div style={{maxHeight:500,overflowY:"auto"}}>
+          {/* Pendientes */}
+          {pendientes.length>0&&(
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#8a3a00",textTransform:"uppercase",letterSpacing:".4px",marginBottom:8,padding:"4px 0",borderBottom:"1px solid #ffe0cc"}}>
+                ⚠️ Pendientes ({pendientes.length})
+              </div>
+              {pendientes.map((c,i)=>(
+                <div key={c.id+i} style={{display:"grid",gridTemplateColumns:"90px 1fr 150px 40px",gap:6,alignItems:"center",padding:"8px 4px",borderBottom:"1px solid #f0f3f8",background:i%2===0?"#fff":"#fafbff"}}>
+                  <div style={{fontSize:10,color:"#9baabf",fontFamily:"monospace"}}>{c.id}</div>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:600}}>{c.nombre}</div>
+                    <div style={{fontSize:10,color:"#9baabf"}}>{c.cartera} · Cob: {c.asesorCob||"—"} · {fmt(c.deuda||0)}</div>
+                  </div>
+                  <select
+                    value={asignaciones[c.id]||""}
+                    onChange={e=>setAsignaciones(p=>({...p,[c.id]:e.target.value}))}
+                    style={SS}
+                  >
+                    <option value="">Seleccionar asesor...</option>
+                    {asesores.map(a=><option key={a}>{a}</option>)}
+                  </select>
+                  <button
+                    onClick={()=>guardar(c)}
+                    disabled={!asignaciones[c.id]||guardando[c.id]}
+                    style={{background:asignaciones[c.id]?"#1F3864":"#dce6f5",color:asignaciones[c.id]?"white":"#9baabf",border:"none",borderRadius:7,padding:"6px",fontSize:11,cursor:asignaciones[c.id]?"pointer":"default",fontWeight:600}}
+                  >
+                    {guardando[c.id]?"...":"✔"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Ya resueltos */}
+          {resueltos.length>0&&(
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#27ae60",textTransform:"uppercase",letterSpacing:".4px",marginBottom:8,padding:"4px 0",borderBottom:"1px solid #d5f5e3"}}>
+                ✅ Asignados ({resueltos.length})
+              </div>
+              {resueltos.map((c,i)=>(
+                <div key={c.id+i} style={{display:"grid",gridTemplateColumns:"90px 1fr 150px 40px",gap:6,alignItems:"center",padding:"6px 4px",borderBottom:"1px solid #f0f3f8",opacity:.7}}>
+                  <div style={{fontSize:10,color:"#9baabf",fontFamily:"monospace"}}>{c.id}</div>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:600}}>{c.nombre}</div>
+                    <div style={{fontSize:10,color:"#9baabf"}}>{c.cartera}</div>
+                  </div>
+                  <div style={{fontSize:12,color:"#27ae60",fontWeight:600}}>{asignaciones[c.id]}</div>
+                  <button
+                    onClick={()=>{setGuardados(p=>({...p,[c.id]:false}));}}
+                    style={{background:"none",border:"1px solid #dce6f5",borderRadius:7,padding:"5px",fontSize:10,cursor:"pointer",color:"#9baabf"}}
+                    title="Editar"
+                  >✏️</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {clientes.length===0&&(
+            <div style={{textAlign:"center",padding:"2rem",color:"#27ae60",fontSize:14,fontWeight:600}}>
+              ✅ Todos los clientes tienen asesor de AC asignado
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── RESUMEN / ANALYTICS ─────────────────────────────────────────
 
 const OBJETIVOS_2026={
@@ -1148,7 +1268,7 @@ function DonutChart({data,size=120}){
   );
 }
 
-function Resumen({clientes,cierres,desins}){
+function Resumen({clientes,cierres,desins,asesorOverride={}}){
   const mesActual=new Date().getMonth(); // 0-indexed
   const anoActual=new Date().getFullYear();
 
@@ -1182,7 +1302,7 @@ function Resumen({clientes,cierres,desins}){
   const carteraAC=useMemo(()=>{
     const m={};
     clientes.forEach(c=>{
-      const a=c.asesorAtClte||"Sin asignar";
+      const a=asesorOverride[c.id]||c.asesorAtClte||"Sin asignar";
       if(!m[a])m[a]={count:0,deuda:0};
       m[a].count++;m[a].deuda+=(c.deuda||0);
     });
@@ -1258,46 +1378,17 @@ function Resumen({clientes,cierres,desins}){
   ];
 
   const[sinAsignarModal,setSinAsignarModal]=useState(false);
-  const sinAsignarClientes=useMemo(()=>clientes.filter(c=>!c.asesorAtClte||c.asesorAtClte.trim()===""),[clientes]);
+  const sinAsignarClientes=useMemo(()=>clientes.filter(c=>(!c.asesorAtClte||c.asesorAtClte.trim()==="")&&!asesorOverride[c.id]),[clientes,asesorOverride]);
 
   return(
     <div style={{padding:"4px 0"}}>
       {sinAsignarModal&&(
-        <div className="overlay" onClick={e=>{if(e.target.className==="overlay")setSinAsignarModal(false);}}>
-          <div className="modal" style={{maxWidth:620}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div>
-                <p style={{margin:0,fontSize:15,fontWeight:700}}>Sin asignar — Atención al Cliente</p>
-                <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>{sinAsignarClientes.length} clientes sin asesor de AC</p>
-              </div>
-              <button onClick={()=>setSinAsignarModal(false)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
-            </div>
-            <div style={{maxHeight:460,overflowY:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                <thead style={{position:"sticky",top:0}}>
-                  <tr style={{background:"#1F3864",color:"white"}}>
-                    <th style={{padding:"8px 10px",textAlign:"left",fontWeight:600}}>ID</th>
-                    <th style={{padding:"8px 10px",textAlign:"left",fontWeight:600}}>Nombre</th>
-                    <th style={{padding:"8px 10px",textAlign:"left",fontWeight:600}}>Cartera</th>
-                    <th style={{padding:"8px 10px",textAlign:"left",fontWeight:600}}>Asesor Cob</th>
-                    <th style={{padding:"8px 10px",textAlign:"right",fontWeight:600}}>Deuda</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sinAsignarClientes.map((c,i)=>(
-                    <tr key={c.id+i} style={{background:i%2===0?"#fff":"#f4f7fb",borderBottom:"1px solid #e8eef8"}}>
-                      <td style={{padding:"7px 10px",color:"#6b7a99",fontFamily:"monospace",fontSize:11}}>{c.id}</td>
-                      <td style={{padding:"7px 10px",fontWeight:500}}>{c.nombre}</td>
-                      <td style={{padding:"7px 10px",color:"#6b7a99",fontSize:11}}>{c.cartera||"—"}</td>
-                      <td style={{padding:"7px 10px",color:"#1F3864",fontSize:11}}>{c.asesorCob||"—"}</td>
-                      <td style={{padding:"7px 10px",textAlign:"right",color:(c.deuda||0)>0?"#e74c3c":"#27ae60",fontWeight:600}}>{fmt(c.deuda||0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <SinAsignarModal
+          clientes={sinAsignarClientes}
+          asesores={ASESORES_ATCLTE}
+          onClose={()=>setSinAsignarModal(false)}
+          fmt={fmt}
+        />
       )}
 
       {/* ── ESTADO GENERAL ─────────────────────── */}
@@ -1435,6 +1526,7 @@ function App(){
   const[clientes,setClientes]=useState([]);const[loading,setLoading]=useState(true);const[lastUpdate,setLastUpdate]=useState("");
   const[cierresApp,setCierresApp]=useState([]);
   const[desinsApp,setDesinsApp]=useState([]);
+  const[asesorOverride,setAsesorOverride]=useState({});
   const[tab,setTab]=useState("Atención al Cliente");const[admTab,setAdmTab]=useState("Generador de Contratos");const[scoreTab,setScoreTab]=useState("Buenos Aires");
   const[logHoja,setLogHoja]=useState("Comodato");const[logCartera,setLogCartera]=useState("Todos");const[logData,setLogData]=useState({});const[loadingLog,setLoadingLog]=useState(false);
   const[admData,setAdmData]=useState({});const[loadingAdm,setLoadingAdm]=useState(false);
@@ -1456,7 +1548,21 @@ function App(){
     const ajusteMap={...parseAjustes(rAjBA,0,3,10),...parseAjustes(rAjInt,0,2,9),...parseAjustes(rAjHiel,0,3,11)};
     const normId=s=>String(s||"").replace(/[-\s\.]/g,"").toLowerCase();
     const cmap={};const cmapNorm={};[r1.map,r2.map,r3.map,r4.map,ri1.map,ri2.map,ri3.map].forEach(m=>{Object.entries(m).forEach(([k,v])=>{if(!cmap[k])cmap[k]={...v};else{if(!cmap[k].vendedor&&v.vendedor)cmap[k].vendedor=v.vendedor;if(!cmap[k].asesorAtClte&&v.asesorAtClte)cmap[k].asesorAtClte=v.asesorAtClte;if(!cmap[k].fechaInstalacion&&v.fechaInstalacion)cmap[k].fechaInstalacion=v.fechaInstalacion;}const nk=normId(k);if(!cmapNorm[nk])cmapNorm[nk]={...v};});});
-    const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmapNorm[normId(c.id)]||cmap[c.nombre?.toLowerCase()]||{};return{...c,asesorAtClte:x.asesorAtClte||"",vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};});
+    // Mapa asesor desde desinstalaciones
+    const desinsMap={};
+    [rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff].forEach(csv=>{
+      const d=parseCSVText(csv);if(!d||!d.rows)return;
+      const hAsesor=d.headers[0];
+      const hId=d.headers.find(h=>h.toLowerCase().includes("persat"));
+      const hNombre=d.headers.find(h=>h.toLowerCase().includes("nombre")||h.toLowerCase().includes("fantas"));
+      if(!hId||!hNombre)return;
+      d.rows.forEach(r=>{
+        const id=(r[hId]||"").trim();const asesor=(r[hAsesor]||"").trim();const nombre=(r[hNombre]||"").trim().toLowerCase();
+        if(id&&asesor){desinsMap[id]=asesor;desinsMap[normId(id)]=asesor;}
+        if(nombre&&asesor)desinsMap["n:"+nombre]=asesor;
+      });
+    });
+    const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmapNorm[normId(c.id)]||cmap[c.nombre?.toLowerCase()]||{};const asesorAC=x.asesorAtClte||desinsMap[c.id]||desinsMap[normId(c.id)]||desinsMap["n:"+c.nombre?.toLowerCase()]||"";return{...c,asesorAtClte:asesorAC,vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};});
     const cobIds=new Set(cobClientes.map(c=>c.id));
     const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id)).map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
     const all=[...cobClientes,...soloComodato];if(all.length>0)setClientes(all);
@@ -1478,6 +1584,9 @@ function App(){
     ];
     setDesinsApp(allDesins);
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
+
+  // Cargar overrides de asesorAtClte desde Firebase
+  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{const m={};snap.docs.forEach(d=>{m[d.id]=d.data().asesor||"";});setAsesorOverride(m);});return()=>unsub();},[]);
 
   // Cargar cierres desde Firebase para el Resumen
   useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
@@ -1569,7 +1678,7 @@ function App(){
     </div>)}
 
     {tab==="Comercial"&&<Comercial onNuevoCierre={()=>{}}/>}
-    {tab==="Resumen"&&<Resumen clientes={clientes} cierres={cierresApp} desins={desinsApp}/>}
+    {tab==="Resumen"&&<Resumen clientes={clientes} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride}/>}
 
     {tab==="Logística"&&<Logistica/>}
 
