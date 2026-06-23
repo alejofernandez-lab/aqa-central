@@ -1083,8 +1083,6 @@ const OBJETIVOS_2026={
   Altas: [40,34,34,40,54,59,59,59,72,79,72,59],
   Netos: [22,22,7,27,41,51,35,46,57,54,58,47]
 };
-const MESES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-
 function StatCard({label,value,sub,color="#1F3864",icon}){
   return(
     <div style={{background:"#fff",borderRadius:14,padding:"16px 18px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",flex:1,minWidth:140}}>
@@ -1281,9 +1279,9 @@ function Resumen({clientes,cierres,desins}){
       {/* ── OBJETIVOS DEL MES ──────────────────── */}
       {secTitle(`Objetivos ${MESES[mesActual]} ${anoActual}`,"🎯")}
       <div style={{background:"#fff",borderRadius:14,padding:"18px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
-        <ProgressBar value={instMes} max={objAltas} color="#1F3864" label={`✅ Altas — ${instMes} de ${objAltas}`} sublabel={instMes>=objAltas?`🎉 Objetivo cumplido!`:`Faltan ${objAltas-instMes} instalaciones para el objetivo`}/>
-        <ProgressBar value={bajasMes} max={objBajas} color="#e74c3c" label={`🚫 Bajas — ${bajasMes} de ${objBajas}`} sublabel={bajasMes<=objBajas?`Dentro del objetivo`:`${bajasMes-objBajas} bajas sobre el objetivo`}/>
-        <ProgressBar value={Math.max(0,instMes-bajasMes)} max={objNetos} color="#27ae60" label={`📈 Netos — ${Math.max(0,instMes-bajasMes)} de ${objNetos}`} sublabel={`Altas ${instMes} - Bajas ${bajasMes} = ${instMes-bajasMes} neto`}/>
+        <ProgressBar value={instMes} max={objAltas} color="#1F3864" label={"Altas — "+instMes+" de "+objAltas} sublabel={instMes>=objAltas?"Objetivo cumplido!":"Faltan "+(objAltas-instMes)+" instalaciones para el objetivo"}/>
+        <ProgressBar value={bajasMes} max={objBajas} color="#e74c3c" label={"Bajas — "+bajasMes+" de "+objBajas} sublabel={bajasMes<=objBajas?"Dentro del objetivo":(bajasMes-objBajas)+" bajas sobre el objetivo"}/>
+        <ProgressBar value={Math.max(0,instMes-bajasMes)} max={objNetos} color="#27ae60" label={"Netos — "+Math.max(0,instMes-bajasMes)+" de "+objNetos} sublabel={"Altas "+instMes+" - Bajas "+bajasMes+" = "+(instMes-bajasMes)+" neto"}/>
         <div style={{marginTop:12,padding:"10px 14px",background:"#f4f7fb",borderRadius:10}}>
           <div style={{fontSize:11,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",marginBottom:8}}>Objetivos anuales 2026</div>
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
