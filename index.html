@@ -1586,7 +1586,7 @@ function App(){
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
 
   // Cargar overrides de asesorAtClte desde Firebase
-  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{const m={};const mn={};snap.docs.forEach(d=>{const data=d.data();m[d.id]=data.asesor||"";if(data.nombre)mn[data.nombre.toLowerCase().trim()]=data.asesor||"";});setAsesorOverride({...m,...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v]))});});return()=>unsub();},[]);
+  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{const m={};const mn={};snap.docs.forEach(d=>{const data=d.data();m[d.id]=data.asesor||"";if(data.nombre)mn[data.nombre.toLowerCase().trim()]=data.asesor||"";});console.log("OVERRIDE IDs:",Object.keys(m).slice(0,5),"NOMBRES:",Object.keys(mn).slice(0,5));setAsesorOverride({...m,...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v]))});});return()=>unsub();},[]);
 
   // Cargar cierres desde Firebase para el Resumen
   useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
@@ -1627,6 +1627,8 @@ function App(){
   // Aplicar overrides de asesor sobre todos los clientes
   const clientesEfectivos=useMemo(()=>{
     if(!asesorOverride||Object.keys(asesorOverride).length===0)return clientes;
+    const sinAsesor=clientes.filter(c=>!c.asesorAtClte||c.asesorAtClte.trim()==="");
+    if(sinAsesor.length>0)console.log("SIN ASESOR IDs:",sinAsesor.slice(0,5).map(c=>({id:c.id,nombre:c.nombre})),"OVERRIDE keys:",Object.keys(asesorOverride).filter(k=>!k.startsWith("n:")).slice(0,5));
     return clientes.map(c=>{
       const ov=asesorOverride[c.id]
         ||asesorOverride[String(parseInt(c.id)||0)]
