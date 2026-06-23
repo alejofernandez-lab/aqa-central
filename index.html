@@ -1224,13 +1224,22 @@ function Resumen({clientes,cierres,desins}){
   const maxCierre=rankingCierres[0]?.count||1;
 
   // Modelos activos
+  const normModelo=(s)=>{
+    if(!s)return null;
+    // Quitar prefijo "B - " o "B-", colapsar espacios
+    let m=s.replace(/^B\s*-\s*/,"").replace(/\s+/g,"").toUpperCase().trim();
+    // Alias conocidos
+    const alias={"SM80":"SM80","BM80":"BM80","RBF":"RBF","WL7":"WL7","WL7S/BASE":"WL7","OFF20":"OFF20","120P":"120P","210P":"210P","420P":"420P","31A":"31A","RBFL":"RBF","RBFS":"RBF"};
+    return alias[m]||m||null;
+  };
   const modelos=useMemo(()=>{
     const m={};
     clientes.filter(c=>c.estado==="habilitado").forEach(c=>{
-      const mod=(c.modelo||"Otro").replace(/B - /g,"").trim();
+      const mod=normModelo(c.modelo);
+      if(!mod)return;
       m[mod]=(m[mod]||0)+1;
     });
-    return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,12);
   },[clientes]);
   const maxMod=modelos[0]?.[1]||1;
 
@@ -1291,6 +1300,35 @@ function Resumen({clientes,cierres,desins}){
                 <div style={{fontSize:10,color:"#6b7a99"}}>{k} anuales</div>
               </div>
             ))}
+          </div>
+        </div>
+        <div style={{marginTop:14}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",marginBottom:8}}>Objetivos mensuales 2026</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:600}}>
+              <thead>
+                <tr style={{background:"#1F3864",color:"white"}}>
+                  <th style={{padding:"7px 10px",textAlign:"left",fontWeight:600,fontSize:11}}>Tipo</th>
+                  {MESES.map((m,i)=>(
+                    <th key={m} style={{padding:"7px 8px",textAlign:"center",fontWeight:600,fontSize:11,background:i===mesActual?"#8a3a00":"#1F3864"}}>{m}</th>
+                  ))}
+                  <th style={{padding:"7px 8px",textAlign:"center",fontWeight:600,fontSize:11}}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[["Altas","#1F3864"],["Bajas","#e74c3c"],["Netos","#27ae60"]].map(([tipo,color])=>(
+                  <tr key={tipo} style={{borderBottom:"1px solid #e8eef8"}}>
+                    <td style={{padding:"7px 10px",fontWeight:600,color}}>{tipo}</td>
+                    {OBJETIVOS_2026[tipo].map((v,i)=>(
+                      <td key={i} style={{padding:"7px 8px",textAlign:"center",background:i===mesActual?"#fff8f0":"i%2===0?'#fff':'#f9fbff'",fontWeight:i===mesActual?700:400,color:i===mesActual?color:"#1a2340",fontSize:12}}>
+                        {v}
+                      </td>
+                    ))}
+                    <td style={{padding:"7px 8px",textAlign:"center",fontWeight:700,color}}>{OBJETIVOS_2026[tipo].reduce((a,b)=>a+b,0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
