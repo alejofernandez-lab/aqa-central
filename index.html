@@ -361,8 +361,8 @@ function Comercial({onNuevoCierre}){
   const[chatCierreId,setChatCierreId]=useState(null);
   const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
 
-  useEffect(()=>{if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const q=query(collection(db,"cierres"),orderBy("ts","desc"));const unsub=onSnapshot(q,snap=>{setCierres(snap.docs.map(d=>({id:d.id,...d.data()})));setLoading(false);});return()=>unsub();},[fb]);
-  useEffect(()=>{if(fb&&loading)setLoading(false);},[fb]);
+  useEffect(()=>{if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const q=query(collection(db,"cierres"),orderBy("ts","desc"));const unsub=onSnapshot(q,snap=>{setCierres(snap.docs.map(d=>({id:d.id,...d.data()})));setLoading(false);});return()=>unsub();},[]);
+  useEffect(()=>{if(window._firebase&&loading)setLoading(false);},[fb]);
 
   const cadenas=useMemo(()=>{const s=new Set();cierres.forEach(c=>{if(c.cadena)s.add(c.cadena);});return Array.from(s).sort();},[cierres]);
 
@@ -1396,7 +1396,7 @@ function App(){
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
 
   // Cargar cierres desde Firebase para el Resumen
-  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[fb]);
+  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
 
   useEffect(()=>{if(tab!=="Atención al Cliente")return;const carteras=logCartera==="Todos"?["Buenos Aires","Interior","Hielogic","AQA Office"]:[logCartera];carteras.forEach(c=>{const key=`${c}_${logHoja}`;if(logData[key])return;const urlKey=LOG_URL_MAP[key];if(!urlKey)return;setLoadingLog(true);safeFetch(URLS[urlKey]).then(r=>{setLogData(p=>({...p,[key]:parseCSVText(r)}));setLoadingLog(false);}).catch(()=>{setLogData(p=>({...p,[key]:{headers:["Error"],rows:[]}}));setLoadingLog(false);});});},[tab,logCartera,logHoja]);
 
