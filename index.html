@@ -1586,7 +1586,7 @@ function App(){
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
 
   // Cargar overrides de asesorAtClte desde Firebase
-  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{const m={};snap.docs.forEach(d=>{m[d.id]=d.data().asesor||"";});setAsesorOverride(m);});return()=>unsub();},[]);
+  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{const m={};const mn={};snap.docs.forEach(d=>{const data=d.data();m[d.id]=data.asesor||"";if(data.nombre)mn[data.nombre.toLowerCase().trim()]=data.asesor||"";});setAsesorOverride({...m,...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v]))});});return()=>unsub();},[]);
 
   // Cargar cierres desde Firebase para el Resumen
   useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
@@ -1627,7 +1627,12 @@ function App(){
   // Aplicar overrides de asesor sobre todos los clientes
   const clientesEfectivos=useMemo(()=>{
     if(!asesorOverride||Object.keys(asesorOverride).length===0)return clientes;
-    return clientes.map(c=>asesorOverride[c.id]?{...c,asesorAtClte:asesorOverride[c.id]}:c);
+    return clientes.map(c=>{
+      const ov=asesorOverride[c.id]
+        ||asesorOverride[String(parseInt(c.id)||0)]
+        ||asesorOverride["n:"+(c.nombre||"").toLowerCase().trim()];
+      return ov?{...c,asesorAtClte:ov}:c;
+    });
   },[clientes,asesorOverride]);
 
   const filteredAtClte=useMemo(()=>{const filtered=clientesEfectivos.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq)||(c.vendedor||"").toLowerCase().includes(sq)||(c.razonSocial||"").toLowerCase().includes(sq))&&(fAtClte==="Todos"||c.asesorAtClte===fAtClte)&&(fVendedor==="Todos"||(c.vendedor||"")===fVendedor)&&(logCartera==="Todos"||c.cartera===logCartera);});return sortClientes(filtered,sortAtClte);},[clientesEfectivos,q,fAtClte,fVendedor,logCartera,sortAtClte]);
