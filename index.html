@@ -1229,7 +1229,7 @@ function Resumen({clientes,cierres,desins}){
     // Quitar prefijo "B - " o "B-", colapsar espacios
     let m=s.replace(/^B\s*-\s*/,"").replace(/\s+/g,"").toUpperCase().trim();
     // Alias conocidos
-    const alias={"SM80":"SM80","BM80":"BM80","RBF":"RBF","WL7":"WL7","WL7S/BASE":"WL7","OFF20":"OFF20","120P":"120P","210P":"210P","420P":"420P","31A":"31A","RBFL":"RBF","RBFS":"RBF"};
+    const alias={"SM80":"SM80","BM80":"BM80","RBF":"RBF","WL7":"WL7","WL7S/BASE":"WL7","OFF20":"OFF20","OFF20C/PIE":"OFF20","OFF20SM":"OFF20","OFF20C":"OFF20","120P":"120P","210P":"210P","420P":"420P","700P":"700P","31A":"31A","RBFL":"RBF","RBFS":"RBF","SM30RF":"RBF","SM30R":"RBF"};
     return alias[m]||m||null;
   };
   const modelos=useMemo(()=>{
