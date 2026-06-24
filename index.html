@@ -458,7 +458,7 @@ function Comercial({onNuevoCierre}){
     {cierres.length===0&&<div style={{background:"#f4f7fb",borderRadius:12,padding:"2rem",textAlign:"center",border:"1px solid #dce6f5"}}><p style={{margin:0,fontSize:13,color:"#6b7a99"}}>No hay cierres.</p></div>}
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
       {filteredCierres.map(c=>{
-        const open=expandedId===c.id,sinAsesor=!c.asesor;
+        const open=expandedId===c.id,sinAsesor=!c.asesorAC&&!c.asesor;
         const est=c.estadoCierre||"Pendiente";
         const estColor=est==="Instalado"?"#2E75B6":est==="Baja"?"#791F1F":"#EF9F27";
         const estBg=est==="Instalado"?"#e8f1fb":est==="Baja"?"#FCEBEB":"#FAEEDA";
@@ -489,7 +489,7 @@ function Comercial({onNuevoCierre}){
               <div style={{background:sinAsesor?"#fffbe6":"#f4f7fb",borderRadius:8,padding:"7px 10px",border:sinAsesor?"1px solid #f0d060":"none"}}>
                 <p style={{margin:0,fontSize:10,color:"#6b7a99"}}>Asesor At. Cliente</p>
                 <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
-                  <p style={{margin:0,fontSize:12,fontWeight:500}}>{c.asesor||"Sin asignar"}</p>
+                  <p style={{margin:0,fontSize:12,fontWeight:500}}>{c.asesorAC||c.asesor||"Sin asignar"}</p>
                   <button onClick={()=>setModalAsesor(c.id)} style={{fontSize:10,padding:"2px 8px",borderRadius:5,border:"1px solid #1F3864",background:"transparent",color:"#1F3864",cursor:"pointer"}}>{c.asesor?"Cambiar":"Asignar"}</button>
                 </div>
               </div>
