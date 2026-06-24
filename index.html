@@ -1609,34 +1609,36 @@ function App(){
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
 
   // Cargar overrides de asesorAtClte desde Firebase
-  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{
-      const m={};const mn={};const mnNorm={};const mnParcial={};
+  useEffect(()=>{
+    const load=()=>{
+      const fb=window._firebase;
+      if(!fb){setTimeout(load,500);return;}
+      const{db,collection,getDocs}=fb;
       const normN=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim();
-      snap.docs.forEach(d=>{
-        const data=d.data();const asesor=data.asesor||"";
-        m[d.id]=asesor;
-        m[d.id.replace(/[-\s]/g,"")]=asesor;
-        if(data.nombre){
-          const nl=data.nombre.toLowerCase().trim();
-          const nn=normN(data.nombre);
-          mn[nl]=asesor;
-          mnNorm[nn]=asesor;
-          // Parcial: primeras 3 palabras del nombre como clave
-          const words=nn.split(" ").filter(Boolean);
-          if(words.length>=2)mnParcial[words.slice(0,3).join(" ")]=asesor;
-        }
-      });
-      setAsesorOverride({...m,
-        ...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v])),
-        ...Object.fromEntries(Object.entries(mnNorm).map(([k,v])=>["nn:"+k,v])),
-        ...Object.fromEntries(Object.entries(mnParcial).map(([k,v])=>["np:"+k,v]))
-      });
-    });return()=>unsub();},[]);
-
-  useEffect(()=>{window.__AQA_OVERRIDE__=asesorOverride;console.log("asesorOverride actualizado, keys:",Object.keys(asesorOverride).length);},[asesorOverride]);
-
-  // Cargar cierres desde Firebase para el Resumen
-  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
+      getDocs(collection(db,"asesorAtClteOverride")).then(snap=>{
+        const m={};const mn={};const mnNorm={};const mnParcial={};
+        snap.docs.forEach(d=>{
+          const data=d.data();const asesor=data.asesor||"";
+          m[d.id]=asesor;
+          m[d.id.replace(/[-\s]/g,"")]=asesor;
+          if(data.nombre){
+            const nl=data.nombre.toLowerCase().trim();
+            const nn=normN(data.nombre);
+            mn[nl]=asesor;mnNorm[nn]=asesor;
+            const words=nn.split(" ").filter(Boolean);
+            if(words.length>=2)mnParcial[words.slice(0,3).join(" ")]=asesor;
+          }
+        });
+        const result={...m,
+          ...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v])),
+          ...Object.fromEntries(Object.entries(mnNorm).map(([k,v])=>["nn:"+k,v])),
+          ...Object.fromEntries(Object.entries(mnParcial).map(([k,v])=>["np:"+k,v]))
+        };
+        setAsesorOverride(result);
+      }).catch(e=>console.error("override load error",e));
+    };
+    load();
+  },[]);if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
 
   useEffect(()=>{if(tab!=="Atención al Cliente")return;const carteras=logCartera==="Todos"?["Buenos Aires","Interior","Hielogic","AQA Office"]:[logCartera];carteras.forEach(c=>{const key=`${c}_${logHoja}`;if(logData[key])return;const urlKey=LOG_URL_MAP[key];if(!urlKey)return;setLoadingLog(true);safeFetch(URLS[urlKey]).then(r=>{setLogData(p=>({...p,[key]:parseCSVText(r)}));setLoadingLog(false);}).catch(()=>{setLogData(p=>({...p,[key]:{headers:["Error"],rows:[]}}));setLoadingLog(false);});});},[tab,logCartera,logHoja]);
 
