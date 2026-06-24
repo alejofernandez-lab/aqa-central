@@ -414,7 +414,24 @@ function Comercial({onNuevoCierre}){
     await deleteDoc(doc(db,"cierres",id));
   };
 
-  const asignarAsesor=async(id,a)=>{if(!fb)return;const{db,doc,setDoc}=fb;await setDoc(doc(db,"cierres",id),{asesor:a},{merge:true});};
+  const asignarAsesor=async(id,a)=>{if(!fb)return;const{db,doc,setDoc,getDoc}=fb;
+    // Ver si cambió el asesor
+    const prev=cierres.find(c=>c.id===id);
+    await setDoc(doc(db,"cierres",id),{asesorAC:a},{merge:true});
+    // Notificar al asesor por WhatsApp si cambió
+    if(a&&a!==(prev?.asesorAC||"")){
+      try{
+        const cfgDoc=await getDoc(doc(db,"config","whatsapp"));
+        const cfg=cfgDoc.exists()?cfgDoc.data():{asesores:[]};
+        const asesorCfg=(cfg.asesores||[]).find(x=>x.nombre===a);
+        if(asesorCfg?.numero){
+          const cierre=prev||{};
+          await sendWhatsApp(asesorCfg.numero,
+            "👋 *Hola "+a.split(" ")[0]+"!*\n\nTe asignaron un nuevo cierre en AQA Central:\n\n*Cliente:* "+(cierre.nombreFantasia||cierre.razonSocial||"Sin nombre")+"\n*Modelo:* "+(cierre.modelo||"—")+"\n\nEntrá a la app para verlo.");
+        }
+      }catch(e){console.error("WA asesor error:",e);}
+    }
+  };
 
   if(loading||!fb)return <div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>{!fb?"Conectando a Firebase...":"Cargando cierres..."}</div>;
 
