@@ -89,7 +89,7 @@ const URLS = {
 const LOG_URL_MAP={"Buenos Aires_Instalaciones Pendientes":"baInstPend","Buenos Aires_Comodato":"baComodato","Buenos Aires_Venta":"baVenta","Buenos Aires_Desinstalaciones":"baDesins","Interior_Instalaciones Pendientes":"intInstPend","Interior_Comodato":"intComodato","Interior_Venta":"intVenta","Interior_Desinstalaciones":"intDesins","Hielogic_Instalaciones Pendientes":"hielInstPend","Hielogic_Comodato":"hielComodato","Hielogic_Desinstalaciones":"hielDesins","AQA Office_Instalaciones Pendientes":"offInstPend","AQA Office_Comodato":"offComodato","AQA Office_Venta":"offVenta","AQA Office_Desinstalaciones":"offDesins"};
 const MAIN_TABS=["Resumen","Atención al Cliente","Cobranzas","Comercial","Logística","Administración"];
 const LOG_HOJAS=["Instalaciones Pendientes","Comodato","Desinstalaciones","Venta"];
-const ADM_TABS=["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio"];
+const ADM_TABS=["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio","Configuración"];
 const ADM_COLORS={"Intimaciones":"#8a3a00","Cartas Documento":"#1a3a8a","Veraz":"#5a1a8a"};
 const ASESORES_ATCLTE=["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"];
 const VENDEDORES=["Santiago Puigmarti","Nicolas Albino","Paloma Suarez","Vicente Biondo","Laura Pomponio","Tomas Zoff","Claudio Lozano","Ignacio Musmanno","Alejo Fernandez","Marcelo Paccapelo"];
@@ -308,6 +308,7 @@ function CierreFormModal({initialForm,editandoId,onGuardar,onCancelar,todosLosCi
           {campo("Teléfono",inp("contactoTel","Ej: 11-1234-5678"))}
           {campo("Fecha de Solicitud",inp("fechaSolicitud","","date"))}
           {campo("Estado",<select value={form.estadoCierre||"Pendiente"} onChange={e=>setF("estadoCierre",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="Pendiente">🟡 Pendiente</option><option value="Instalado">🟢 Instalado</option><option value="Baja">🔴 Baja</option></select>)}
+          {campo("Asesor AC",<select value={form.asesorAC||""} onChange={e=>setF("asesorAC",e.target.value)} style={{...SS,cursor:"pointer"}}><option value="">Sin asignar...</option>{ASESORES_ATCLTE.map(a=><option key={a}>{a}</option>)}</select>)}
         </div>
 
         <p style={{margin:"0 0 10px",fontSize:12,fontWeight:600,color:"#6b7a99",textTransform:"uppercase"}}>💧 Condiciones Comerciales</p>
@@ -336,7 +337,7 @@ function CierreFormModal({initialForm,editandoId,onGuardar,onCancelar,todosLosCi
   );
 }
 
-const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",provincia:"",correo:"",contactoNombre:"",contactoCargo:"",contactoTel:"",fechaSolicitud:"",modelo:"",valor:"",instalacion:"",cantBotellas:"",tipoBotellas:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",estadoCierre:"Pendiente",cadena:""};
+const CIERRE_VACIO={clasificacion:"",nombreFantasia:"",razonSocial:"",direccion:"",provincia:"",correo:"",contactoNombre:"",contactoCargo:"",contactoTel:"",fechaSolicitud:"",modelo:"",valor:"",instalacion:"",cantBotellas:"",tipoBotellas:"",contrato:"",ajuste:"",observaciones:"",asesor:"",vendedor:"",estadoCierre:"Pendiente",cadena:"",asesorAC:""};
 const EMAILS_APP=["clientes@aqa.com.ar","administracion@aqa.com.ar","ventas@aqa.com.ar","ventas@hielogic.com.ar","serviciotecnico@hielogic.com.ar","cobranzas@aqa.com.ar","cobranzas.interior@aqa.com.ar","ignaciom@aqa.com.ar","jagazzi@pwg.com.ar","santiago.puigmarti@aqa.com.ar","facundoc@aqa.com.ar","alejo.fernandez@aqa.com.ar","mateol@aqa.com.ar"];
 const EMAILS_ADMIN=["administracion@aqa.com.ar","alejo.fernandez@aqa.com.ar","santiago.puigmarti@aqa.com.ar"];
 function Comercial({onNuevoCierre}){
@@ -376,11 +377,31 @@ function Comercial({onNuevoCierre}){
     if(!fb){alert("Firebase no disponible");return;}
     const{db,collection,addDoc,doc,setDoc}=fb;
     if(eid){
+      const prev=cierres.find(c=>c.id===eid);
       await setDoc(doc(db,"cierres",eid),{...form},{merge:true});
+      // Si se asignó un asesor nuevo, notificarle
+      if(form.asesorAC&&form.asesorAC!==(prev?.asesorAC||"")){
+        try{
+          const cfgDoc=await fb.getDoc(fb.doc(db,"config","whatsapp"));
+          const cfg=cfgDoc.exists()?cfgDoc.data():{asesores:[]};
+          const asesorCfg=(cfg.asesores||[]).find(a=>a.nombre===form.asesorAC);
+          if(asesorCfg?.numero){
+            await sendWhatsApp(asesorCfg.numero,
+              "👋 *Hola "+form.asesorAC.split(" ")[0]+"!*\n\nTe asignaron un nuevo cierre en AQA Central:\n\n*Cliente:* "+(form.nombreFantasia||form.razonSocial||"Sin nombre")+"\n*Modelo:* "+(form.modelo||"—")+"\n\nEntrá a la app para verlo.");
+          }
+        }catch(e){console.error("WA asesor error:",e);}
+      }
     } else {
       const nuevo={...form,ts:Date.now(),fecha:new Date().toLocaleDateString("es-AR")};
       const ref=await addDoc(collection(db,"cierres"),nuevo);
       onNuevoCierre({...nuevo,id:ref.id});
+      // Notificar por WhatsApp
+      try{
+        const cfgDoc=await fb.getDoc(fb.doc(db,"config","whatsapp"));
+        const cfg=cfgDoc.exists()?cfgDoc.data():{miNumero:MI_NUMERO};
+        await sendWhatsApp(cfg.miNumero||MI_NUMERO,
+          "🏪 *Nuevo cierre en AQA Central*\n\n*Cliente:* "+(nuevo.nombreFantasia||nuevo.razonSocial||"Sin nombre")+"\n*Vendedor:* "+(nuevo.vendedor||"—")+"\n*Modelo:* "+(nuevo.modelo||"—")+"\n\nEntrá a la app para asignar el asesor de AC.");
+      }catch(e){console.error("WA error:",e);}
     }
     cancelar();
   };
@@ -1544,6 +1565,136 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
   );
 }
 
+
+// ── TWILIO CONFIG ────────────────────────────────────────────────
+const MI_NUMERO="+5491166089998";
+
+// Twilio credentials se leen desde Firebase (config/twilio)
+let _twilioCache=null;
+async function getTwilioCfg(){
+  if(_twilioCache)return _twilioCache;
+  try{
+    const fb=window._firebase;if(!fb)return null;
+    const{db,doc,getDoc}=fb;
+    const d=await getDoc(doc(db,"config","twilio"));
+    if(d.exists()){_twilioCache=d.data();return _twilioCache;}
+  }catch(e){}
+  return null;
+}
+
+async function sendWhatsApp(to,body){
+  if(!to||!body)return;
+  const cfg=await getTwilioCfg();
+  if(!cfg?.sid||!cfg?.token||!cfg?.from)return;
+  const num=to.replace(/\s/g,"").replace(/^00/,"+");
+  const toWA="whatsapp:"+num;
+  const creds=btoa(cfg.sid+":"+cfg.token);
+  try{
+    await fetch("https://api.twilio.com/2010-04-01/Accounts/"+cfg.sid+"/Messages.json",{
+      method:"POST",
+      headers:{"Authorization":"Basic "+creds,"Content-Type":"application/x-www-form-urlencoded"},
+      body:new URLSearchParams({To:toWA,From:cfg.from,Body:body})
+    });
+  }catch(e){console.error("Twilio error:",e);}
+}
+
+// ── COMPONENTE CONFIGURACIÓN ────────────────────────────────────
+function Configuracion(){
+  const fb=useFirebase();
+  const[config,setConfig]=useState({miNumero:MI_NUMERO,asesores:[]});
+  const[saving,setSaving]=useState(false);
+  const[saved,setSaved]=useState(false);
+  const[testMsg,setTestMsg]=useState("");
+
+  const ASESORES_DEFAULT=["Julieta Morillo","Lourdes Arturi","Agustín Elsesser","Antonela Fernandez","Antonella Abalo","Tomás Zoff"];
+
+  useEffect(()=>{
+    if(!fb)return;
+    const{db,doc,getDoc}=fb;
+    getDoc(doc(db,"config","whatsapp")).then(d=>{
+      if(d.exists()){
+        setConfig(d.data());
+      } else {
+        setConfig({miNumero:MI_NUMERO,asesores:ASESORES_DEFAULT.map(n=>({nombre:n,numero:""}))});
+      }
+    });
+  },[fb]);
+
+  const setAsesorNum=(idx,num)=>{
+    setConfig(p=>({...p,asesores:p.asesores.map((a,i)=>i===idx?{...a,numero:num}:a)}));
+    setSaved(false);
+  };
+
+  const guardar=async()=>{
+    if(!fb)return;
+    setSaving(true);
+    const{db,doc,setDoc}=fb;
+    await setDoc(doc(db,"config","whatsapp"),config);
+    setSaving(false);setSaved(true);
+    setTimeout(()=>setSaved(false),3000);
+  };
+
+  const testWhatsApp=async()=>{
+    setTestMsg("Enviando...");
+    await sendWhatsApp(config.miNumero,"🧪 Test AQA Central — la integración de WhatsApp está funcionando correctamente.");
+    setTestMsg("✅ Mensaje enviado! Revisá tu WhatsApp.");
+    setTimeout(()=>setTestMsg(""),4000);
+  };
+
+  const SS={fontSize:13,padding:"8px 10px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+
+  return(
+    <div>
+      <div style={{background:"#fff",borderRadius:14,padding:"20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:16}}>
+        <p style={{margin:"0 0 16px",fontSize:15,fontWeight:700}}>📱 Configuración de WhatsApp</p>
+
+        {/* Mi número */}
+        <div style={{marginBottom:20}}>
+          <label style={{fontSize:11,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:6}}>Tu número (alertas de cierres nuevos)</label>
+          <div style={{display:"flex",gap:8}}>
+            <input value={config.miNumero||""} onChange={e=>{setConfig(p=>({...p,miNumero:e.target.value}));setSaved(false);}} placeholder="+5491166089998" style={{...SS,flex:1}}/>
+          </div>
+          <div style={{fontSize:10,color:"#9baabf",marginTop:4}}>Formato: +5491166089998 (con código de país, sin espacios)</div>
+        </div>
+
+        {/* Asesores */}
+        <div style={{marginBottom:20}}>
+          <label style={{fontSize:11,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:10}}>Números de los asesores de AC</label>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {(config.asesores||[]).map((a,i)=>(
+              <div key={i} style={{display:"grid",gridTemplateColumns:"180px 1fr",gap:8,alignItems:"center"}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#1a2340"}}>{a.nombre}</div>
+                <input
+                  value={a.numero||""}
+                  onChange={e=>setAsesorNum(i,e.target.value)}
+                  placeholder="+5491100000000"
+                  style={SS}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Botones */}
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <button onClick={guardar} disabled={saving} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:600,cursor:"pointer"}}>
+            {saving?"Guardando...":saved?"✅ Guardado!":"💾 Guardar configuración"}
+          </button>
+          <button onClick={testWhatsApp} style={{background:"#25D366",color:"white",border:"none",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:600,cursor:"pointer"}}>
+            🧪 Probar WhatsApp
+          </button>
+          {testMsg&&<span style={{fontSize:12,color:"#27ae60",fontWeight:600}}>{testMsg}</span>}
+        </div>
+      </div>
+
+      {/* Info sandbox */}
+      <div style={{background:"#fff8f0",borderRadius:12,padding:"14px 16px",border:"1px solid #ffe0cc",fontSize:12,color:"#8a3a00"}}>
+        <strong>⚠️ Modo Sandbox activo</strong> — cada persona debe mandar el mensaje <code style={{background:"#fff",padding:"2px 6px",borderRadius:4,fontFamily:"monospace"}}>join wood-aloud</code> al número <strong>+1 415 523 8886</strong> desde su WhatsApp para recibir mensajes. Esto es solo necesario una vez en modo trial.
+      </div>
+    </div>
+  );
+}
+
 // ── App Principal ─────────────────────────────────────────────────
 function App(){
   const[clientes,setClientes]=useState([]);const[loading,setLoading]=useState(true);const[lastUpdate,setLastUpdate]=useState("");
@@ -1757,6 +1908,7 @@ function App(){
       {admTab==="Generador de Contratos"&&<GeneradorContratos/>}
       {["Intimaciones","Cartas Documento","Veraz"].includes(admTab)&&(loadingAdm?<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>:<div>{admData[admTab]?(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{background:ADM_COLORS[admTab]+"22",color:ADM_COLORS[admTab],borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}}>{(admData[admTab].rows||[]).length} registros · {admTab}</span><button onClick={()=>setAdmData(p=>{const n={...p};delete n[admTab];return n;})} style={{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}}>↻ Actualizar</button></div><GenericTable data={admData[admTab]} headerBg={ADM_COLORS[admTab]}/></div>):<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Sin datos</div>}</div>)}
       {admTab==="Score Crediticio"&&(<div><TabBar tabs={["Buenos Aires","Interior","Hielogic"]} active={scoreTab} onChange={setScoreTab} color="#1a5c3a"/>{loadingAdm?<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>:<div>{admData["Score Crediticio"]?.[scoreTab]?(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{background:"#e6f7f1",color:"#1a5c3a",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:500}}>{(admData["Score Crediticio"][scoreTab].rows||[]).length} clientes · {scoreTab}</span><button onClick={()=>setAdmData(p=>{const n={...p};delete n["Score Crediticio"];return n;})} style={{fontSize:11,padding:"4px 12px",borderRadius:8,border:"1px solid #dce6f5",cursor:"pointer",background:"transparent",color:"#6b7a99"}}>↻ Actualizar</button></div><ScoreTable data={admData["Score Crediticio"][scoreTab]}/></div>):<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Sin datos</div>}</div>}</div>)}
+      {admTab==="Configuración"&&<Configuracion/>}
     </div>)}
   </div>);
 }
