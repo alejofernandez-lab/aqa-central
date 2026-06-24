@@ -1102,7 +1102,7 @@ function SinAsignarModal({clientes,asesores,onClose,fmt}){
     setGuardando(p=>({...p,[cliente.id]:true}));
     const{db,doc,setDoc}=fb;
     await setDoc(doc(db,"asesorAtClteOverride",cliente.id),{
-      asesor,nombre:cliente.nombre,cartera:cliente.cartera||"",updatedAt:Date.now()
+      asesor,nombre:cliente.nombre,id:cliente.id,cartera:cliente.cartera||"",updatedAt:Date.now()
     });
     setGuardando(p=>({...p,[cliente.id]:false}));
     setGuardados(p=>({...p,[cliente.id]:true}));
@@ -1419,9 +1419,32 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       {/* ── OBJETIVOS DEL MES ──────────────────── */}
       {secTitle(`Objetivos ${MESES[mesActual]} ${anoActual}`,"🎯")}
       <div style={{background:"#fff",borderRadius:14,padding:"18px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
-        <ProgressBar value={instMes} max={objAltas} color="#1F3864" label={"Altas — "+instMes+" de "+objAltas} sublabel={instMes>=objAltas?"Objetivo cumplido!":"Faltan "+(objAltas-instMes)+" instalaciones para el objetivo"}/>
-        <ProgressBar value={bajasMes} max={objBajas} color="#e74c3c" label={"Bajas — "+bajasMes+" de "+objBajas} sublabel={bajasMes<=objBajas?"Dentro del objetivo":(bajasMes-objBajas)+" bajas sobre el objetivo"}/>
-        <ProgressBar value={Math.max(0,instMes-bajasMes)} max={objNetos} color="#27ae60" label={"Netos — "+Math.max(0,instMes-bajasMes)+" de "+objNetos} sublabel={"Altas "+instMes+" - Bajas "+bajasMes+" = "+(instMes-bajasMes)+" neto"}/>
+        {(()=>{
+          // Calcular días hábiles transcurridos y totales del mes
+          const hoy=new Date();
+          const diasEnMes=new Date(anoActual,mesActual+1,0).getDate();
+          let diasHabilesTotales=0,diasHabilesTranscurridos=0;
+          for(let d=1;d<=diasEnMes;d++){const dow=new Date(anoActual,mesActual,d).getDay();if(dow!==0&&dow!==6){diasHabilesTotales++;if(d<=hoy.getDate())diasHabilesTranscurridos++;}}
+          const pctMes=diasHabilesTotales>0?diasHabilesTranscurridos/diasHabilesTotales:0;
+          const ritmoAltas=Math.round(objAltas*pctMes);
+          const ritmoNetos=Math.round(objNetos*pctMes);
+          const diffAltas=instMes-ritmoAltas;
+          const diffNetos=(instMes-bajasMes)-ritmoNetos;
+          const semaforoAltas=diffAltas>=0?"🟢":diffAltas>=-5?"🟡":"🔴";
+          const semaforoNetos=diffNetos>=0?"🟢":diffNetos>=-3?"🟡":"🔴";
+          const pctDias=Math.round(pctMes*100);
+          return(<>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,padding:"8px 12px",background:"#f4f7fb",borderRadius:9}}>
+              <span style={{fontSize:11,color:"#6b7a99",fontWeight:600}}>{"Día "+hoy.getDate()+" de "+diasEnMes+" — "+pctDias+"% del mes transcurrido ("+diasHabilesTranscurridos+"/"+diasHabilesTotales+" días hábiles)"}</span>
+            </div>
+            <ProgressBar value={instMes} max={objAltas} color="#1F3864" label={"Altas — "+instMes+" de "+objAltas}
+              sublabel={instMes>=objAltas?"✅ Objetivo cumplido!":semaforoAltas+" Ritmo esperado: "+ritmoAltas+" · "+( diffAltas>=0?"adelantado "+diffAltas:"atrasado "+(Math.abs(diffAltas)))}/>
+            <ProgressBar value={bajasMes} max={objBajas} color="#e74c3c" label={"Bajas — "+bajasMes+" de "+objBajas}
+              sublabel={bajasMes<=objBajas?"✅ Dentro del objetivo":(bajasMes-objBajas)+" bajas sobre el objetivo"}/>
+            <ProgressBar value={Math.max(0,instMes-bajasMes)} max={objNetos} color="#27ae60" label={"Netos — "+Math.max(0,instMes-bajasMes)+" de "+objNetos}
+              sublabel={semaforoNetos+" Ritmo esperado: "+ritmoNetos+" · "+(diffNetos>=0?"adelantado "+diffNetos:"atrasado "+Math.abs(diffNetos))+" · Altas "+instMes+" - Bajas "+bajasMes}/>
+          </>);
+        })()}
         <div style={{marginTop:12,padding:"10px 14px",background:"#f4f7fb",borderRadius:10}}>
           <div style={{fontSize:11,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",marginBottom:8}}>Objetivos anuales 2026</div>
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
@@ -1586,7 +1609,7 @@ function App(){
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
 
   // Cargar overrides de asesorAtClte desde Firebase
-  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{const m={};const mn={};snap.docs.forEach(d=>{const data=d.data();m[d.id]=data.asesor||"";if(data.nombre)mn[data.nombre.toLowerCase().trim()]=data.asesor||"";});setAsesorOverride({...m,...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v]))});});return()=>unsub();},[]);
+  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{const m={};const mn={};snap.docs.forEach(d=>{const data=d.data();m[d.id]=data.asesor||"";if(data.nombre){const nk=String(data.nombre).toLowerCase().trim();mn[nk]=data.asesor||"";}});setAsesorOverride({...m,...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v]))});});return()=>unsub();},[]);
 
   // Cargar cierres desde Firebase para el Resumen
   useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
@@ -1625,12 +1648,21 @@ function App(){
     });
   };
   // Aplicar overrides de asesor sobre todos los clientes
+  const normNombre=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim();
   const clientesEfectivos=useMemo(()=>{
     if(!asesorOverride||Object.keys(asesorOverride).length===0)return clientes;
+    // Construir lookup normalizado por nombre
+    const ovNormNombre={};
+    Object.entries(asesorOverride).forEach(([k,v])=>{
+      if(k.startsWith("n:")){
+        ovNormNombre[normNombre(k.slice(2))]=v;
+      }
+    });
     return clientes.map(c=>{
       const ov=asesorOverride[c.id]
         ||asesorOverride[String(parseInt(c.id)||0)]
-        ||asesorOverride["n:"+(c.nombre||"").toLowerCase().trim()];
+        ||asesorOverride["n:"+(c.nombre||"").toLowerCase().trim()]
+        ||ovNormNombre[normNombre(c.nombre)];
       return ov?{...c,asesorAtClte:ov}:c;
     });
   },[clientes,asesorOverride]);
