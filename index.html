@@ -1610,24 +1610,26 @@ function App(){
 
   // Cargar overrides de asesorAtClte desde Firebase
   useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{
-      const m={};const mn={};const mnNorm={};
+      const m={};const mn={};const mnNorm={};const mnParcial={};
       const normN=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim();
       snap.docs.forEach(d=>{
         const data=d.data();const asesor=data.asesor||"";
-        // Por ID exacto del documento
         m[d.id]=asesor;
-        // Por ID sin guiones/espacios
         m[d.id.replace(/[-\s]/g,"")]=asesor;
-        // Por nombre exacto
         if(data.nombre){
-          mn[data.nombre.toLowerCase().trim()]=asesor;
-          // Por nombre normalizado (sin tildes, sin caracteres especiales)
-          mnNorm[normN(data.nombre)]=asesor;
+          const nl=data.nombre.toLowerCase().trim();
+          const nn=normN(data.nombre);
+          mn[nl]=asesor;
+          mnNorm[nn]=asesor;
+          // Parcial: primeras 3 palabras del nombre como clave
+          const words=nn.split(" ").filter(Boolean);
+          if(words.length>=2)mnParcial[words.slice(0,3).join(" ")]=asesor;
         }
       });
       setAsesorOverride({...m,
         ...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v])),
-        ...Object.fromEntries(Object.entries(mnNorm).map(([k,v])=>["nn:"+k,v]))
+        ...Object.fromEntries(Object.entries(mnNorm).map(([k,v])=>["nn:"+k,v])),
+        ...Object.fromEntries(Object.entries(mnParcial).map(([k,v])=>["np:"+k,v]))
       });
     });return()=>unsub();},[]);
 
@@ -1672,12 +1674,15 @@ function App(){
   const clientesEfectivos=useMemo(()=>{
     if(!asesorOverride||Object.keys(asesorOverride).length===0)return clientes;
     return clientes.map(c=>{
-      const idSinGuiones=(c.id||"").replace(/[-\s]/g,"");
+      const nn=normNombre(c.nombre);
+      const words=nn.split(" ").filter(Boolean);
+      const parcial=words.slice(0,3).join(" ");
       const ov=asesorOverride[c.id]
-        ||asesorOverride[idSinGuiones]
+        ||asesorOverride[(c.id||"").replace(/[-\s]/g,"")]
         ||asesorOverride[String(parseInt(c.id)||0)]
         ||asesorOverride["n:"+(c.nombre||"").toLowerCase().trim()]
-        ||asesorOverride["nn:"+normNombre(c.nombre)];
+        ||asesorOverride["nn:"+nn]
+        ||asesorOverride["np:"+parcial];
       return ov?{...c,asesorAtClte:ov}:c;
     });
   },[clientes,asesorOverride]);
