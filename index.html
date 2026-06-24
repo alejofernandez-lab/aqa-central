@@ -1609,7 +1609,27 @@ function App(){
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
 
   // Cargar overrides de asesorAtClte desde Firebase
-  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{const m={};const mn={};snap.docs.forEach(d=>{const data=d.data();m[d.id]=data.asesor||"";if(data.nombre){const nk=String(data.nombre).toLowerCase().trim();mn[nk]=data.asesor||"";}});setAsesorOverride({...m,...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v]))});});return()=>unsub();},[]);
+  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot}=fb;const unsub=onSnapshot(collection(db,"asesorAtClteOverride"),snap=>{
+      const m={};const mn={};const mnNorm={};
+      const normN=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim();
+      snap.docs.forEach(d=>{
+        const data=d.data();const asesor=data.asesor||"";
+        // Por ID exacto del documento
+        m[d.id]=asesor;
+        // Por ID sin guiones/espacios
+        m[d.id.replace(/[-\s]/g,"")]=asesor;
+        // Por nombre exacto
+        if(data.nombre){
+          mn[data.nombre.toLowerCase().trim()]=asesor;
+          // Por nombre normalizado (sin tildes, sin caracteres especiales)
+          mnNorm[normN(data.nombre)]=asesor;
+        }
+      });
+      setAsesorOverride({...m,
+        ...Object.fromEntries(Object.entries(mn).map(([k,v])=>["n:"+k,v])),
+        ...Object.fromEntries(Object.entries(mnNorm).map(([k,v])=>["nn:"+k,v]))
+      });
+    });return()=>unsub();},[]);
 
   // Cargar cierres desde Firebase para el Resumen
   useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
@@ -1648,21 +1668,16 @@ function App(){
     });
   };
   // Aplicar overrides de asesor sobre todos los clientes
-  const normNombre=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim();
+  const normNombre=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim();
   const clientesEfectivos=useMemo(()=>{
     if(!asesorOverride||Object.keys(asesorOverride).length===0)return clientes;
-    // Construir lookup normalizado por nombre
-    const ovNormNombre={};
-    Object.entries(asesorOverride).forEach(([k,v])=>{
-      if(k.startsWith("n:")){
-        ovNormNombre[normNombre(k.slice(2))]=v;
-      }
-    });
     return clientes.map(c=>{
+      const idSinGuiones=(c.id||"").replace(/[-\s]/g,"");
       const ov=asesorOverride[c.id]
+        ||asesorOverride[idSinGuiones]
         ||asesorOverride[String(parseInt(c.id)||0)]
         ||asesorOverride["n:"+(c.nombre||"").toLowerCase().trim()]
-        ||ovNormNombre[normNombre(c.nombre)];
+        ||asesorOverride["nn:"+normNombre(c.nombre)];
       return ov?{...c,asesorAtClte:ov}:c;
     });
   },[clientes,asesorOverride]);
