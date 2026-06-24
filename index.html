@@ -1633,6 +1633,8 @@ function App(){
       });
     });return()=>unsub();},[]);
 
+  useEffect(()=>{window.__AQA_OVERRIDE__=asesorOverride;console.log("asesorOverride actualizado, keys:",Object.keys(asesorOverride).length);},[asesorOverride]);
+
   // Cargar cierres desde Firebase para el Resumen
   useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
 
@@ -1673,11 +1675,6 @@ function App(){
   const normNombre=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim();
   const clientesEfectivos=useMemo(()=>{
     if(!asesorOverride||Object.keys(asesorOverride).length===0)return clientes;
-    const sinAsesorDebug=clientes.filter(c=>!c.asesorAtClte||c.asesorAtClte.trim()==="");
-    if(sinAsesorDebug.length>0&&Object.keys(asesorOverride).length>0){
-      window.__DEBUG_SIN_ASESOR__=sinAsesorDebug.slice(0,5).map(c=>({id:c.id,nombre:c.nombre}));
-      console.log("SIN ASESOR en app:",window.__DEBUG_SIN_ASESOR__);
-    }
     return clientes.map(c=>{
       const nn=normNombre(c.nombre);
       const words=nn.split(" ").filter(Boolean);
