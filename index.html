@@ -1573,12 +1573,19 @@ const MI_NUMERO="+5491166089998";
 let _twilioCache=null;
 async function getTwilioCfg(){
   if(_twilioCache)return _twilioCache;
+  // Esperar hasta que Firebase esté listo
+  let attempts=0;
+  while(!window._firebase&&attempts<10){await new Promise(r=>setTimeout(r,300));attempts++;}
   try{
     const fb=window._firebase;if(!fb)return null;
     const{db,doc,getDoc}=fb;
     const d=await getDoc(doc(db,"config","twilio"));
-    if(d.exists()){_twilioCache=d.data();return _twilioCache;}
-  }catch(e){}
+    if(d.exists()){
+      const data=d.data();
+      console.log("Twilio cfg cargada:",data.sid?"SID ok":"SID MISSING",data.token?"TOKEN ok":"TOKEN MISSING");
+      _twilioCache=data;return _twilioCache;
+    }else{console.error("No existe config/twilio en Firebase");}
+  }catch(e){console.error("Error leyendo config twilio:",e);}
   return null;
 }
 
