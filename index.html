@@ -1574,76 +1574,88 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       {/* ── EVOLUCIÓN MENSUAL ─────────────────────────────── */}
       {secTitle("Evolución mensual — últimos 12 meses","📊")}
       {(()=>{
-        // Calcular instalaciones y desinstalaciones por mes desde los datos
         const hoy=new Date();
         const mesesData=[];
         for(let i=11;i>=0;i--){
           const d=new Date(hoy.getFullYear(),hoy.getMonth()-i,1);
           const mes=d.getMonth();const anio=d.getFullYear();
-          const label=MESES[mes]+" "+(anio===hoy.getFullYear()?"":anio);
-          // Contar instalaciones (fechaInstalacion del mes)
+          const label=MESES[mes]+(anio!==hoy.getFullYear()?" "+String(anio).slice(2):"");
           const altas=clientes.filter(c=>{
             if(!c.fechaInstalacion)return false;
             const p=c.fechaInstalacion.replace(/-/g,"/").split("/");
             if(p.length<3)return false;
             return parseInt(p[1])===mes+1&&parseInt(p[2])===anio;
           }).length;
-          // Contar desinstalaciones desde desins prop
-          const bajas=(desins||[]).filter(d=>{
-            if(!d.fechaDesins)return false;
-            const p=d.fechaDesins.replace(/-/g,"/").split("/");
+          const bajas=(desins||[]).filter(dd=>{
+            if(!dd.fechaDesins)return false;
+            const p=dd.fechaDesins.replace(/-/g,"/").split("/");
             if(p.length<3)return false;
             return parseInt(p[1])===mes+1&&parseInt(p[2])===anio;
           }).length;
           mesesData.push({label,altas,bajas,netos:altas-bajas,mes,anio});
         }
-        const maxVal=Math.max(...mesesData.map(m=>Math.max(m.altas,m.bajas)),1);
-        const barW=100/mesesData.length;
         const esActual=(m)=>m.mes===hoy.getMonth()&&m.anio===hoy.getFullYear();
+        const H=160;const W_PAD=40;
+        const maxVal=Math.max(...mesesData.flatMap(m=>[m.altas,m.bajas,Math.abs(m.netos)]),1);
+        const yScale=v=>H-(v/maxVal*(H-10));
+        const n=mesesData.length;
+        const pts=(key)=>mesesData.map((m,i)=>{
+          const x=W_PAD+i*(100/(n-1))*3.6;
+          const y=yScale(key==="netos"?Math.max(0,m[key]):m[key]);
+          return[x,y];
+        });
+        const toPath=(arr)=>arr.map((p,i)=>(i===0?"M":"L")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+        const ptsAltas=pts("altas"),ptsBajas=pts("bajas"),ptsNetos=pts("netos");
+        const svgW=400;
         return(
           <div style={{background:"#fff",borderRadius:14,padding:"20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:4}}>
             {/* Leyenda */}
-            <div style={{display:"flex",gap:16,marginBottom:16,flexWrap:"wrap"}}>
-              {[["#1F3864","Instalaciones"],["#e74c3c","Desinstalaciones"],["#27ae60","Netos"]].map(([color,label])=>(
-                <div key={label} style={{display:"flex",alignItems:"center",gap:5}}>
-                  <div style={{width:12,height:12,borderRadius:3,background:color}}/>
-                  <span style={{fontSize:11,color:"#6b7a99"}}>{label}</span>
+            <div style={{display:"flex",gap:20,marginBottom:12,flexWrap:"wrap"}}>
+              {[["#1F3864","Instalaciones"],["#e74c3c","Desinstalaciones"],["#27ae60","Netos"]].map(([color,lbl])=>(
+                <div key={lbl} style={{display:"flex",alignItems:"center",gap:5}}>
+                  <svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke={color} strokeWidth="2.5"/></svg>
+                  <span style={{fontSize:11,color:"#6b7a99"}}>{lbl}</span>
                 </div>
               ))}
             </div>
-            {/* Gráfico de barras */}
-            <div style={{display:"flex",alignItems:"flex-end",gap:2,height:160,padding:"0 4px"}}>
-              {mesesData.map((m,i)=>(
-                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:1,height:"100%",justifyContent:"flex-end"}}>
-                  <div style={{width:"100%",display:"flex",gap:1,alignItems:"flex-end",height:140}}>
-                    {/* Barra Altas */}
-                    <div title={"Altas: "+m.altas} style={{flex:1,background:esActual(m)?"#1F3864":"#4a6fa5",borderRadius:"3px 3px 0 0",height:(m.altas/maxVal*130)+"px",minHeight:m.altas>0?2:0,transition:"height .3s"}}/>
-                    {/* Barra Bajas */}
-                    <div title={"Bajas: "+m.bajas} style={{flex:1,background:esActual(m)?"#e74c3c":"#e8a0a0",borderRadius:"3px 3px 0 0",height:(m.bajas/maxVal*130)+"px",minHeight:m.bajas>0?2:0,transition:"height .3s"}}/>
-                  </div>
-                  {/* Netos */}
-                  <div style={{fontSize:9,fontWeight:700,color:m.netos>=0?"#27ae60":"#e74c3c",marginTop:1}}>{m.netos>0?"+":""}{m.netos}</div>
-                  {/* Label mes */}
-                  <div style={{fontSize:8,color:esActual(m)?"#1F3864":"#9baabf",fontWeight:esActual(m)?700:400,textAlign:"center",marginTop:1}}>{m.label}</div>
-                </div>
-              ))}
-            </div>
-            {/* Tabla resumen */}
-            <div style={{marginTop:14,overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                <tbody>
-                  {[["Altas","#1F3864"],["Bajas","#e74c3c"],["Netos","#27ae60"]].map(([tipo,color])=>(
-                    <tr key={tipo}>
-                      <td style={{padding:"3px 8px",fontWeight:700,color,width:80}}>{tipo}</td>
-                      {mesesData.map((m,i)=>(
-                        <td key={i} style={{padding:"3px 4px",textAlign:"center",background:esActual(m)?"#f0f4ff":"transparent",fontWeight:esActual(m)?700:400,color:tipo==="Netos"?(m.netos>=0?"#27ae60":"#e74c3c"):color}}>
-                          {tipo==="Altas"?m.altas:tipo==="Bajas"?m.bajas:(m.netos>0?"+":"")+m.netos}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* SVG líneas */}
+            <div style={{overflowX:"auto"}}>
+              <svg viewBox={"0 0 "+(W_PAD+100*3.6+W_PAD)+" "+(H+50)} style={{width:"100%",minWidth:500,display:"block"}}>
+                {/* Grillas horizontales */}
+                {[0,25,50,75,100].map(pct=>{
+                  const y=yScale(maxVal*pct/100);
+                  return(<g key={pct}>
+                    <line x1={W_PAD} y1={y} x2={W_PAD+100*3.6} y2={y} stroke="#f0f3f8" strokeWidth="1"/>
+                    <text x={W_PAD-4} y={y+4} fontSize="8" fill="#c0cce0" textAnchor="end">{Math.round(maxVal*pct/100)}</text>
+                  </g>);
+                })}
+                {/* Línea base */}
+                <line x1={W_PAD} y1={H} x2={W_PAD+100*3.6} y2={H} stroke="#e8eef8" strokeWidth="1"/>
+                {/* Líneas de datos */}
+                <path d={toPath(ptsAltas)} fill="none" stroke="#1F3864" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+                <path d={toPath(ptsBajas)} fill="none" stroke="#e74c3c" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+                <path d={toPath(ptsNetos)} fill="none" stroke="#27ae60" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="4,3"/>
+                {/* Puntos y valores */}
+                {mesesData.map((m,i)=>{
+                  const x=ptsAltas[i][0];
+                  const ya=ptsAltas[i][1],yb=ptsBajas[i][1],yn=ptsNetos[i][1];
+                  const isAct=esActual(m);
+                  return(<g key={i}>
+                    {/* Columna actual highlight */}
+                    {isAct&&<rect x={x-12} y={10} width={24} height={H-10} fill="#f0f4ff" rx="3"/>}
+                    {/* Puntos */}
+                    <circle cx={x} cy={ya} r={isAct?4:2.5} fill="#1F3864"/>
+                    <circle cx={x} cy={yb} r={isAct?4:2.5} fill="#e74c3c"/>
+                    <circle cx={x} cy={yn} r={isAct?3:2} fill="#27ae60"/>
+                    {/* Valores sobre cada punto */}
+                    <text x={x} y={ya-6} fontSize="8" fill="#1F3864" textAnchor="middle" fontWeight={isAct?"700":"400"}>{m.altas}</text>
+                    <text x={x} y={yb-6} fontSize="8" fill="#e74c3c" textAnchor="middle" fontWeight={isAct?"700":"400"}>{m.bajas}</text>
+                    <text x={x} y={yn-6} fontSize="8" fill="#27ae60" textAnchor="middle" fontWeight={isAct?"700":"400"}>{m.netos>0?"+":""}{m.netos}</text>
+                    {/* Label mes abajo */}
+                    <text x={x} y={H+14} fontSize={isAct?9:8} fill={isAct?"#1F3864":"#9baabf"} textAnchor="middle" fontWeight={isAct?"700":"400"}>{m.label}</text>
+                  </g>);
+                })}
+              </svg>
             </div>
           </div>
         );
