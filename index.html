@@ -1571,7 +1571,6 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       </>)}
 
       {/* ── MODELOS ACTIVOS ─────────────────────── */}
-      {/* ── EVOLUCIÓN MENSUAL ─────────────────────────────── */}
       {secTitle("Evolución mensual — últimos 12 meses","📊")}
       {(()=>{
         const hoy=new Date();
@@ -1579,7 +1578,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
         for(let i=11;i>=0;i--){
           const d=new Date(hoy.getFullYear(),hoy.getMonth()-i,1);
           const mes=d.getMonth();const anio=d.getFullYear();
-          const label=MESES[mes]+(anio!==hoy.getFullYear()?" "+String(anio).slice(2):"");
+          const label=MESES[mes]+(anio!==hoy.getFullYear()?" '"+String(anio).slice(2):"");
           const altas=clientes.filter(c=>{
             if(!c.fechaInstalacion)return false;
             const p=c.fechaInstalacion.replace(/-/g,"/").split("/");
@@ -1595,73 +1594,39 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
           mesesData.push({label,altas,bajas,netos:altas-bajas,mes,anio});
         }
         const esActual=(m)=>m.mes===hoy.getMonth()&&m.anio===hoy.getFullYear();
-        const H=160;const W_PAD=40;
-        const maxVal=Math.max(...mesesData.flatMap(m=>[m.altas,m.bajas,Math.abs(m.netos)]),1);
-        const yScale=v=>H-(v/maxVal*(H-10));
-        const n=mesesData.length;
-        const pts=(key)=>mesesData.map((m,i)=>{
-          const x=W_PAD+i*(100/(n-1))*3.6;
-          const y=yScale(key==="netos"?Math.max(0,m[key]):m[key]);
-          return[x,y];
-        });
-        const toPath=(arr)=>arr.map((p,i)=>(i===0?"M":"L")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
-        const ptsAltas=pts("altas"),ptsBajas=pts("bajas"),ptsNetos=pts("netos");
-        const svgW=400;
         return(
-          <div style={{background:"#fff",borderRadius:14,padding:"20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:4}}>
-            {/* Leyenda */}
-            <div style={{display:"flex",gap:20,marginBottom:12,flexWrap:"wrap"}}>
-              {[["#1F3864","Instalaciones"],["#e74c3c","Desinstalaciones"],["#27ae60","Netos"]].map(([color,lbl])=>(
-                <div key={lbl} style={{display:"flex",alignItems:"center",gap:5}}>
-                  <svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke={color} strokeWidth="2.5"/></svg>
-                  <span style={{fontSize:11,color:"#6b7a99"}}>{lbl}</span>
-                </div>
-              ))}
-            </div>
-            {/* SVG líneas */}
-            <div style={{overflowX:"auto"}}>
-              <svg viewBox={"0 0 "+(W_PAD+100*3.6+W_PAD)+" "+(H+50)} style={{width:"100%",minWidth:500,display:"block"}}>
-                {/* Grillas horizontales */}
-                {[0,25,50,75,100].map(pct=>{
-                  const y=yScale(maxVal*pct/100);
-                  return(<g key={pct}>
-                    <line x1={W_PAD} y1={y} x2={W_PAD+100*3.6} y2={y} stroke="#f0f3f8" strokeWidth="1"/>
-                    <text x={W_PAD-4} y={y+4} fontSize="8" fill="#c0cce0" textAnchor="end">{Math.round(maxVal*pct/100)}</text>
-                  </g>);
-                })}
-                {/* Línea base */}
-                <line x1={W_PAD} y1={H} x2={W_PAD+100*3.6} y2={H} stroke="#e8eef8" strokeWidth="1"/>
-                {/* Líneas de datos */}
-                <path d={toPath(ptsAltas)} fill="none" stroke="#1F3864" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
-                <path d={toPath(ptsBajas)} fill="none" stroke="#e74c3c" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
-                <path d={toPath(ptsNetos)} fill="none" stroke="#27ae60" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="4,3"/>
-                {/* Puntos y valores */}
-                {mesesData.map((m,i)=>{
-                  const x=ptsAltas[i][0];
-                  const ya=ptsAltas[i][1],yb=ptsBajas[i][1],yn=ptsNetos[i][1];
-                  const isAct=esActual(m);
-                  return(<g key={i}>
-                    {/* Columna actual highlight */}
-                    {isAct&&<rect x={x-12} y={10} width={24} height={H-10} fill="#f0f4ff" rx="3"/>}
-                    {/* Puntos */}
-                    <circle cx={x} cy={ya} r={isAct?4:2.5} fill="#1F3864"/>
-                    <circle cx={x} cy={yb} r={isAct?4:2.5} fill="#e74c3c"/>
-                    <circle cx={x} cy={yn} r={isAct?3:2} fill="#27ae60"/>
-                    {/* Valores sobre cada punto */}
-                    <text x={x} y={ya-6} fontSize="8" fill="#1F3864" textAnchor="middle" fontWeight={isAct?"700":"400"}>{m.altas}</text>
-                    <text x={x} y={yb-6} fontSize="8" fill="#e74c3c" textAnchor="middle" fontWeight={isAct?"700":"400"}>{m.bajas}</text>
-                    <text x={x} y={yn-6} fontSize="8" fill="#27ae60" textAnchor="middle" fontWeight={isAct?"700":"400"}>{m.netos>0?"+":""}{m.netos}</text>
-                    {/* Label mes abajo */}
-                    <text x={x} y={H+14} fontSize={isAct?9:8} fill={isAct?"#1F3864":"#9baabf"} textAnchor="middle" fontWeight={isAct?"700":"400"}>{m.label}</text>
-                  </g>);
-                })}
-              </svg>
-            </div>
+          <div style={{background:"#fff",borderRadius:14,border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:4,overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:600}}>
+              <thead>
+                <tr style={{background:"#1F3864",color:"white"}}>
+                  <th style={{padding:"9px 12px",textAlign:"left",fontWeight:600,fontSize:11,width:90}}>Tipo</th>
+                  {mesesData.map((m,i)=>(
+                    <th key={i} style={{padding:"9px 6px",textAlign:"center",fontWeight:600,fontSize:10,background:esActual(m)?"#8a3a00":"#1F3864",minWidth:50}}>{m.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[{key:"altas",label:"✅ Altas",color:"#1F3864"},{key:"bajas",label:"🚫 Bajas",color:"#e74c3c"},{key:"netos",label:"📈 Netos",color:"#27ae60"}].map(({key,label,color})=>(
+                  <tr key={key} style={{borderBottom:"1px solid #f0f3f8"}}>
+                    <td style={{padding:"8px 12px",fontWeight:700,color,fontSize:11}}>{label}</td>
+                    {mesesData.map((m,i)=>{
+                      const val=m[key];
+                      const isAct=esActual(m);
+                      return(
+                        <td key={i} style={{padding:"8px 6px",textAlign:"center",background:isAct?"#fff8f0":"i%2===0?'#fff':'#fafbff'",fontWeight:isAct?700:400,color:key==="netos"?(val>=0?"#27ae60":"#e74c3c"):color,fontSize:12}}>
+                          {key==="netos"?(val>0?"+":"")+val:val}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         );
       })()}
 
-      {secTitle("Modelos activos en cartera","🖥️")}
+            {secTitle("Modelos activos en cartera","🖥️")}
       <div style={{background:"#fff",borderRadius:14,padding:"16px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:20}}>
         {modelos.map(([mod,n])=>(
           <MiniBar key={mod} label={mod} value={n} max={maxMod} color="#1F3864"/>
