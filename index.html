@@ -1571,6 +1571,84 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       </>)}
 
       {/* ── MODELOS ACTIVOS ─────────────────────── */}
+      {/* ── EVOLUCIÓN MENSUAL ─────────────────────────────── */}
+      {secTitle("Evolución mensual — últimos 12 meses","📊")}
+      {(()=>{
+        // Calcular instalaciones y desinstalaciones por mes desde los datos
+        const hoy=new Date();
+        const mesesData=[];
+        for(let i=11;i>=0;i--){
+          const d=new Date(hoy.getFullYear(),hoy.getMonth()-i,1);
+          const mes=d.getMonth();const anio=d.getFullYear();
+          const label=MESES[mes]+" "+(anio===hoy.getFullYear()?"":anio);
+          // Contar instalaciones (fechaInstalacion del mes)
+          const altas=clientes.filter(c=>{
+            if(!c.fechaInstalacion)return false;
+            const p=c.fechaInstalacion.replace(/-/g,"/").split("/");
+            if(p.length<3)return false;
+            return parseInt(p[1])===mes+1&&parseInt(p[2])===anio;
+          }).length;
+          // Contar desinstalaciones desde desins prop
+          const bajas=(desins||[]).filter(d=>{
+            if(!d.fechaDesins)return false;
+            const p=d.fechaDesins.replace(/-/g,"/").split("/");
+            if(p.length<3)return false;
+            return parseInt(p[1])===mes+1&&parseInt(p[2])===anio;
+          }).length;
+          mesesData.push({label,altas,bajas,netos:altas-bajas,mes,anio});
+        }
+        const maxVal=Math.max(...mesesData.map(m=>Math.max(m.altas,m.bajas)),1);
+        const barW=100/mesesData.length;
+        const esActual=(m)=>m.mes===hoy.getMonth()&&m.anio===hoy.getFullYear();
+        return(
+          <div style={{background:"#fff",borderRadius:14,padding:"20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:4}}>
+            {/* Leyenda */}
+            <div style={{display:"flex",gap:16,marginBottom:16,flexWrap:"wrap"}}>
+              {[["#1F3864","Instalaciones"],["#e74c3c","Desinstalaciones"],["#27ae60","Netos"]].map(([color,label])=>(
+                <div key={label} style={{display:"flex",alignItems:"center",gap:5}}>
+                  <div style={{width:12,height:12,borderRadius:3,background:color}}/>
+                  <span style={{fontSize:11,color:"#6b7a99"}}>{label}</span>
+                </div>
+              ))}
+            </div>
+            {/* Gráfico de barras */}
+            <div style={{display:"flex",alignItems:"flex-end",gap:2,height:160,padding:"0 4px"}}>
+              {mesesData.map((m,i)=>(
+                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:1,height:"100%",justifyContent:"flex-end"}}>
+                  <div style={{width:"100%",display:"flex",gap:1,alignItems:"flex-end",height:140}}>
+                    {/* Barra Altas */}
+                    <div title={"Altas: "+m.altas} style={{flex:1,background:esActual(m)?"#1F3864":"#4a6fa5",borderRadius:"3px 3px 0 0",height:(m.altas/maxVal*130)+"px",minHeight:m.altas>0?2:0,transition:"height .3s"}}/>
+                    {/* Barra Bajas */}
+                    <div title={"Bajas: "+m.bajas} style={{flex:1,background:esActual(m)?"#e74c3c":"#e8a0a0",borderRadius:"3px 3px 0 0",height:(m.bajas/maxVal*130)+"px",minHeight:m.bajas>0?2:0,transition:"height .3s"}}/>
+                  </div>
+                  {/* Netos */}
+                  <div style={{fontSize:9,fontWeight:700,color:m.netos>=0?"#27ae60":"#e74c3c",marginTop:1}}>{m.netos>0?"+":""}{m.netos}</div>
+                  {/* Label mes */}
+                  <div style={{fontSize:8,color:esActual(m)?"#1F3864":"#9baabf",fontWeight:esActual(m)?700:400,textAlign:"center",marginTop:1}}>{m.label}</div>
+                </div>
+              ))}
+            </div>
+            {/* Tabla resumen */}
+            <div style={{marginTop:14,overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                <tbody>
+                  {[["Altas","#1F3864"],["Bajas","#e74c3c"],["Netos","#27ae60"]].map(([tipo,color])=>(
+                    <tr key={tipo}>
+                      <td style={{padding:"3px 8px",fontWeight:700,color,width:80}}>{tipo}</td>
+                      {mesesData.map((m,i)=>(
+                        <td key={i} style={{padding:"3px 4px",textAlign:"center",background:esActual(m)?"#f0f4ff":"transparent",fontWeight:esActual(m)?700:400,color:tipo==="Netos"?(m.netos>=0?"#27ae60":"#e74c3c"):color}}>
+                          {tipo==="Altas"?m.altas:tipo==="Bajas"?m.bajas:(m.netos>0?"+":"")+m.netos}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
       {secTitle("Modelos activos en cartera","🖥️")}
       <div style={{background:"#fff",borderRadius:14,padding:"16px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:20}}>
         {modelos.map(([mod,n])=>(
