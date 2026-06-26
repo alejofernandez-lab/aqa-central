@@ -1889,23 +1889,17 @@ function App(){
       // Mapa de deuda y FC por id_maq (col E = máqs en hoja Deuda, col H = deuda, col I = fc)
       const deudaByMaq={};const fcByMaq={};
       if(dD&&dD.rows){
-        console.log("Deuda Office - primera fila:", Object.values(dD.rows[0]||{}));
         dD.rows.forEach(r=>{
           const vals=Object.values(r);
-          // Col E (idx 4) = máqs (puede ser múltiples IDs separados por coma o uno solo)
-          const maqsRaw=vals[4]||"";
-          const deudaRaw=vals[7]||"0";
-          const fcRaw=vals[8]||"0";
+          const idMaq=String(vals[4]||"").trim();
+          const deudaRaw=String(vals[7]||"0");
+          const fcRaw=String(vals[8]||"0");
           const deuda=parseNum(deudaRaw);
           const fc=parseInt(fcRaw)||0;
-          // Parsear cada ID de máquina
-          String(maqsRaw).split(/[,\n]/).forEach(id=>{
-            const idClean=id.trim();
-            if(idClean&&!deudaByMaq[idClean]){
-              deudaByMaq[idClean]=deuda;
-              fcByMaq[idClean]=fc;
-            }
-          });
+          if(idMaq){
+            deudaByMaq[idMaq]=deuda;
+            fcByMaq[idMaq]=fc;
+          }
         });
       }
       const map={};const clientes=[];
@@ -1918,8 +1912,8 @@ function App(){
         const fechaInst=(row["Fecha Inst"]||row["fecha_inst"]||"").trim();
         const abono=parseNum(row["abono s.iva"]||"0");
         const proxAjuste=(row["prox ajus"]||"").trim();
-        const deuda=deudaByMaq[id]||0;
-        const fc=fcByMaq[id]||0;
+        const deuda=deudaByMaq[id]||deudaByMaq[String(parseInt(id)||0)]||0;
+        const fc=fcByMaq[id]||fcByMaq[String(parseInt(id)||0)]||0;
         const entry={id,nombre,modelo,asesorAtClte:"Tomás Zoff",asesorCob:asesor,
           vendedor:"Marcelo Paccapelo",
           razonSocial:(row["razón social (por formula)"]||"").trim(),
