@@ -1350,8 +1350,16 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
   const inhabilitados=useMemo(()=>clientesFiltrados.filter(c=>c.estado==="inhabilitado").length,[clientesFiltrados]);
   const totalClientes=clientesFiltrados.length;
 
-  // Deuda total
-  const deudaTotal=useMemo(()=>clientesFiltrados.reduce((s,c)=>s+(c.deuda||0),0),[clientesFiltrados]);
+  // Deuda total — deduplicada por nombre (clientes con múltiples máquinas cuentan una sola vez)
+  const deudaTotal=useMemo(()=>{
+    const vistos=new Set();
+    return clientesFiltrados.reduce((s,c)=>{
+      const key=(c.nombre||c.razonSocial||c.id||"").toLowerCase().trim();
+      if(vistos.has(key)||!c.deuda)return s;
+      vistos.add(key);
+      return s+(c.deuda||0);
+    },0);
+  },[clientesFiltrados]);
 
   // Cartera por asesor AC (top 8)
   const carteraAC=useMemo(()=>{
@@ -1365,15 +1373,17 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
   },[clientesFiltrados]);
   const maxAC=carteraAC[0]?.count||1;
 
-  // Cobranzas por asesor (con deuda > 0)
+  // Cobranzas por asesor (con deuda > 0, deduplicada por nombre de cliente)
   const carteraCob=useMemo(()=>{
-    const m={};
+    const m={};const vistos={};
     clientesFiltrados.filter(c=>(c.deuda||0)>0).forEach(c=>{
       const a=c.asesorCob||"Sin asignar";
-      if(!m[a])m[a]={count:0,deuda:0};
-      m[a].count++;m[a].deuda+=(c.deuda||0);
+      const key=(c.nombre||c.id||"").toLowerCase().trim();
+      if(!m[a])m[a]={count:0,deuda:0,vistos:new Set()};
+      m[a].count++;
+      if(!m[a].vistos.has(key)){m[a].vistos.add(key);m[a].deuda+=(c.deuda||0);}
     });
-    return Object.entries(m).map(([a,d])=>({asesor:a,...d})).sort((a,b)=>b.deuda-a.deuda).slice(0,8);
+    return Object.entries(m).map(([a,d])=>({asesor:a,count:d.count,deuda:d.deuda})).sort((a,b)=>b.deuda-a.deuda).slice(0,8);
   },[clientesFiltrados]);
   const maxDeuda=carteraCob[0]?.deuda||1;
 
@@ -1950,7 +1960,11 @@ function App(){
         if(nombre&&asesor)desinsMap["n:"+nombre]=asesor;
       });
     });
-    const cobClientes=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmapNorm[normId(c.id)]||cmap[c.nombre?.toLowerCase()]||{};const asesorAC=x.asesorAtClte||desinsMap[c.id]||desinsMap[normId(c.id)]||desinsMap["n:"+c.nombre?.toLowerCase()]||"";return{...c,asesorAtClte:asesorAC,vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};});
+    const cobClientesRaw=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmapNorm[normId(c.id)]||cmap[c.nombre?.toLowerCase()]||{};const asesorAC=x.asesorAtClte||desinsMap[c.id]||desinsMap[normId(c.id)]||desinsMap["n:"+c.nombre?.toLowerCase()]||"";return{...c,asesorAtClte:asesorAC,vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};});
+    // Deduplicar por nombre — un registro por cliente
+    const cobVistos=new Map();
+    cobClientesRaw.forEach(c=>{const key=(c.nombre||"").toLowerCase().trim();if(!cobVistos.has(key))cobVistos.set(key,c);});
+    const cobClientes=[...cobVistos.values()];
     const cobIds=new Set(cobClientes.map(c=>c.id));
     const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id)).map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
     const all=[...cobClientes,...soloComodato];if(all.length>0)setClientes(all);
