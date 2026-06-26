@@ -75,9 +75,12 @@ const URLS = {
   hielComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=392626389&single=true&output=csv",
   hielDesins:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRZStJrNN1JBhsZITHzS2C7DzHTuKEIdH_B3neU_PlIkfcQ6WReUaGvqshQvvwibGeyg0mUQ-eYnlis/pub?gid=1502779041&single=true&output=csv",
   offInstPend:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=796818616&single=true&output=csv",
-  offComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1425890095&single=true&output=csv",
-  offVenta:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1080444203&single=true&output=csv",
-  offDesins:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1428472954&single=true&output=csv",
+  offComodato:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTXfUDtCfbrBjlkY8_dvkxsP6n8RyjRQgNXs0XGM8lU5K8VHkatQwxBUOSBSuMW7oYKi91RRqDDLl9p/pub?gid=952873567&single=true&output=csv",
+  offActivos:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTXfUDtCfbrBjlkY8_dvkxsP6n8RyjRQgNXs0XGM8lU5K8VHkatQwxBUOSBSuMW7oYKi91RRqDDLl9p/pub?gid=0&single=true&output=csv",
+  offDeuda:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTXfUDtCfbrBjlkY8_dvkxsP6n8RyjRQgNXs0XGM8lU5K8VHkatQwxBUOSBSuMW7oYKi91RRqDDLl9p/pub?gid=2006910976&single=true&output=csv",
+  offVenta:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTXfUDtCfbrBjlkY8_dvkxsP6n8RyjRQgNXs0XGM8lU5K8VHkatQwxBUOSBSuMW7oYKi91RRqDDLl9p/pub?gid=0&single=true&output=csv",
+  offDesins:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTXfUDtCfbrBjlkY8_dvkxsP6n8RyjRQgNXs0XGM8lU5K8VHkatQwxBUOSBSuMW7oYKi91RRqDDLl9p/pub?gid=1959155990&single=true&output=csv",
+  offAjustes:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTXfUDtCfbrBjlkY8_dvkxsP6n8RyjRQgNXs0XGM8lU5K8VHkatQwxBUOSBSuMW7oYKi91RRqDDLl9p/pub?gid=8192251&single=true&output=csv",
   intimaciones:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=354176531&single=true&output=csv",
   cartasDoc:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=0&single=true&output=csv",
   veraz:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=2086198383&single=true&output=csv",
@@ -87,7 +90,7 @@ const URLS = {
 };
 
 const LOG_URL_MAP={"Buenos Aires_Instalaciones Pendientes":"baInstPend","Buenos Aires_Comodato":"baComodato","Buenos Aires_Venta":"baVenta","Buenos Aires_Desinstalaciones":"baDesins","Interior_Instalaciones Pendientes":"intInstPend","Interior_Comodato":"intComodato","Interior_Venta":"intVenta","Interior_Desinstalaciones":"intDesins","Hielogic_Instalaciones Pendientes":"hielInstPend","Hielogic_Comodato":"hielComodato","Hielogic_Desinstalaciones":"hielDesins","AQA Office_Instalaciones Pendientes":"offInstPend","AQA Office_Comodato":"offComodato","AQA Office_Venta":"offVenta","AQA Office_Desinstalaciones":"offDesins"};
-const MAIN_TABS=["Resumen AQA","Resumen Hielogic","Resumen Office","Atención al Cliente","Cobranzas","Comercial","Logística","Administración"];
+const MAIN_TABS=["Resumen","Atención al Cliente","Cobranzas","Comercial","Logística","Administración"];
 const LOG_HOJAS=["Instalaciones Pendientes","Comodato","Desinstalaciones","Venta"];
 const ADM_TABS=["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio","Configuración"];
 const ADM_COLORS={"Intimaciones":"#8a3a00","Cartas Documento":"#1a3a8a","Veraz":"#5a1a8a"};
@@ -1310,14 +1313,16 @@ function DonutChart({data,size=120}){
   );
 }
 
-function Resumen({clientes,cierres,desins,asesorOverride={},unidad="AQA"}){
-  // Filtrar clientes por unidad
+function Resumen({clientes,cierres,desins,asesorOverride={}}){
+  const[unidad,setUnidad]=useState("AQA");
   const carteras=unidad==="AQA"?CARTERAS_AQA:unidad==="Hielogic"?CARTERAS_HIELOGIC:CARTERAS_OFFICE;
   const modelosUnidad=unidad==="AQA"?MODELOS_AQA:unidad==="Hielogic"?MODELOS_HIELOGIC:MODELOS_OFFICE;
-  const clientesFiltrados=clientes.filter(c=>carteras.includes(c.cartera));
-  const desinsFiltradas=(desinsFiltradas||[]).filter(d=>{
-    // Filtrar desins por cartera - las de AQA son BA+Interior, Hielogic=Hielogic, Office=Office
-    if(unidad==="AQA")return!d.cartera||d.cartera==="AQA"||d.cartera==="Buenos Aires"||d.cartera==="Interior"||!CARTERAS_HIELOGIC.includes(d.cartera)&&!CARTERAS_OFFICE.includes(d.cartera);
+  const clientesFiltrados=useMemo(()=>clientes.filter(c=>carteras.includes(c.cartera)),[clientes,unidad]);
+  const desinsFiltradas=useMemo(()=>(desins||[]).filter(d=>{
+    if(unidad==="AQA")return d.cartera==="Buenos Aires"||d.cartera==="Interior"||!d.cartera;
+    if(unidad==="Hielogic")return d.cartera==="Hielogic";
+    return d.cartera==="AQA Office";
+  }),[desins,unidad]);AS_OFFICE.includes(d.cartera);
     if(unidad==="Hielogic")return d.cartera==="Hielogic";
     return d.cartera==="AQA Office";
   });
@@ -1436,6 +1441,14 @@ function Resumen({clientes,cierres,desins,asesorOverride={},unidad="AQA"}){
 
   return(
     <div style={{padding:"4px 0"}}>
+      {/* Selector de unidad */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {["AQA","Hielogic","Office"].map(u=>(
+          <button key={u} onClick={()=>setUnidad(u)} style={{padding:"8px 20px",borderRadius:10,border:"none",fontWeight:700,fontSize:13,cursor:"pointer",background:unidad===u?"#1F3864":"#f0f3f8",color:unidad===u?"white":"#6b7a99",transition:"all .15s"}}>
+            {u==="AQA"?"🏢 AQA":u==="Hielogic"?"🧊 Hielogic":"💼 Office"}
+          </button>
+        ))}
+      </div>
       {sinAsignarModal&&(
         <SinAsignarModal
           clientes={sinAsignarClientes}
@@ -1527,13 +1540,30 @@ function Resumen({clientes,cierres,desins,asesorOverride={},unidad="AQA"}){
                     <tr style={{borderBottom:"2px solid #e8eef8",background:"#f9fbff"}}>
                       <td style={{padding:"5px 10px",fontWeight:600,color,fontSize:10}}>Real {tipo}</td>
                       {objArr.map((v,i)=>{
-                        const real=i===mesActual?realMes:i<mesActual?realMes:null;
-                        // Para meses pasados no tenemos el real histórico aún
+                        // Calcular real para cada mes del 2026
+                        const realVal=i===0?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===1&&parseInt(p[2])===2026;}).length
+                          :i===1?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===2&&parseInt(p[2])===2026;}).length
+                          :i===2?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===3&&parseInt(p[2])===2026;}).length
+                          :i===3?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===4&&parseInt(p[2])===2026;}).length
+                          :i===4?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===5&&parseInt(p[2])===2026;}).length
+                          :i===mesActual?(tipo==="Altas"?instMes:tipo==="Bajas"?bajasMes:instMes-bajasMes)
+                          :null;
+                        // Para bajas usar desins
+                        const realBajas=i===0?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===1&&parseInt(p[2])===2026;}).length
+                          :i===1?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===2&&parseInt(p[2])===2026;}).length
+                          :i===2?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===3&&parseInt(p[2])===2026;}).length
+                          :i===3?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===4&&parseInt(p[2])===2026;}).length
+                          :i===4?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===5&&parseInt(p[2])===2026;}).length
+                          :i===mesActual?bajasMes:null;
+                        const altasR=i<=mesActual?(i<mesActual&&i<5?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;}).length:i===mesActual?instMes:null):null;
+                        const bajasR=i<=mesActual?(i<mesActual&&i<5?realBajas:i===mesActual?bajasMes:null):null;
+                        const real=tipo==="Altas"?altasR:tipo==="Bajas"?bajasR:altasR!=null&&bajasR!=null?altasR-bajasR:null;
                         const diff=real!=null?real-v:null;
+                        const futuro=i>mesActual;
                         return(
                           <td key={i} style={{padding:"5px 5px",textAlign:"center",background:i===mesActual?"#fff8f0":"transparent",fontWeight:i===mesActual?700:400,fontSize:11}}>
-                            {i===mesActual?(
-                              <span style={{color:diff>=0?"#27ae60":"#e74c3c",fontWeight:700}}>{real}</span>
+                            {futuro?<span style={{color:"#dce6f5"}}>—</span>:real!=null?(
+                              <span style={{color:diff>=0?"#27ae60":"#e74c3c",fontWeight:700}}>{tipo==="Netos"&&real>0?"+":""}{real}</span>
                             ):<span style={{color:"#c0cce0"}}>—</span>}
                           </td>
                         );
@@ -1628,13 +1658,13 @@ function Resumen({clientes,cierres,desins,asesorOverride={},unidad="AQA"}){
           const d=new Date(hoy.getFullYear(),hoy.getMonth()-i,1);
           const mes=d.getMonth();const anio=d.getFullYear();
           const label=MESES[mes]+(anio!==hoy.getFullYear()?" '"+String(anio).slice(2):"");
-          const altas=clientes.filter(c=>{
+          const altas=clientesFiltrados.filter(c=>{
             if(!c.fechaInstalacion)return false;
             const p=c.fechaInstalacion.replace(/-/g,"/").split("/");
             if(p.length<3)return false;
             return parseInt(p[1])===mes+1&&parseInt(p[2])===anio;
           }).length;
-          const bajas=(desins||[]).filter(dd=>{
+          const bajas=(desinsFiltradas||[]).filter(dd=>{
             if(!dd.fechaDesins)return false;
             const p=dd.fechaDesins.replace(/-/g,"/").split("/");
             if(p.length<3)return false;
@@ -1842,14 +1872,48 @@ function App(){
   const[expanded,setExpanded]=useState(null);const[chatCliente,setChatCliente]=useState(null);
 
   useEffect(()=>{(async()=>{try{
-    const[rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff,rInstBsAs,rInstInt,rInstHiel,rAjBA,rAjInt,rAjHiel,rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff]=await Promise.all([
+    const[rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff,rInstBsAs,rInstInt,rInstHiel,rAjBA,rAjInt,rAjHiel,rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff,rOffActivos,rOffDeuda]=await Promise.all([
       safeFetch(URLS.cobBsAs),safeFetch(URLS.cobInt),safeFetch(URLS.cobHiel),
       safeFetch(URLS.baComodato),safeFetch(URLS.intComodato),safeFetch(URLS.hielComodato),safeFetch(URLS.offComodato),
       safeFetch(URLS.baInstPend),safeFetch(URLS.intInstPend),safeFetch(URLS.hielInstPend),
       safeFetch(URLS.ajusteBA),safeFetch(URLS.ajusteInt),safeFetch(URLS.ajusteHiel),
-      safeFetch(URLS.baDesins),safeFetch(URLS.intDesins),safeFetch(URLS.hielDesins),safeFetch(URLS.offDesins)
+      safeFetch(URLS.baDesins),safeFetch(URLS.intDesins),safeFetch(URLS.hielDesins),safeFetch(URLS.offDesins),
+      safeFetch(URLS.offActivos),safeFetch(URLS.offDeuda)
     ]);
     const r1=parseComodato(rComBsAs,"Buenos Aires"),r2=parseComodato(rComInt,"Interior"),r3=parseComodato(rComHiel,"Hielogic"),r4=parseComodato(rComOff,"AQA Office");
+    // Parser específico para el nuevo formato de Office (Activos + Deuda)
+    const parseOfficeActivos=(csvActivos,csvDeuda)=>{
+      const dA=parseCSVText(csvActivos);const dD=parseCSVText(csvDeuda);
+      if(!dA||!dA.rows)return{map:{},clientes:[]};
+      // Mapa de deuda por ID
+      const deudaMap={};
+      if(dD&&dD.rows){
+        const hId=dD.headers.find(h=>h.toLowerCase().includes("id")||h.toLowerCase().includes("persat"));
+        const hDeuda=dD.headers.find(h=>h.toLowerCase().includes("deuda")||h.toLowerCase().includes("saldo"));
+        if(hId&&hDeuda)dD.rows.forEach(r=>{const id=(r[hId]||"").trim();if(id)deudaMap[id]=parseNum(r[hDeuda]||"0");});
+      }
+      const map={};const clientes=[];
+      dA.rows.forEach(row=>{
+        const nombre=(row["nombre_máq_persat"]||row["nombre_maq_persat"]||"").replace(/- AQA OFFICE/gi,"").trim();
+        if(!nombre)return;
+        const id=(row["id_maq"]||"").trim();
+        const modelo=normModelo(row["modelo_maq"]||"");
+        const asesor=(row["Asesor"]||row["asesor"]||"").trim();
+        const fechaInst=(row["Fecha Inst"]||row["fecha_inst"]||"").trim();
+        const abono=parseNum(row["abono s.iva"]||"0");
+        const deuda=deudaMap[id]||0;
+        const entry={id,nombre,modelo,asesorAtClte:asesor,asesorCob:asesor,vendedor:"",
+          razonSocial:(row["razón social (por formula)"]||"").trim(),
+          fechaInstalacion:fechaInst,abono,deuda,estado:"habilitado",
+          fc:0,mens:0,cartera:"AQA Office",localidad:"",provincia:"",proxAjuste:""};
+        clientes.push(entry);
+        if(id)map[id]=entry;
+      });
+      return{map,clientes};
+    };
+    const rOffice=parseOfficeActivos(rOffActivos,rOffDeuda);
+    // Reemplazar r4 con los datos del nuevo formato si tiene datos
+    if(rOffice.clientes.length>0){r4={map:rOffice.map,clientes:rOffice.clientes};}
     const ri1=parseComodato(rInstBsAs,"Buenos Aires"),ri2=parseComodato(rInstInt,"Interior"),ri3=parseComodato(rInstHiel,"Hielogic");
     const ajusteMap={...parseAjustes(rAjBA,0,3,10),...parseAjustes(rAjInt,0,2,9),...parseAjustes(rAjHiel,0,3,11)};
     const normId=s=>String(s||"").replace(/[-\s\.]/g,"").toLowerCase();
@@ -2031,9 +2095,7 @@ function App(){
     </div>)}
 
     {tab==="Comercial"&&<Comercial onNuevoCierre={()=>{}}/>}
-    {tab==="Resumen AQA"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride} unidad="AQA"/>}
-    {tab==="Resumen Hielogic"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride} unidad="Hielogic"/>}
-    {tab==="Resumen Office"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride} unidad="Office"/>}}
+    {tab==="Resumen"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride}/>}
 
     {tab==="Logística"&&<Logistica/>}
 
