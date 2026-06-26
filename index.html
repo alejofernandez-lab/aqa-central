@@ -1869,13 +1869,14 @@ function App(){
   const[expanded,setExpanded]=useState(null);const[chatCliente,setChatCliente]=useState(null);
 
   useEffect(()=>{(async()=>{try{
+    const sf=u=>safeFetch(u).catch(()=>"");
     const[rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff,rInstBsAs,rInstInt,rInstHiel,rAjBA,rAjInt,rAjHiel,rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff,rOffActivos,rOffDeuda]=await Promise.all([
-      safeFetch(URLS.cobBsAs),safeFetch(URLS.cobInt),safeFetch(URLS.cobHiel),
-      safeFetch(URLS.baComodato),safeFetch(URLS.intComodato),safeFetch(URLS.hielComodato),safeFetch(URLS.offComodato),
-      safeFetch(URLS.baInstPend),safeFetch(URLS.intInstPend),safeFetch(URLS.hielInstPend),
-      safeFetch(URLS.ajusteBA),safeFetch(URLS.ajusteInt),safeFetch(URLS.ajusteHiel),
-      safeFetch(URLS.baDesins),safeFetch(URLS.intDesins),safeFetch(URLS.hielDesins),safeFetch(URLS.offDesins),
-      safeFetch(URLS.offActivos).catch(()=>""),safeFetch(URLS.offDeuda).catch(()=>"")
+      sf(URLS.cobBsAs),sf(URLS.cobInt),sf(URLS.cobHiel),
+      sf(URLS.baComodato),sf(URLS.intComodato),sf(URLS.hielComodato),sf(URLS.offComodato),
+      sf(URLS.baInstPend),sf(URLS.intInstPend),sf(URLS.hielInstPend),
+      sf(URLS.ajusteBA),sf(URLS.ajusteInt),sf(URLS.ajusteHiel),
+      sf(URLS.baDesins),sf(URLS.intDesins),sf(URLS.hielDesins),sf(URLS.offDesins),
+      sf(URLS.offActivos),sf(URLS.offDeuda)
     ]);
     const r1=parseComodato(rComBsAs,"Buenos Aires"),r2=parseComodato(rComInt,"Interior"),r3=parseComodato(rComHiel,"Hielogic"),r4=parseComodato(rComOff,"AQA Office");
     // Parser específico para el nuevo formato de Office (Activos + Deuda)
@@ -1894,7 +1895,7 @@ function App(){
         const nombre=(row["nombre_máq_persat"]||row["nombre_maq_persat"]||"").replace(/- AQA OFFICE/gi,"").trim();
         if(!nombre)return;
         const id=(row["id_maq"]||"").trim();
-        const modelo=normModelo(row["modelo_maq"]||"");
+        const modelo=(row["modelo_maq"]||"").replace(/^B\s*-\s*/,"").replace(/\s+/g,"").toUpperCase().trim();
         const asesor=(row["Asesor"]||row["asesor"]||"").trim();
         const fechaInst=(row["Fecha Inst"]||row["fecha_inst"]||"").trim();
         const abono=parseNum(row["abono s.iva"]||"0");
