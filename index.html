@@ -1990,8 +1990,8 @@ function App(){
     cobClientesRaw.forEach(c=>{const key=(c.nombre||"").toLowerCase().trim();if(!cobVistos.has(key))cobVistos.set(key,c);});
     const cobClientes=[...cobVistos.values()];
     const cobIds=new Set(cobClientes.map(c=>c.id));
-    const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id)).map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
-    const all=[...cobClientes,...soloComodato];if(all.length>0)setClientes(all);
+    const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id)&&c.cartera!=="AQA Office").map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
+    const all=[...cobClientes,...soloComodato,...(rOffice.clientes.length>0?rOffice.clientes:[])];if(all.length>0)setClientes(all);
     // Procesar desinstalaciones para el Resumen
     const parsedDesins=(csv)=>{
       const d=parseCSVText(csv);
