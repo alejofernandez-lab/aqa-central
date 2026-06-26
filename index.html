@@ -1889,17 +1889,23 @@ function App(){
       // Mapa de deuda y FC por id_maq (col E = máqs en hoja Deuda, col H = deuda, col I = fc)
       const deudaByMaq={};const fcByMaq={};
       if(dD&&dD.rows){
+        const hMaqs=dD.headers[4];
+        const hDeuda=dD.headers[7];
+        const hFc=dD.headers[8];
+        const thermoRow=dD.rows.find(r=>String(r[hMaqs]||"").includes("355")||String(Object.values(r)[4]||"").includes("355"));
+        if(thermoRow)console.log("Thermo row maqs:",JSON.stringify(Object.values(thermoRow)[4]),"deuda:",Object.values(thermoRow)[7]);
         dD.rows.forEach(r=>{
-          const vals=Object.values(r);
-          const maqsRaw=String(vals[4]||"").trim();
-          const deudaRaw=String(vals[7]||"0");
-          const fcRaw=String(vals[8]||"0");
+          const maqsRaw=String(r[hMaqs]||r[Object.keys(r)[4]]||"").trim();
+          const deudaRaw=String(r[hDeuda]||r[Object.keys(r)[7]]||"0");
+          const fcRaw=String(r[hFc]||r[Object.keys(r)[8]]||"0");
           const deuda=parseNum(deudaRaw);
           const fc=parseInt(fcRaw)||0;
-          // IDs pueden ser múltiples separados por \n dentro de la celda
-          maqsRaw.split(/[\n,]/).forEach(id=>{
-            const idClean=id.trim();
-            if(idClean){deudaByMaq[idClean]=deuda;fcByMaq[idClean]=fc;}
+          maqsRaw.split(/[\n\r,]+/).forEach(id=>{
+            const idClean=id.replace(/"/g,"").trim();
+            if(idClean&&/^\d+$/.test(idClean)){
+              deudaByMaq[idClean]=deuda;
+              fcByMaq[idClean]=fc;
+            }
           });
         });
       }
