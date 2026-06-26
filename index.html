@@ -1891,15 +1891,16 @@ function App(){
       if(dD&&dD.rows){
         dD.rows.forEach(r=>{
           const vals=Object.values(r);
-          const idMaq=String(vals[4]||"").trim();
+          const maqsRaw=String(vals[4]||"").trim();
           const deudaRaw=String(vals[7]||"0");
           const fcRaw=String(vals[8]||"0");
           const deuda=parseNum(deudaRaw);
           const fc=parseInt(fcRaw)||0;
-          if(idMaq){
-            deudaByMaq[idMaq]=deuda;
-            fcByMaq[idMaq]=fc;
-          }
+          // IDs pueden ser múltiples separados por \n dentro de la celda
+          maqsRaw.split(/[\n,]/).forEach(id=>{
+            const idClean=id.trim();
+            if(idClean){deudaByMaq[idClean]=deuda;fcByMaq[idClean]=fc;}
+          });
         });
       }
       const map={};const clientes=[];
