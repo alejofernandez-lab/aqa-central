@@ -87,7 +87,7 @@ const URLS = {
 };
 
 const LOG_URL_MAP={"Buenos Aires_Instalaciones Pendientes":"baInstPend","Buenos Aires_Comodato":"baComodato","Buenos Aires_Venta":"baVenta","Buenos Aires_Desinstalaciones":"baDesins","Interior_Instalaciones Pendientes":"intInstPend","Interior_Comodato":"intComodato","Interior_Venta":"intVenta","Interior_Desinstalaciones":"intDesins","Hielogic_Instalaciones Pendientes":"hielInstPend","Hielogic_Comodato":"hielComodato","Hielogic_Desinstalaciones":"hielDesins","AQA Office_Instalaciones Pendientes":"offInstPend","AQA Office_Comodato":"offComodato","AQA Office_Venta":"offVenta","AQA Office_Desinstalaciones":"offDesins"};
-const MAIN_TABS=["Resumen","Atención al Cliente","Cobranzas","Comercial","Logística","Administración"];
+const MAIN_TABS=["Resumen AQA","Resumen Hielogic","Resumen Office","Atención al Cliente","Cobranzas","Comercial","Logística","Administración"];
 const LOG_HOJAS=["Instalaciones Pendientes","Comodato","Desinstalaciones","Venta"];
 const ADM_TABS=["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio","Configuración"];
 const ADM_COLORS={"Intimaciones":"#8a3a00","Cartas Documento":"#1a3a8a","Veraz":"#5a1a8a"};
@@ -106,6 +106,15 @@ const SOCIEDADES=["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributis
 const TIPOS_CONTRATO=["Buenos Aires","Interior con CO2","Interior sin CO2","Hielogic Buenos Aires","Hielogic Interior","AQA Office"];
 const TIPO_COLORS={"Buenos Aires":"#1F3864","Interior con CO2":"#1a5c3a","Interior sin CO2":"#2d6a4f","Hielogic Buenos Aires":"#5a1a8a","Hielogic Interior":"#7b2d8b","AQA Office":"#8a3a00"};
 const EQUIPOS_SEG={"Comercial":VENDEDORES,"Atención al Cliente":ASESORES_ATCLTE,"Logística":["Facundo Costabel","Alex Iraldi","Antonella Legname","Brian Gonzalez","Sebastian Garcia"],"Cobranzas":["Dante Briceño","Mathias Servin","Dorotea Mazzieri","Milagros Saracco"]};
+const MODELOS_AQA=["SM80","BM80","RBF","RBL","SM30"];
+const MODELOS_HIELOGIC=["31A","120P","210P","420P","700P","1500P"];
+const MODELOS_OFFICE=["WL7","OFF20"];
+const CARTERAS_AQA=["Buenos Aires","Interior"];
+const CARTERAS_HIELOGIC=["Hielogic"];
+const CARTERAS_OFFICE=["AQA Office"];
+const OBJETIVOS_HIELOGIC=null;// pendiente
+const OBJETIVOS_OFFICE=null;// pendiente
+
 const PAL=[{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
 const LOG_ASESORES=["Agustín","Migue","Kathy","Nela","Tomi","Chuli","Anto","Pablo","Lourdes","Depósito","Logística"];
 const LOG_TIPOS_TRABAJO=["Instalación","Relevamiento","Mantenimiento","Reparación","Entrega","Cambio de Modelo","Cambio de Ubicación","Proveedores","Recambio de CO2","Desinstalación"];
@@ -1306,7 +1315,18 @@ function DonutChart({data,size=120}){
   );
 }
 
-function Resumen({clientes,cierres,desins,asesorOverride={}}){
+function Resumen({clientes,cierres,desins,asesorOverride={},unidad="AQA"}){
+  // Filtrar clientes por unidad
+  const carteras=unidad==="AQA"?CARTERAS_AQA:unidad==="Hielogic"?CARTERAS_HIELOGIC:CARTERAS_OFFICE;
+  const modelosUnidad=unidad==="AQA"?MODELOS_AQA:unidad==="Hielogic"?MODELOS_HIELOGIC:MODELOS_OFFICE;
+  const clientesFiltrados=clientes.filter(c=>carteras.includes(c.cartera));
+  const desinsFiltradas=(desinsFiltradas||[]).filter(d=>{
+    // Filtrar desins por cartera - las de AQA son BA+Interior, Hielogic=Hielogic, Office=Office
+    if(unidad==="AQA")return!d.cartera||d.cartera==="AQA"||d.cartera==="Buenos Aires"||d.cartera==="Interior"||!CARTERAS_HIELOGIC.includes(d.cartera)&&!CARTERAS_OFFICE.includes(d.cartera);
+    if(unidad==="Hielogic")return d.cartera==="Hielogic";
+    return d.cartera==="AQA Office";
+  });
+  const objetivosMes=unidad==="AQA"?OBJETIVOS_2026:null;
   const mesActual=new Date().getMonth(); // 0-indexed
   const anoActual=new Date().getFullYear();
 
@@ -1323,41 +1343,41 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
   };
   // Altas del mes: Inicio de Servicio en el mes corriente (hoja Instalaciones Pendientes = clientes recientes)
   // Usamos fechaInstalacion que viene del comodato (columna "Inicio de Servicio")
-  const instMes=useMemo(()=>clientes.filter(c=>parseFechaMes(c.fechaInstalacion,mesActual,anoActual)).length,[clientes,mesActual,anoActual]);
+  const instMes=useMemo(()=>clientesFiltrados.filter(c=>parseFechaMes(c.fechaInstalacion,mesActual,anoActual)).length,[clientes,mesActual,anoActual]);
   // Bajas del mes: desde desinstalaciones con fecha del mes corriente
   const bajasMes=useMemo(()=>(desins||[]).filter(d=>parseFechaMes(d.fechaDesins,mesActual,anoActual)).length,[desins,mesActual,anoActual]);
 
   // Cartera general
-  const habilitados=useMemo(()=>clientes.filter(c=>c.estado==="habilitado").length,[clientes]);
-  const pendientes=useMemo(()=>clientes.filter(c=>c.estado==="pendiente").length,[clientes]);
-  const inhabilitados=useMemo(()=>clientes.filter(c=>c.estado==="inhabilitado").length,[clientes]);
-  const totalClientes=clientes.length;
+  const habilitados=useMemo(()=>clientesFiltrados.filter(c=>c.estado==="habilitado").length,[clientesFiltrados]);
+  const pendientes=useMemo(()=>clientesFiltrados.filter(c=>c.estado==="pendiente").length,[clientesFiltrados]);
+  const inhabilitados=useMemo(()=>clientesFiltrados.filter(c=>c.estado==="inhabilitado").length,[clientesFiltrados]);
+  const totalClientes=clientesFiltrados.length;
 
   // Deuda total
-  const deudaTotal=useMemo(()=>clientes.reduce((s,c)=>s+(c.deuda||0),0),[clientes]);
+  const deudaTotal=useMemo(()=>clientesFiltrados.reduce((s,c)=>s+(c.deuda||0),0),[clientesFiltrados]);
 
   // Cartera por asesor AC (top 8)
   const carteraAC=useMemo(()=>{
     const m={};
-    clientes.forEach(c=>{
+    clientesFiltrados.forEach(c=>{
       const a=asesorOverride[c.id]||c.asesorAtClte||"Sin asignar";
       if(!m[a])m[a]={count:0,deuda:0};
       m[a].count++;m[a].deuda+=(c.deuda||0);
     });
     return Object.entries(m).map(([a,d])=>({asesor:a,...d})).sort((a,b)=>b.count-a.count).slice(0,10);
-  },[clientes]);
+  },[clientesFiltrados]);
   const maxAC=carteraAC[0]?.count||1;
 
   // Cobranzas por asesor (con deuda > 0)
   const carteraCob=useMemo(()=>{
     const m={};
-    clientes.filter(c=>(c.deuda||0)>0).forEach(c=>{
+    clientesFiltrados.filter(c=>(c.deuda||0)>0).forEach(c=>{
       const a=c.asesorCob||"Sin asignar";
       if(!m[a])m[a]={count:0,deuda:0};
       m[a].count++;m[a].deuda+=(c.deuda||0);
     });
     return Object.entries(m).map(([a,d])=>({asesor:a,...d})).sort((a,b)=>b.deuda-a.deuda).slice(0,8);
-  },[clientes]);
+  },[clientesFiltrados]);
   const maxDeuda=carteraCob[0]?.deuda||1;
 
   // Ranking comercial (vendedor)
@@ -1369,7 +1389,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       m[v]++;
     });
     return Object.entries(m).map(([v,n])=>({vendedor:v,count:n})).sort((a,b)=>b.count-a.count).filter(x=>x.vendedor!=="Sin asignar"&&x.vendedor!=="Cadena").slice(0,10);
-  },[clientes]);
+  },[clientesFiltrados]);
   const maxVend=rankingComercial[0]?.count||1;
 
   // Ranking desde cierres Comercial
@@ -1392,13 +1412,14 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
   };
   const modelos=useMemo(()=>{
     const m={};
-    clientes.filter(c=>c.estado==="habilitado").forEach(c=>{
+    clientesFiltrados.filter(c=>c.estado==="habilitado").forEach(c=>{
       const mod=normModelo(c.modelo);
       if(!mod)return;
+      if(modelosUnidad.length>0&&!modelosUnidad.includes(mod))return;
       m[mod]=(m[mod]||0)+1;
     });
     return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,12);
-  },[clientes]);
+  },[clientesFiltrados]);
   const maxMod=modelos[0]?.[1]||1;
 
   const fmt=n=>n>=1000000?`$${(n/1000000).toFixed(1)}M`:n>=1000?`$${Math.round(n/1000)}K`:`$${n}`;
@@ -1416,7 +1437,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
   ];
 
   const[sinAsignarModal,setSinAsignarModal]=useState(false);
-  const sinAsignarClientes=useMemo(()=>clientes.filter(c=>(!c.asesorAtClte||c.asesorAtClte.trim()==="")&&!asesorOverride[c.id]),[clientes,asesorOverride]);
+  const sinAsignarClientes=useMemo(()=>clientesFiltrados.filter(c=>(!c.asesorAtClte||c.asesorAtClte.trim()==="")&&!asesorOverride[c.id]),[clientes,asesorOverride]);
 
   return(
     <div style={{padding:"4px 0"}}>
@@ -1455,8 +1476,8 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       </div>
 
       {/* ── OBJETIVOS DEL MES ──────────────────── */}
-      {secTitle(`Objetivos ${MESES[mesActual]} ${anoActual}`,"🎯")}
-      <div style={{background:"#fff",borderRadius:14,padding:"18px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
+      {unidad==="AQA"&&secTitle(`Objetivos ${MESES[mesActual]} ${anoActual}`,"🎯")}
+      {unidad==="AQA"&&<div style={{background:"#fff",borderRadius:14,padding:"18px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
         {(()=>{
           // Calcular días hábiles transcurridos y totales del mes
           const hoy=new Date();
@@ -1484,12 +1505,56 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
           </>);
         })()}
         <div style={{marginTop:12,padding:"10px 14px",background:"#f4f7fb",borderRadius:10}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",marginBottom:8}}>Objetivos anuales 2026</div>
-          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",marginBottom:8}}>Objetivo vs Real — 2026</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:500}}>
+              <thead>
+                <tr style={{background:"#1F3864",color:"white"}}>
+                  <th style={{padding:"6px 10px",textAlign:"left",fontWeight:600,fontSize:10}}>Tipo</th>
+                  {MESES.map((m,i)=>(
+                    <th key={m} style={{padding:"6px 5px",textAlign:"center",fontWeight:600,fontSize:9,background:i===mesActual?"#8a3a00":"#1F3864",minWidth:38}}>{m}</th>
+                  ))}
+                  <th style={{padding:"6px 8px",textAlign:"center",fontWeight:600,fontSize:10,background:"#0d2a52"}}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[["Altas","#1F3864",instMes],["Bajas","#e74c3c",bajasMes],["Netos","#27ae60",instMes-bajasMes]].map(([tipo,color,realMes],ti)=>{
+                  const objArr=OBJETIVOS_2026[tipo];
+                  const totalObj=objArr.reduce((a,b)=>a+b,0);
+                  return(<React.Fragment key={tipo}>
+                    <tr style={{borderBottom:"1px solid #e8eef8",background:"#fff"}}>
+                      <td style={{padding:"5px 10px",fontWeight:700,color,fontSize:10}}>Obj. {tipo}</td>
+                      {objArr.map((v,i)=>(
+                        <td key={i} style={{padding:"5px 5px",textAlign:"center",background:i===mesActual?"#fff8f0":"transparent",fontWeight:i===mesActual?700:400,color:"#6b7a99",fontSize:11}}>{v}</td>
+                      ))}
+                      <td style={{padding:"5px 8px",textAlign:"center",fontWeight:700,color}}>{totalObj}</td>
+                    </tr>
+                    <tr style={{borderBottom:"2px solid #e8eef8",background:"#f9fbff"}}>
+                      <td style={{padding:"5px 10px",fontWeight:600,color,fontSize:10}}>Real {tipo}</td>
+                      {objArr.map((v,i)=>{
+                        const real=i===mesActual?realMes:i<mesActual?realMes:null;
+                        // Para meses pasados no tenemos el real histórico aún
+                        const diff=real!=null?real-v:null;
+                        return(
+                          <td key={i} style={{padding:"5px 5px",textAlign:"center",background:i===mesActual?"#fff8f0":"transparent",fontWeight:i===mesActual?700:400,fontSize:11}}>
+                            {i===mesActual?(
+                              <span style={{color:diff>=0?"#27ae60":"#e74c3c",fontWeight:700}}>{real}</span>
+                            ):<span style={{color:"#c0cce0"}}>—</span>}
+                          </td>
+                        );
+                      })}
+                      <td style={{padding:"5px 8px",textAlign:"center",color:"#9baabf",fontSize:11}}>—</td>
+                    </tr>
+                  </React.Fragment>);
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{display:"flex",gap:16,flexWrap:"wrap",marginTop:10}}>
             {["Altas","Bajas","Netos"].map(k=>(
               <div key={k} style={{textAlign:"center"}}>
                 <div style={{fontSize:18,fontWeight:700,color:k==="Altas"?"#1F3864":k==="Bajas"?"#e74c3c":"#27ae60"}}>{OBJETIVOS_2026[k].reduce((a,b)=>a+b,0)}</div>
-                <div style={{fontSize:10,color:"#6b7a99"}}>{k} anuales</div>
+                <div style={{fontSize:10,color:"#6b7a99"}}>{k} anuales obj.</div>
               </div>
             ))}
           </div>
@@ -1523,7 +1588,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
             </table>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ── CARTERA POR ASESOR AC ──────────────── */}
       {secTitle("Cartera por asesor — Atención al Cliente","👥")}
@@ -1550,17 +1615,6 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       </div>
 
       {/* ── RANKING COMERCIAL DESDE CLIENTES ─────── */}
-      {secTitle("Ranking comercial — cartera activa por vendedor","🏆")}
-      <div style={{background:"#fff",borderRadius:14,padding:"16px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
-        {rankingComercial.map(({vendedor,count},i)=>(
-          <div key={vendedor} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-            <div style={{width:20,fontSize:11,fontWeight:700,color:i<3?"#8a3a00":"#9baabf",textAlign:"right"}}>{i+1}</div>
-            <MiniBar label={vendedor} value={count} max={maxVend} color={i===0?"#f0a500":i===1?"#9baabf":i===2?"#cd7f32":"#1F3864"}/>
-          </div>
-        ))}
-      </div>
-
-      {/* ── CIERRES COMERCIALES ─────────────────── */}
       {rankingCierres.length>0&&(<>
         {secTitle("Cierres comerciales (Comercial Tab)","📝")}
         <div style={{background:"#fff",borderRadius:14,padding:"16px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
@@ -1631,6 +1685,10 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
         {modelos.map(([mod,n])=>(
           <MiniBar key={mod} label={mod} value={n} max={maxMod} color="#1F3864"/>
         ))}
+        <div style={{borderTop:"1.5px solid #dce6f5",marginTop:8,paddingTop:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontSize:12,fontWeight:700,color:"#1a2340"}}>Total</span>
+          <span style={{fontSize:13,fontWeight:700,color:"#1F3864"}}>{modelos.reduce((s,[,n])=>s+n,0)}</span>
+        </div>
       </div>
 
     </div>
@@ -1978,7 +2036,9 @@ function App(){
     </div>)}
 
     {tab==="Comercial"&&<Comercial onNuevoCierre={()=>{}}/>}
-    {tab==="Resumen"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride}/>}
+    {{tab==="Resumen AQA"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride} unidad="AQA"/>}
+    {tab==="Resumen Hielogic"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride} unidad="Hielogic"/>}
+    {tab==="Resumen Office"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride} unidad="Office"/>}}
 
     {tab==="Logística"&&<Logistica/>}
 
