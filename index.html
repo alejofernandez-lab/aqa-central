@@ -1892,15 +1892,14 @@ function App(){
         const hMaqs=dD.headers[4];
         const hDeuda=dD.headers[7];
         const hFc=dD.headers[8];
-        const thermoRow=dD.rows.find(r=>String(r[hMaqs]||"").includes("355")||String(Object.values(r)[4]||"").includes("355"));
-        if(thermoRow)console.log("Thermo row maqs:",JSON.stringify(Object.values(thermoRow)[4]),"deuda:",Object.values(thermoRow)[7]);
         dD.rows.forEach(r=>{
           const maqsRaw=String(r[hMaqs]||r[Object.keys(r)[4]]||"").trim();
           const deudaRaw=String(r[hDeuda]||r[Object.keys(r)[7]]||"0");
           const fcRaw=String(r[hFc]||r[Object.keys(r)[8]]||"0");
           const deuda=parseNum(deudaRaw);
           const fc=parseInt(fcRaw)||0;
-          maqsRaw.split(/[\n\r,]+/).forEach(id=>{
+          // IDs separados por espacios, comas o saltos de línea
+          maqsRaw.split(/[\s,\n\r]+/).forEach(id=>{
             const idClean=id.replace(/"/g,"").trim();
             if(idClean&&/^\d+$/.test(idClean)){
               deudaByMaq[idClean]=deuda;
