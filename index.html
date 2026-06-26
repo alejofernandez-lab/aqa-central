@@ -1375,10 +1375,17 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
     const m={};
     clientesFiltrados.forEach(c=>{
       const a=asesorOverride[c.id]||c.asesorAtClte||"Sin asignar";
-      if(!m[a])m[a]={count:0,deuda:0};
-      m[a].count++;m[a].deuda+=(c.deuda||0);
+      if(!m[a])m[a]={count:0,deuda:0,vistosMontos:new Set(),vistos:new Set()};
+      m[a].count++;
+      if(c.cartera==="AQA Office"){
+        const mk=String(c.deuda||0);
+        if(!m[a].vistosMontos.has(mk)){m[a].vistosMontos.add(mk);m[a].deuda+=(c.deuda||0);}
+      } else {
+        const nk=(c.nombre||c.id||"").toLowerCase().trim();
+        if(!m[a].vistos.has(nk)){m[a].vistos.add(nk);m[a].deuda+=(c.deuda||0);}
+      }
     });
-    return Object.entries(m).map(([a,d])=>({asesor:a,...d})).sort((a,b)=>b.count-a.count).slice(0,10);
+    return Object.entries(m).map(([a,d])=>({asesor:a,count:d.count,deuda:d.deuda})).sort((a,b)=>b.count-a.count).slice(0,10);
   },[clientesFiltrados]);
   const maxAC=carteraAC[0]?.count||1;
 
