@@ -1677,7 +1677,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
                 <tr style={{background:"#1F3864",color:"white"}}>
                   <th style={{padding:"9px 12px",textAlign:"left",fontWeight:600,fontSize:11,width:90}}>Tipo</th>
                   {mesesData.map((m,i)=>(
-                    <th key={i} style={{padding:"9px 6px",textAlign:"center",fontWeight:600,fontSize:10,background:esActual(m)?"#8a3a00":"#1F3864",minWidth:50}}>{m.label}        <th key={i} style={{padding:"9px 6px",textAlign:"center",fontWeight:600,fontSize:10,background:esActual(m)?"#8a3a00":"#1F3864",minWidth:50}}>{m.label}</th>
+                    <th key={i} style={{padding:"9px 6px",textAlign:"center",fontWeight:600,fontSize:10,background:esActual(m)?"#8a3a00":"#1F3864",minWidth:50}}>{m.label}</th>
                   ))}
                   <th style={{padding:"9px 8px",textAlign:"center",fontWeight:700,fontSize:10,background:"#0d2a52",minWidth:50}}>Total</th>
                 </tr>
@@ -1687,15 +1687,15 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
                   <tr key={key} style={{borderBottom:"1px solid #f0f3f8"}}>
                     <td style={{padding:"8px 12px",fontWeight:700,color,fontSize:11}}>{label}</td>
                     {mesesData.map((m,i)=>{
-                      const val=m[key];
+                      const val=key==="altas"?m.altas:key==="bajas"?m.bajas:m.netos;
                       const isAct=esActual(m);
                       return(
-                        <td key={i} style={{padding:"8px 6px",textAlign:"center",background:isAct?"#fff8f0":"i%2===0?'#fff':'#fafbff'",fontWeight:isAct?700:400,color:key==="netos"?(val>=0?"#27ae60":"#e74c3c"):color,fontSize:12}}>
+                        <td key={i} style={{padding:"8px 6px",textAlign:"center",background:isAct?"#fff8f0":"transparent",fontWeight:isAct?700:400,color:key==="netos"?(val>=0?"#27ae60":"#e74c3c"):color,fontSize:12}}>
                           {key==="netos"?(val>0?"+":"")+val:val}
                         </td>
                       );
                     })}
-                    <td style={{padding:"8px 8px",textAlign:"center",fontWeight:700,color:key==="netos"?(mesesData.reduce((s,m)=>s+(key==="netos"?m.netos:0),0)>=0?"#27ae60":"#e74c3c"):color,fontSize:12,background:"#f0f4ff"}}>
+                    <td style={{padding:"8px 8px",textAlign:"center",fontWeight:700,fontSize:12,background:"#f0f4ff",color:key==="netos"?(mesesData.reduce((s,m)=>s+m.netos,0)>=0?"#27ae60":"#e74c3c"):color}}>
                       {key==="netos"?(mesesData.reduce((s,m)=>s+m.netos,0)>0?"+":"")+mesesData.reduce((s,m)=>s+m.netos,0):mesesData.reduce((s,m)=>s+(key==="altas"?m.altas:m.bajas),0)}
                     </td>
                   </tr>
