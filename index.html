@@ -1358,7 +1358,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       if(!c.deuda)return s;
       // Para clientes de Office: deduplicar por monto+asesor (mismo grupo = mismo monto)
       if(c.cartera==="AQA Office"){
-        const key=`${c.asesorCob||""}:${c.deuda}`;
+        const key=c.grupoId||String(c.deuda||0);
         if(vistosPorMontoAsesor.has(key))return s;
         vistosPorMontoAsesor.add(key);
       } else {
@@ -1378,7 +1378,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       if(!m[a])m[a]={count:0,deuda:0,vistosMontos:new Set(),vistos:new Set()};
       m[a].count++;
       if(c.cartera==="AQA Office"){
-        const mk=String(c.deuda||0);
+        const mk=c.grupoId||String(c.deuda||0);
         if(!m[a].vistosMontos.has(mk)){m[a].vistosMontos.add(mk);m[a].deuda+=(c.deuda||0);}
       } else {
         const nk=(c.nombre||c.id||"").toLowerCase().trim();
@@ -1397,7 +1397,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
       if(!m[a])m[a]={count:0,deuda:0,vistos:new Set(),vistosMontos:new Set()};
       m[a].count++;
       if(c.cartera==="AQA Office"){
-        const mk=`${c.deuda}`;
+        const mk=c.grupoId||String(c.deuda||0);
         if(!m[a].vistosMontos.has(mk)){m[a].vistosMontos.add(mk);m[a].deuda+=(c.deuda||0);}
       } else {
         const nk=(c.nombre||c.id||"").toLowerCase().trim();
@@ -1923,18 +1923,21 @@ function App(){
         const hMaqs=dD.headers[4];
         const hDeuda=dD.headers[7];
         const hFc=dD.headers[8];
-        dD.rows.forEach(r=>{
-          const maqsRaw=String(r[hMaqs]||r[Object.keys(r)[4]]||"").trim();
-          const deudaRaw=String(r[hDeuda]||r[Object.keys(r)[7]]||"0");
-          const fcRaw=String(r[hFc]||r[Object.keys(r)[8]]||"0");
+        const grupoByMaq={};
+        dD.rows.forEach((r,rowIdx)=>{
+          const vals=Object.values(r);
+          const idFiscal=String(vals[0]||rowIdx).trim();// col A = id fiscal, único por grupo
+          const maqsRaw=String(r[hMaqs]||vals[4]||"").trim();
+          const deudaRaw=String(r[hDeuda]||vals[7]||"0");
+          const fcRaw=String(r[hFc]||vals[8]||"0");
           const deuda=parseNum(deudaRaw);
           const fc=parseInt(fcRaw)||0;
-          // IDs separados por espacios, comas o saltos de línea
           maqsRaw.split(/[\s,\n\r]+/).forEach(id=>{
             const idClean=id.replace(/"/g,"").trim();
             if(idClean&&/^\d+$/.test(idClean)){
               deudaByMaq[idClean]=deuda;
               fcByMaq[idClean]=fc;
+              grupoByMaq[idClean]=idFiscal;// guardar a qué grupo pertenece cada máquina
             }
           });
         });
@@ -1951,11 +1954,12 @@ function App(){
         const proxAjuste=(row["prox ajus"]||"").trim();
         const deuda=deudaByMaq[id]||deudaByMaq[String(parseInt(id)||0)]||0;
         const fc=fcByMaq[id]||fcByMaq[String(parseInt(id)||0)]||0;
+        const grupoId=grupoByMaq[id]||grupoByMaq[String(parseInt(id)||0)]||id;
         const entry={id,nombre,modelo,asesorAtClte:"Tomás Zoff",asesorCob:asesor,
           vendedor:"Marcelo Paccapelo",
           razonSocial:(row["razón social (por formula)"]||"").trim(),
           fechaInstalacion:fechaInst,abono,deuda,estado:"habilitado",
-          fc,mens:0,cartera:"AQA Office",localidad:"",provincia:"",proxAjuste};
+          fc,mens:0,cartera:"AQA Office",localidad:"",provincia:"",proxAjuste,grupoId};
         clientes.push(entry);
         if(id)map[id]=entry;
       });
