@@ -1677,8 +1677,9 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
                 <tr style={{background:"#1F3864",color:"white"}}>
                   <th style={{padding:"9px 12px",textAlign:"left",fontWeight:600,fontSize:11,width:90}}>Tipo</th>
                   {mesesData.map((m,i)=>(
-                    <th key={i} style={{padding:"9px 6px",textAlign:"center",fontWeight:600,fontSize:10,background:esActual(m)?"#8a3a00":"#1F3864",minWidth:50}}>{m.label}</th>
+                    <th key={i} style={{padding:"9px 6px",textAlign:"center",fontWeight:600,fontSize:10,background:esActual(m)?"#8a3a00":"#1F3864",minWidth:50}}>{m.label}        <th key={i} style={{padding:"9px 6px",textAlign:"center",fontWeight:600,fontSize:10,background:esActual(m)?"#8a3a00":"#1F3864",minWidth:50}}>{m.label}</th>
                   ))}
+                  <th style={{padding:"9px 8px",textAlign:"center",fontWeight:700,fontSize:10,background:"#0d2a52",minWidth:50}}>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -1694,6 +1695,9 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
                         </td>
                       );
                     })}
+                    <td style={{padding:"8px 8px",textAlign:"center",fontWeight:700,color:key==="netos"?(mesesData.reduce((s,m)=>s+(key==="netos"?m.netos:0),0)>=0?"#27ae60":"#e74c3c"):color,fontSize:12,background:"#f0f4ff"}}>
+                      {key==="netos"?(mesesData.reduce((s,m)=>s+m.netos,0)>0?"+":"")+mesesData.reduce((s,m)=>s+m.netos,0):mesesData.reduce((s,m)=>s+(key==="altas"?m.altas:m.bajas),0)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1882,14 +1886,23 @@ function App(){
     const parseOfficeActivos=(csvActivos,csvDeuda)=>{
       const dA=parseCSVText(csvActivos);const dD=parseCSVText(csvDeuda);
       if(!dA||!dA.rows)return{map:{},clientes:[]};
-      // Mapa de deuda por ID
-      const deudaMap={};
+      // Mapa de deuda y FC por nombre de cliente (deuda es total del grupo)
+      const deudaMap={};const fcMap={};
       if(dD&&dD.rows){
-        const hId=dD.headers.find(h=>h.toLowerCase().includes("id")||h.toLowerCase().includes("persat"));
-        const hDeuda=dD.headers.find(h=>h.toLowerCase().includes("deuda")||h.toLowerCase().includes("saldo"));
-        if(hId&&hDeuda)dD.rows.forEach(r=>{const id=(r[hId]||"").trim();if(id)deudaMap[id]=parseNum(r[hDeuda]||"0");});
+        // Col H (idx 7) = deuda total, Col I (idx 8) = cant facturas
+        const hNombre=dD.headers[4]||dD.headers[0];// col E o A
+        dD.rows.forEach(r=>{
+          const vals=Object.values(r);
+          const nombre=(vals[4]||vals[0]||"").trim().toLowerCase();
+          const deudaRaw=vals[7]||"0";
+          const fcRaw=vals[8]||"0";
+          if(nombre){
+            deudaMap[nombre]=parseNum(deudaRaw);
+            fcMap[nombre]=parseInt(fcRaw)||0;
+          }
+        });
       }
-      const map={};const clientes=[];
+      const map={};const clientes=[];const deudaVistos=new Set();
       dA.rows.forEach(row=>{
         const nombre=(row["nombre_máq_persat"]||row["nombre_maq_persat"]||"").replace(/- AQA OFFICE/gi,"").trim();
         if(!nombre)return;
@@ -1898,11 +1911,17 @@ function App(){
         const asesor=(row["Asesor"]||row["asesor"]||"").trim();
         const fechaInst=(row["Fecha Inst"]||row["fecha_inst"]||"").trim();
         const abono=parseNum(row["abono s.iva"]||"0");
-        const deuda=deudaMap[id]||0;
-        const entry={id,nombre,modelo,asesorAtClte:asesor,asesorCob:asesor,vendedor:"",
+        const proxAjuste=(row["prox ajus"]||"").trim();
+        // Deuda: solo la primera vez que aparece el cliente (total del grupo)
+        const nk=nombre.toLowerCase();
+        const deuda=deudaVistos.has(nk)?0:(deudaMap[nk]||0);
+        const fc=deudaVistos.has(nk)?0:(fcMap[nk]||0);
+        if(nk)deudaVistos.add(nk);
+        const entry={id,nombre,modelo,asesorAtClte:asesor,asesorCob:asesor,
+          vendedor:"Marcelo Paccapelo",
           razonSocial:(row["razón social (por formula)"]||"").trim(),
           fechaInstalacion:fechaInst,abono,deuda,estado:"habilitado",
-          fc:0,mens:0,cartera:"AQA Office",localidad:"",provincia:"",proxAjuste:""};
+          fc,mens:0,cartera:"AQA Office",localidad:"",provincia:"",proxAjuste};
         clientes.push(entry);
         if(id)map[id]=entry;
       });
