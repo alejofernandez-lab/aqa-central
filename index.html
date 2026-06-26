@@ -1878,8 +1878,7 @@ function App(){
       sf(URLS.baDesins),sf(URLS.intDesins),sf(URLS.hielDesins),sf(URLS.offDesins),
       sf(URLS.offActivos),sf(URLS.offDeuda)
     ]);
-    const r1=parseComodato(rComBsAs,"Buenos Aires"),r2=parseComodato(rComInt,"Interior"),r3=parseComodato(rComHiel,"Hielogic"),r4=parseComodato(rComOff,"AQA Office");
-    // Parser específico para el nuevo formato de Office (Activos + Deuda)
+    const r1=parseComodato(rComBsAs,"Buenos Aires"),r2=parseComodato(rComInt,"Interior"),r3=parseComodato(rComHiel,"Hielogic");
     const parseOfficeActivos=(csvActivos,csvDeuda)=>{
       const dA=parseCSVText(csvActivos);const dD=parseCSVText(csvDeuda);
       if(!dA||!dA.rows)return{map:{},clientes:[]};
@@ -1910,8 +1909,7 @@ function App(){
       return{map,clientes};
     };
     const rOffice=parseOfficeActivos(rOffActivos,rOffDeuda);
-    // Reemplazar r4 con los datos del nuevo formato si tiene datos
-    if(rOffice.clientes.length>0){r4={map:rOffice.map,clientes:rOffice.clientes};}
+    const r4=rOffice.clientes.length>0?rOffice:parseComodato(rComOff,"AQA Office");
     const ri1=parseComodato(rInstBsAs,"Buenos Aires"),ri2=parseComodato(rInstInt,"Interior"),ri3=parseComodato(rInstHiel,"Hielogic");
     const ajusteMap={...parseAjustes(rAjBA,0,3,10),...parseAjustes(rAjInt,0,2,9),...parseAjustes(rAjHiel,0,3,11)};
     const normId=s=>String(s||"").replace(/[-\s\.]/g,"").toLowerCase();
