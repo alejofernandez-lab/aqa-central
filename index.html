@@ -1886,23 +1886,29 @@ function App(){
     const parseOfficeActivos=(csvActivos,csvDeuda)=>{
       const dA=parseCSVText(csvActivos);const dD=parseCSVText(csvDeuda);
       if(!dA||!dA.rows)return{map:{},clientes:[]};
-      // Mapa de deuda y FC por nombre de cliente (deuda es total del grupo)
-      const deudaMap={};const fcMap={};
+      // Mapa de deuda y FC por id_maq (col E = máqs en hoja Deuda, col H = deuda, col I = fc)
+      const deudaByMaq={};const fcByMaq={};
       if(dD&&dD.rows){
-        // Col H (idx 7) = deuda total, Col I (idx 8) = cant facturas
-        const hNombre=dD.headers[4]||dD.headers[0];// col E o A
+        console.log("Deuda Office - primera fila:", Object.values(dD.rows[0]||{}));
         dD.rows.forEach(r=>{
           const vals=Object.values(r);
-          const nombre=(vals[4]||vals[0]||"").trim().toLowerCase();
+          // Col E (idx 4) = máqs (puede ser múltiples IDs separados por coma o uno solo)
+          const maqsRaw=vals[4]||"";
           const deudaRaw=vals[7]||"0";
           const fcRaw=vals[8]||"0";
-          if(nombre){
-            deudaMap[nombre]=parseNum(deudaRaw);
-            fcMap[nombre]=parseInt(fcRaw)||0;
-          }
+          const deuda=parseNum(deudaRaw);
+          const fc=parseInt(fcRaw)||0;
+          // Parsear cada ID de máquina
+          String(maqsRaw).split(/[,\n]/).forEach(id=>{
+            const idClean=id.trim();
+            if(idClean&&!deudaByMaq[idClean]){
+              deudaByMaq[idClean]=deuda;
+              fcByMaq[idClean]=fc;
+            }
+          });
         });
       }
-      const map={};const clientes=[];const deudaVistos=new Set();
+      const map={};const clientes=[];
       dA.rows.forEach(row=>{
         const nombre=(row["nombre_máq_persat"]||row["nombre_maq_persat"]||"").replace(/- AQA OFFICE/gi,"").trim();
         if(!nombre)return;
@@ -1912,12 +1918,9 @@ function App(){
         const fechaInst=(row["Fecha Inst"]||row["fecha_inst"]||"").trim();
         const abono=parseNum(row["abono s.iva"]||"0");
         const proxAjuste=(row["prox ajus"]||"").trim();
-        // Deuda: solo la primera vez que aparece el cliente (total del grupo)
-        const nk=nombre.toLowerCase();
-        const deuda=deudaVistos.has(nk)?0:(deudaMap[nk]||0);
-        const fc=deudaVistos.has(nk)?0:(fcMap[nk]||0);
-        if(nk)deudaVistos.add(nk);
-        const entry={id,nombre,modelo,asesorAtClte:asesor,asesorCob:asesor,
+        const deuda=deudaByMaq[id]||0;
+        const fc=fcByMaq[id]||0;
+        const entry={id,nombre,modelo,asesorAtClte:"Tomás Zoff",asesorCob:asesor,
           vendedor:"Marcelo Paccapelo",
           razonSocial:(row["razón social (por formula)"]||"").trim(),
           fechaInstalacion:fechaInst,abono,deuda,estado:"habilitado",
