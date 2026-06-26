@@ -1918,12 +1918,11 @@ function App(){
       const dA=parseCSVText(csvActivos);const dD=parseCSVText(csvDeuda);
       if(!dA||!dA.rows)return{map:{},clientes:[]};
       // Mapa de deuda y FC por id_maq (col E = máqs en hoja Deuda, col H = deuda, col I = fc)
-      const deudaByMaq={};const fcByMaq={};
+      const deudaByMaq={};const fcByMaq={};const grupoByMaq={};
       if(dD&&dD.rows){
         const hMaqs=dD.headers[4];
         const hDeuda=dD.headers[7];
         const hFc=dD.headers[8];
-        const grupoByMaq={};
         dD.rows.forEach((r,rowIdx)=>{
           const vals=Object.values(r);
           const idFiscal=String(vals[0]||rowIdx).trim();// col A = id fiscal, único por grupo
