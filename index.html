@@ -1875,7 +1875,7 @@ function App(){
       safeFetch(URLS.baInstPend),safeFetch(URLS.intInstPend),safeFetch(URLS.hielInstPend),
       safeFetch(URLS.ajusteBA),safeFetch(URLS.ajusteInt),safeFetch(URLS.ajusteHiel),
       safeFetch(URLS.baDesins),safeFetch(URLS.intDesins),safeFetch(URLS.hielDesins),safeFetch(URLS.offDesins),
-      safeFetch(URLS.offActivos),safeFetch(URLS.offDeuda)
+      safeFetch(URLS.offActivos).catch(()=>""),safeFetch(URLS.offDeuda).catch(()=>"")
     ]);
     const r1=parseComodato(rComBsAs,"Buenos Aires"),r2=parseComodato(rComInt,"Interior"),r3=parseComodato(rComHiel,"Hielogic"),r4=parseComodato(rComOff,"AQA Office");
     // Parser específico para el nuevo formato de Office (Activos + Deuda)
