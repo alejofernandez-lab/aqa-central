@@ -1322,10 +1322,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
     if(unidad==="AQA")return d.cartera==="Buenos Aires"||d.cartera==="Interior"||!d.cartera;
     if(unidad==="Hielogic")return d.cartera==="Hielogic";
     return d.cartera==="AQA Office";
-  }),[desins,unidad]);AS_OFFICE.includes(d.cartera);
-    if(unidad==="Hielogic")return d.cartera==="Hielogic";
-    return d.cartera==="AQA Office";
-  });
+  }),[desins,unidad]);
   const objetivosMes=unidad==="AQA"?OBJETIVOS_2026:null;
   const mesActual=new Date().getMonth(); // 0-indexed
   const anoActual=new Date().getFullYear();
