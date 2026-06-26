@@ -1350,13 +1350,22 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
   const inhabilitados=useMemo(()=>clientesFiltrados.filter(c=>c.estado==="inhabilitado").length,[clientesFiltrados]);
   const totalClientes=clientesFiltrados.length;
 
-  // Deuda total — deduplicada por nombre (clientes con múltiples máquinas cuentan una sola vez)
+  // Deuda total — deduplicada: para Office agrupa por monto+asesor, para otros por nombre
   const deudaTotal=useMemo(()=>{
-    const vistos=new Set();
+    const vistosPorNombre=new Set();
+    const vistosPorMontoAsesor=new Set();
     return clientesFiltrados.reduce((s,c)=>{
-      const key=(c.nombre||c.razonSocial||c.id||"").toLowerCase().trim();
-      if(vistos.has(key)||!c.deuda)return s;
-      vistos.add(key);
+      if(!c.deuda)return s;
+      // Para clientes de Office: deduplicar por monto+asesor (mismo grupo = mismo monto)
+      if(c.cartera==="AQA Office"){
+        const key=`${c.asesorCob||""}:${c.deuda}`;
+        if(vistosPorMontoAsesor.has(key))return s;
+        vistosPorMontoAsesor.add(key);
+      } else {
+        const key=(c.nombre||c.id||"").toLowerCase().trim();
+        if(vistosPorNombre.has(key))return s;
+        vistosPorNombre.add(key);
+      }
       return s+(c.deuda||0);
     },0);
   },[clientesFiltrados]);
@@ -1375,13 +1384,18 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
 
   // Cobranzas por asesor (con deuda > 0, deduplicada por nombre de cliente)
   const carteraCob=useMemo(()=>{
-    const m={};const vistos={};
+    const m={};
     clientesFiltrados.filter(c=>(c.deuda||0)>0).forEach(c=>{
       const a=c.asesorCob||"Sin asignar";
-      const key=(c.nombre||c.id||"").toLowerCase().trim();
-      if(!m[a])m[a]={count:0,deuda:0,vistos:new Set()};
+      if(!m[a])m[a]={count:0,deuda:0,vistos:new Set(),vistosMontos:new Set()};
       m[a].count++;
-      if(!m[a].vistos.has(key)){m[a].vistos.add(key);m[a].deuda+=(c.deuda||0);}
+      if(c.cartera==="AQA Office"){
+        const mk=`${c.deuda}`;
+        if(!m[a].vistosMontos.has(mk)){m[a].vistosMontos.add(mk);m[a].deuda+=(c.deuda||0);}
+      } else {
+        const nk=(c.nombre||c.id||"").toLowerCase().trim();
+        if(!m[a].vistos.has(nk)){m[a].vistos.add(nk);m[a].deuda+=(c.deuda||0);}
+      }
     });
     return Object.entries(m).map(([a,d])=>({asesor:a,count:d.count,deuda:d.deuda})).sort((a,b)=>b.deuda-a.deuda).slice(0,8);
   },[clientesFiltrados]);
