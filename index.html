@@ -1596,7 +1596,25 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
                           </td>
                         );
                       })}
-                      <td style={{padding:"5px 8px",textAlign:"center",color:"#9baabf",fontSize:11}}>—</td>
+                      {(()=>{
+                        // Calcular total real acumulado hasta el mes actual (inclusive)
+                        let totalRealAltas=0,totalRealBajas=0;
+                        for(let i=0;i<=mesActual;i++){
+                          const altasI=i<mesActual?(i<5?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;}).length:clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;}).length):instMes;
+                          const bajasI=i<mesActual?(i<5?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;}).length:desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;}).length):bajasMes;
+                          totalRealAltas+=altasI;
+                          totalRealBajas+=bajasI;
+                        }
+                        const totalRealNetos=totalRealAltas-totalRealBajas;
+                        const totalReal=tipo==="Altas"?totalRealAltas:tipo==="Bajas"?totalRealBajas:totalRealNetos;
+                        const totalObjRef=OBJETIVOS_2026[tipo].reduce((a,b)=>a+b,0);
+                        const diff=totalReal-totalObjRef;
+                        return(
+                          <td style={{padding:"5px 8px",textAlign:"center",fontWeight:700,fontSize:11,color:tipo==="Netos"?(totalReal>=0?"#27ae60":"#e74c3c"):(tipo==="Bajas"?(totalReal<=totalObjRef?"#27ae60":"#e74c3c"):(totalReal>=totalObjRef?"#27ae60":"#e74c3c"))}}>
+                            {tipo==="Netos"&&totalReal>0?"+":""}{totalReal}
+                          </td>
+                        );
+                      })()}
                     </tr>
                   </React.Fragment>);
                 })}
