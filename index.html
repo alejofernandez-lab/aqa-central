@@ -1051,7 +1051,7 @@ function ClienteChat({clienteId,clienteNombre,abonoActual=0,onClose}){const fb=u
           const resColor=m.resultado==="retenido"?"#1a5c3a":m.resultado==="baja_confirmada"?"#c0392b":m.resultado==="en_proceso"?"#d4890a":"#6b7a99";
           const resLabel=m.resultado==="retenido"?"✅ Retenido":m.resultado==="baja_confirmada"?"❌ Baja confirmada":m.resultado==="en_proceso"?"⏳ En proceso":null;
           return(
-            <div key={m.id} style={{background:"#fff5f5",borderRadius:10,padding:"10px 12px",border:"1.5px solid #fdddd9",borderLeft:"4px solid #c0392b"}}>
+            <div key={m.id} style={{background:"#fff5f5",borderRadius:10,padding:"10px 12px",border:"1.5px solid #fdddd9",borderLeft:"4px solid #c0392b",position:"relative"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                 <span style={{fontSize:11,fontWeight:700,color:"#c0392b"}}>📋 Pedido de baja — {m.area} · {m.autor}</span>
                 <span style={{fontSize:10,color:"#9baabf"}}>{m.fecha}</span>
@@ -1076,7 +1076,7 @@ function ClienteChat({clienteId,clienteNombre,abonoActual=0,onClose}){const fb=u
                   📞 Registrar resultado de retención
                 </button>
               )}
-              {isAdmin&&<button onClick={()=>{if(confirm("¿Eliminar este registro?")&&fb){const{db,doc,deleteDoc}=fb;deleteDoc(doc(db,`chats/${clienteId}/mensajes`,m.id));}}} style={{fontSize:9,color:"#e74c3c",background:"none",border:"none",cursor:"pointer",marginTop:4}}>🗑</button>}
+              {isAdmin&&<button onClick={()=>{if(confirm("¿Eliminar este registro de baja?")&&fb){const{db,doc,deleteDoc}=fb;deleteDoc(doc(db,`chats/${clienteId}/mensajes`,m.id));}}} style={{position:"absolute",top:8,right:8,fontSize:11,color:"#e74c3c",background:"#fff5f5",border:"1px solid #fdddd9",borderRadius:6,padding:"3px 8px",cursor:"pointer"}}>🗑 Eliminar</button>}
             </div>
           );
         }
