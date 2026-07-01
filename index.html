@@ -1088,7 +1088,6 @@ function ClienteChat({clienteId,clienteNombre,onClose}){const fb=useFirebase();c
           </button>
         </div>
       </div>
-      {/* Modales */}
       {showBaja&&<ModalBaja clienteId={clienteId} clienteNombre={clienteNombre} abonoActual={0} onClose={()=>setShowBaja(false)} onGuardado={()=>setShowBaja(false)}/>}
       {showRetencion&&<ModalRetencion bajaDoc={showRetencion.doc} bajaId={showRetencion.id} clienteId={clienteId} onClose={()=>setShowRetencion(null)}/>}
     </div>);}
