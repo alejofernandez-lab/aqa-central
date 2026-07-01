@@ -94,7 +94,7 @@ const MAIN_TABS=["Resumen","Atención al Cliente","Cobranzas","Comercial","Logí
 const LOG_HOJAS=["Instalaciones Pendientes","Comodato","Desinstalaciones","Venta"];
 const ADM_TABS=["Generador de Contratos","Intimaciones","Cartas Documento","Veraz","Score Crediticio","Configuración"];
 const ADM_COLORS={"Intimaciones":"#8a3a00","Cartas Documento":"#1a3a8a","Veraz":"#5a1a8a"};
-const ASESORES_ATCLTE=["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Tomás Zoff","Lourdes Arturi","Antonela Fernandez"];
+const ASESORES_ATCLTE=["Agustín Elsesser","Antonella Abalo","Julieta Morillo","Lourdes Arturi","Antonela Fernandez","Josefina Morua Domínguez"];
 const VENDEDORES=["Santiago Puigmarti","Nicolas Albino","Paloma Suarez","Vicente Biondo","Laura Pomponio","Tomas Zoff","Claudio Lozano","Ignacio Musmanno","Alejo Fernandez","Marcelo Paccapelo"];
 const PROVINCIAS=["CABA","Buenos Aires","Catamarca","Chaco","Chubut","Córdoba","Corrientes","Entre Ríos","Formosa","Jujuy","La Pampa","La Rioja","Mendoza","Misiones","Neuquén","Río Negro","Salta","San Juan","San Luis","Santa Cruz","Santa Fe","Santiago del Estero","Tierra del Fuego","Tucumán"];
 const CLASIFICACIONES=["Hotel","Restaurante","Cafe","Bar","Office","Hielogic","Residencial","Otro"];
@@ -112,7 +112,7 @@ const USD_HIELOGIC=[{label:"31A — USD 1.700",value:"1.700",letras:"mil setecie
 const SOCIEDADES=["S.A.","S.R.L.","S.A.S.","Responsable Inscripto","Monotributista","Asociación Civil"];
 const TIPOS_CONTRATO=["Buenos Aires","Interior con CO2","Interior sin CO2","Hielogic Buenos Aires","Hielogic Interior","AQA Office"];
 const TIPO_COLORS={"Buenos Aires":"#1F3864","Interior con CO2":"#1a5c3a","Interior sin CO2":"#2d6a4f","Hielogic Buenos Aires":"#5a1a8a","Hielogic Interior":"#7b2d8b","AQA Office":"#8a3a00"};
-const EQUIPOS_SEG={"Comercial":VENDEDORES,"Atención al Cliente":ASESORES_ATCLTE,"Logística":["Facundo Costabel","Alex Iraldi","Antonella Legname","Brian Gonzalez","Sebastian Garcia"],"Cobranzas":["Dante Briceño","Mathias Servin","Dorotea Mazzieri","Milagros Saracco"]};
+const EQUIPOS_SEG={"Comercial":VENDEDORES,"Atención al Cliente":ASESORES_ATCLTE,"Logística":["Facundo Costabel","Alex Iraldi","Antonella Legname","Brian Gonzalez","Sebastian Garcia"],"Cobranzas":["Mathias Servin","Dorotea Mazzieri","Milagros Saracco"]};
 const PAL=[{bg:"#B5D4F4",c:"#0C447C"},{bg:"#9FE1CB",c:"#085041"},{bg:"#F5C4B3",c:"#993C1D"},{bg:"#CECBF6",c:"#3C3489"},{bg:"#FAC775",c:"#854F0B"}];
 const LOG_ASESORES=["Agustín","Migue","Kathy","Nela","Tomi","Chuli","Anto","Pablo","Lourdes","Depósito","Logística"];
 const LOG_TIPOS_TRABAJO=["Instalación","Relevamiento","Mantenimiento","Reparación","Entrega","Cambio de Modelo","Cambio de Ubicación","Proveedores","Recambio de CO2","Desinstalación"];
@@ -868,7 +868,230 @@ function TabBar({tabs,active,onChange,color="#1F3864"}){return(<div style={{disp
 function GenericTable({data,headerBg="#1F3864"}){const[sortCol,setSortCol]=useState(null);const[sortDir,setSortDir]=useState("asc");if(!data||!data.headers||data.headers.length===0)return <div style={{padding:"1rem",textAlign:"center",color:"#6b7a99",fontSize:13}}>Sin datos</div>;const handleSort=col=>{if(sortCol===col)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortCol(col);setSortDir("asc");}};const parseFechaGT=(s)=>{if(!s)return null;const p=s.replace(/-/g,"/").split("/");if(p.length===3&&p[2].length===4){const[d,m,y]=p;const t=new Date(+y,+m-1,+d).getTime();if(!isNaN(t))return t;}return null;};const sorted=useMemo(()=>{if(!sortCol)return data.rows;return[...data.rows].sort((a,b)=>{const va=(a[sortCol]||""),vb=(b[sortCol]||"");const fa=parseFechaGT(va),fb=parseFechaGT(vb);if(fa!==null||fb!==null){const ra=fa??-Infinity,rb=fb??-Infinity;return sortDir==="asc"?ra-rb:rb-ra;}const na=parseFloat(va.replace(/[$.]/g,"").replace(",",".")),nb=parseFloat(vb.replace(/[$.]/g,"").replace(",","."));if(!isNaN(na)&&!isNaN(nb))return sortDir==="asc"?na-nb:nb-na;return sortDir==="asc"?va.toLowerCase().localeCompare(vb.toLowerCase(),"es"):vb.toLowerCase().localeCompare(va.toLowerCase(),"es");}); },[data.rows,sortCol,sortDir]);return(<div style={{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{data.headers.map(h=>(<th key={h} onClick={()=>handleSort(h)} style={{background:headerBg,color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap",cursor:"pointer",userSelect:"none"}}>{h} {sortCol===h?(sortDir==="asc"?"↑":"↓"):"↕"}</th>))}</tr></thead><tbody>{sorted.map((row,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f4f7fb"}}>{data.headers.map(h=><td key={h} style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",whiteSpace:"nowrap",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis"}}>{row[h]||"—"}</td>)}</tr>))}</tbody></table></div>);}
 function ScoreTable({data}){const pn=s=>{const m=String(s||"").match(/\d+/);return m?parseInt(m[0]):0;};return(<div style={{overflowX:"auto",borderRadius:10,border:"1px solid #dce6f5"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{(data.headers||[]).map(h=><th key={h} style={{background:"#1a5c3a",color:"white",padding:"9px 12px",textAlign:"left",fontWeight:500,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead><tbody>{(data.rows||[]).map((row,i)=>{const ok=pn(row["SCORE"])>=600||pn(row["FIRMANTE"])>=600;return(<tr key={i} style={{background:ok?"#f0faf0":"#fff7ee"}}><td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",fontWeight:500}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:"50%",background:ok?"#2e9e4f":"#d97706",flexShrink:0}}/>{row["CLIENTE"]||"—"}</div></td><td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:pn(row["SCORE"])>=600?"#1a5c3a":"#c05a00"}}>{row["SCORE"]||"—"}</td><td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",textAlign:"center",fontWeight:600,color:pn(row["FIRMANTE"])>=600?"#1a5c3a":"#c05a00"}}>{row["FIRMANTE"]||"—"}</td><td style={{padding:"8px 12px",borderBottom:"1px solid #dce6f5",color:"#6b7a99",maxWidth:260,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row["COMENTARIOS"]||"—"}</td></tr>);})}</tbody></table></div>);}
 function ModalLista({titulo,items,onSelect,onClose}){return(<div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}><div className="modal"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><p style={{fontSize:15,fontWeight:600}}>{titulo}</p><button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button></div><div style={{display:"flex",flexDirection:"column",gap:6}}>{items.map(v=><button key={v} onClick={()=>{onSelect(v);onClose();}} style={{background:"#f4f7fb",border:"1px solid #dce6f5",borderRadius:8,padding:"10px 14px",fontSize:13,cursor:"pointer",textAlign:"left",color:"#1a2340"}}>{v}</button>)}</div></div></div>);}
-function ClienteChat({clienteId,clienteNombre,onClose}){const fb=useFirebase();const{user,isAdmin,login}=useAuth();const[mensajes,setMensajes]=useState([]);const[equipo,setEquipo]=useState("");const[autor,setAutor]=useState("");const[texto,setTexto]=useState("");const[enviando,setEnviando]=useState(false);const bottomRef=useRef(null);const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};useEffect(()=>{if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const q=query(collection(db,`chats/${clienteId}/mensajes`),orderBy("ts","asc"));const unsub=onSnapshot(q,snap=>{setMensajes(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[fb,clienteId]);useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[mensajes]);const enviar=async()=>{if(!equipo||!autor||!texto.trim()){alert("Completá equipo, autor y mensaje");return;}if(!fb)return;setEnviando(true);const{db,collection,addDoc}=fb;await addDoc(collection(db,`chats/${clienteId}/mensajes`),{equipo,autor,texto:texto.trim(),ts:Date.now(),fecha:new Date().toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})});setTexto("");setEnviando(false);};const borrar=async(msgId)=>{if(!fb||!isAdmin)return;if(!confirm("¿Borrar?"))return;const{db,doc,deleteDoc}=fb;await deleteDoc(doc(db,`chats/${clienteId}/mensajes`,msgId));};const eqColors={"Comercial":"#2E75B6","Atención al Cliente":"#1a5c3a","Logística":"#8a3a00","Cobranzas":"#791F1F"};return(<div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}><div className="modal" style={{maxWidth:560}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div><p style={{margin:0,fontSize:15,fontWeight:600}}>💬 {clienteNombre}</p><p style={{margin:0,fontSize:11,color:"#6b7a99"}}>Historial compartido</p></div><div style={{display:"flex",alignItems:"center",gap:8}}>{!user?<button onClick={login} style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #dce6f5",background:"#f4f7fb",cursor:"pointer",color:"#1a2340"}}>🔑 Login admin</button>:isAdmin?<span style={{fontSize:11,color:"#1a5c3a",fontWeight:500}}>✓ Admin</span>:<span style={{fontSize:11,color:"#9baabf"}}>Logueado</span>}<button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button></div></div><div style={{height:320,overflowY:"auto",background:"#f4f7fb",borderRadius:10,padding:"10px",marginBottom:12,display:"flex",flexDirection:"column",gap:8}}>{!fb&&<p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Conectando...</p>}{fb&&mensajes.length===0&&<p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Sin mensajes aún.</p>}{mensajes.map(m=>(<div key={m.id} style={{background:"#fff",borderRadius:10,padding:"8px 12px",borderLeft:`3px solid ${eqColors[m.equipo]||"#ccc"}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><span style={{fontSize:11,fontWeight:600,color:eqColors[m.equipo]||"#1a2340"}}>{m.equipo} — {m.autor}</span><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:10,color:"#9baabf"}}>{m.fecha}</span>{isAdmin&&<button onClick={()=>borrar(m.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#dc3545",padding:"0 2px"}}>🗑</button>}</div></div><p style={{margin:0,fontSize:13,color:"#1a2340"}}>{m.texto}</p></div>))}<div ref={bottomRef}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}><div><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:4}}>Equipo</label><select value={equipo} onChange={e=>{setEquipo(e.target.value);setAutor("");}} style={SS}><option value="">Seleccionar...</option>{Object.keys(EQUIPOS_SEG).map(k=><option key={k}>{k}</option>)}</select></div><div><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:4}}>Quién escribe</label><select value={autor} onChange={e=>setAutor(e.target.value)} style={SS} disabled={!equipo}><option value="">Seleccionar...</option>{equipo&&EQUIPOS_SEG[equipo].map(a=><option key={a}>{a}</option>)}</select></div></div><textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Escribí la actualización..." rows={3} style={{...SS,resize:"none"}} onKeyDown={e=>{if(e.key==="Enter"&&e.ctrlKey)enviar();}}/><button onClick={enviar} disabled={enviando} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:enviando?"not-allowed":"pointer",opacity:enviando?.7:1}}>{enviando?"Enviando...":"Enviar (Ctrl+Enter)"}</button></div></div></div>);}
+
+// ── SISTEMA DE BAJAS Y RETENCIONES ──────────────────────────────
+const MOTIVOS_BAJA=["Precio","Servicio","Cierre del negocio","Competencia","Mudanza","Cambio de rubro","Otro"];
+const TODOS_EQUIPO=[...new Set([...ASESORES_ATCLTE,...(EQUIPOS_SEG["Cobranzas"]||[]),...(EQUIPOS_SEG["Comercial"]||VENDEDORES),...(EQUIPOS_SEG["Logística"]||[]),"Ignacio Musmanno","Alejo Fernandez"])];
+
+function ModalBaja({clienteId,clienteNombre,abonoActual,onClose,onGuardado}){
+  const fb=useFirebase();
+  const[area,setArea]=useState("");
+  const[autor,setAutor]=useState("");
+  const[motivo,setMotivo]=useState("");
+  const[detalle,setDetalle]=useState("");
+  const[obs,setObs]=useState("");
+  const[guardando,setGuardando]=useState(false);
+  const equipo=EQUIPOS_SEG;
+  const autoresDisp=area&&equipo[area]?equipo[area]:TODOS_EQUIPO;
+  const SS={fontSize:13,padding:"8px 10px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+
+  const guardar=async()=>{
+    if(!area||!autor||!motivo)return;
+    if(!fb)return;
+    setGuardando(true);
+    const{db,collection,addDoc}=fb;
+    const doc={
+      tipo:"baja",
+      fecha:new Date().toLocaleDateString("es-AR"),
+      area,autor,motivo,detalle,obs,
+      abonoActual:abonoActual||0,
+      clienteId,clienteNombre,
+      ts:Date.now(),
+      resultado:null,nuevaMensualidad:null,autorRetencion:null
+    };
+    await addDoc(collection(db,`chats/${clienteId}/mensajes`),doc);
+    // También guardar en colección global para métricas
+    await addDoc(collection(db,"bajas"),doc);
+    setGuardando(false);
+    onGuardado&&onGuardado();
+    onClose();
+  };
+
+  return(
+    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}>
+      <div className="modal" style={{maxWidth:500}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div>
+            <p style={{margin:0,fontSize:15,fontWeight:700,color:"#c0392b"}}>📋 Registrar pedido de baja</p>
+            <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>{clienteNombre}</p>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div>
+              <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Área</label>
+              <select value={area} onChange={e=>{setArea(e.target.value);setAutor("");}} style={SS}>
+                <option value="">Seleccionar...</option>
+                {Object.keys(equipo).map(k=><option key={k}>{k}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Quién lo recibe</label>
+              <select value={autor} onChange={e=>setAutor(e.target.value)} style={SS}>
+                <option value="">Seleccionar...</option>
+                {autoresDisp.map(a=><option key={a}>{a}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Motivo de baja</label>
+            <select value={motivo} onChange={e=>setMotivo(e.target.value)} style={SS}>
+              <option value="">Seleccionar...</option>
+              {MOTIVOS_BAJA.map(m=><option key={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Detalle del motivo</label>
+            <textarea value={detalle} onChange={e=>setDetalle(e.target.value)} placeholder="Describí el motivo con más detalle..." rows={2} style={{...SS,resize:"vertical"}}/>
+          </div>
+          <div style={{padding:"10px 12px",background:"#fff5f5",borderRadius:8,border:"1px solid #fdddd9"}}>
+            <span style={{fontSize:11,color:"#6b7a99"}}>Mensualidad actual: </span>
+            <span style={{fontSize:13,fontWeight:700,color:"#c0392b"}}>${(abonoActual||0).toLocaleString("es-AR")}</span>
+          </div>
+          <div>
+            <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Observaciones</label>
+            <textarea value={obs} onChange={e=>setObs(e.target.value)} placeholder="Observaciones adicionales..." rows={2} style={{...SS,resize:"vertical"}}/>
+          </div>
+          <button onClick={guardar} disabled={!area||!autor||!motivo||guardando}
+            style={{background:(!area||!autor||!motivo)?"#dce6f5":"#c0392b",color:(!area||!autor||!motivo)?"#9baabf":"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:700,cursor:(!area||!autor||!motivo)?"default":"pointer"}}>
+            {guardando?"Guardando...":"📋 Registrar pedido de baja"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalRetencion({bajaDoc,bajaId,clienteId,onClose}){
+  const fb=useFirebase();
+  const[area,setArea]=useState("");
+  const[autor,setAutor]=useState("");
+  const[resultado,setResultado]=useState("");
+  const[nuevaMens,setNuevaMens]=useState("");
+  const[comentario,setComentario]=useState("");
+  const[guardando,setGuardando]=useState(false);
+  const equipo=EQUIPOS_SEG;
+  const autoresDisp=area&&equipo[area]?equipo[area]:TODOS_EQUIPO;
+  const SS={fontSize:13,padding:"8px 10px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};
+
+  const guardar=async()=>{
+    if(!autor||!resultado)return;
+    if(!fb)return;
+    setGuardando(true);
+    const{db,doc,updateDoc,collection}=fb;
+    const update={resultado,nuevaMensualidad:nuevaMens?parseFloat(nuevaMens.replace(/[^0-9.]/g,"")):null,autorRetencion:autor,areaRetencion:area,comentarioRetencion:comentario,fechaRetencion:new Date().toLocaleDateString("es-AR")};
+    // Actualizar en chat
+    await updateDoc(doc(db,`chats/${clienteId}/mensajes`,bajaId),update);
+    // Actualizar en colección global bajas
+    const{query,where,getDocs}=fb;
+    const q=fb.query(collection(db,"bajas"),where("ts","==",bajaDoc.ts),where("clienteId","==",clienteId));
+    const snap=await getDocs(q);
+    snap.docs.forEach(d=>updateDoc(d.ref,update));
+    setGuardando(false);
+    onClose();
+  };
+
+  return(
+    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}>
+      <div className="modal" style={{maxWidth:460}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <p style={{margin:0,fontSize:15,fontWeight:700,color:"#1a5c3a"}}>📞 Resultado de retención</p>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div>
+              <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Área</label>
+              <select value={area} onChange={e=>{setArea(e.target.value);setAutor("");}} style={SS}>
+                <option value="">Seleccionar...</option>
+                {Object.keys(equipo).map(k=><option key={k}>{k}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Quién gestionó</label>
+              <select value={autor} onChange={e=>setAutor(e.target.value)} style={SS}>
+                <option value="">Seleccionar...</option>
+                {autoresDisp.map(a=><option key={a}>{a}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Resultado</label>
+            <select value={resultado} onChange={e=>setResultado(e.target.value)} style={SS}>
+              <option value="">Seleccionar...</option>
+              <option value="retenido">✅ Retenido</option>
+              <option value="baja_confirmada">❌ Baja confirmada</option>
+              <option value="en_proceso">⏳ En proceso</option>
+            </select>
+          </div>
+          {resultado==="retenido"&&(
+            <div>
+              <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Nueva mensualidad</label>
+              <input value={nuevaMens} onChange={e=>setNuevaMens(e.target.value)} placeholder="Ej: 280000" style={SS}/>
+            </div>
+          )}
+          <div>
+            <label style={{fontSize:10,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",display:"block",marginBottom:4}}>Comentario</label>
+            <textarea value={comentario} onChange={e=>setComentario(e.target.value)} placeholder="¿Cómo se resolvió?" rows={2} style={{...SS,resize:"vertical"}}/>
+          </div>
+          <button onClick={guardar} disabled={!autor||!resultado||guardando}
+            style={{background:(!autor||!resultado)?"#dce6f5":"#1a5c3a",color:(!autor||!resultado)?"#9baabf":"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:700,cursor:(!autor||!resultado)?"default":"pointer"}}>
+            {guardando?"Guardando...":"💾 Guardar resultado"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClienteChat({clienteId,clienteNombre,onClose}){const fb=useFirebase();const{user,isAdmin,login}=useAuth();const[mensajes,setMensajes]=useState([]);const[equipo,setEquipo]=useState("");const[autor,setAutor]=useState("");const[texto,setTexto]=useState("");const[enviando,setEnviando]=useState(false);const[showBaja,setShowBaja]=useState(false);const[showRetencion,setShowRetencion]=useState(null);const bottomRef=useRef(null);const SS={fontSize:13,padding:"9px 12px",borderRadius:8,border:"1.5px solid #dce6f5",background:"#f4f7fb",color:"#1a2340",outline:"none",width:"100%"};useEffect(()=>{if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const q=query(collection(db,`chats/${clienteId}/mensajes`),orderBy("ts","asc"));const unsub=onSnapshot(q,snap=>{setMensajes(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[fb,clienteId]);useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[mensajes]);const enviar=async()=>{if(!equipo||!autor||!texto.trim()){alert("Completá equipo, autor y mensaje");return;}if(!fb)return;setEnviando(true);const{db,collection,addDoc}=fb;await addDoc(collection(db,`chats/${clienteId}/mensajes`),{equipo,autor,texto:texto.trim(),ts:Date.now(),fecha:new Date().toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})});setTexto("");setEnviando(false);};const borrar=async(msgId)=>{if(!fb||!isAdmin)return;if(!confirm("¿Borrar?"))return;const{db,doc,deleteDoc}=fb;await deleteDoc(doc(db,`chats/${clienteId}/mensajes`,msgId));};const eqColors={"Comercial":"#2E75B6","Atención al Cliente":"#1a5c3a","Logística":"#8a3a00","Cobranzas":"#791F1F"};return(<div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}><div className="modal" style={{maxWidth:560}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div><p style={{margin:0,fontSize:15,fontWeight:600}}>💬 {clienteNombre}</p><p style={{margin:0,fontSize:11,color:"#6b7a99"}}>Historial compartido</p></div><div style={{display:"flex",alignItems:"center",gap:8}}>{!user?<button onClick={login} style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #dce6f5",background:"#f4f7fb",cursor:"pointer",color:"#1a2340"}}>🔑 Login admin</button>:isAdmin?<span style={{fontSize:11,color:"#1a5c3a",fontWeight:500}}>✓ Admin</span>:<span style={{fontSize:11,color:"#9baabf"}}>Logueado</span>}<button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button></div></div><div style={{height:320,overflowY:"auto",background:"#f4f7fb",borderRadius:10,padding:"10px",marginBottom:12,display:"flex",flexDirection:"column",gap:8}}>{!fb&&<p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Conectando...</p>}{fb&&mensajes.length===0&&<p style={{textAlign:"center",color:"#9baabf",fontSize:12,margin:"auto"}}>Sin mensajes aún.</p>}{mensajes.map(m=>{
+        // Card especial para pedidos de baja
+        if(m.tipo==="baja"){
+          const resColor=m.resultado==="retenido"?"#1a5c3a":m.resultado==="baja_confirmada"?"#c0392b":m.resultado==="en_proceso"?"#d4890a":"#6b7a99";
+          const resLabel=m.resultado==="retenido"?"✅ Retenido":m.resultado==="baja_confirmada"?"❌ Baja confirmada":m.resultado==="en_proceso"?"⏳ En proceso":null;
+          return(
+            <div key={m.id} style={{background:"#fff5f5",borderRadius:10,padding:"10px 12px",border:"1.5px solid #fdddd9",borderLeft:"4px solid #c0392b"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <span style={{fontSize:11,fontWeight:700,color:"#c0392b"}}>📋 Pedido de baja — {m.area} · {m.autor}</span>
+                <span style={{fontSize:10,color:"#9baabf"}}>{m.fecha}</span>
+              </div>
+              <div style={{fontSize:12,color:"#1a2340",marginBottom:4}}>
+                <strong>Motivo:</strong> {m.motivo}{m.detalle?` — ${m.detalle}`:""}
+              </div>
+              <div style={{fontSize:12,color:"#6b7a99",marginBottom:4}}>
+                <strong>Mensualidad al momento:</strong> ${(m.abonoActual||0).toLocaleString("es-AR")}
+              </div>
+              {m.obs&&<div style={{fontSize:11,color:"#6b7a99",fontStyle:"italic",marginBottom:4}}>{m.obs}</div>}
+              {/* Resultado de retención */}
+              {m.resultado?(
+                <div style={{marginTop:8,padding:"8px 10px",background:"#f4f7fb",borderRadius:8,borderLeft:`3px solid ${resColor}`}}>
+                  <div style={{fontSize:11,fontWeight:700,color:resColor,marginBottom:2}}>{resLabel} · {m.areaRetencion} · {m.autorRetencion} · {m.fechaRetencion}</div>
+                  {m.nuevaMensualidad&&<div style={{fontSize:11,color:"#1a2340"}}>Nueva mensualidad: <strong>${parseFloat(m.nuevaMensualidad).toLocaleString("es-AR")}</strong></div>}
+                  {m.comentarioRetencion&&<div style={{fontSize:11,color:"#6b7a99",fontStyle:"italic"}}>{m.comentarioRetencion}</div>}
+                </div>
+              ):(
+                <button onClick={()=>setShowRetencion({id:m.id,doc:m})}
+                  style={{marginTop:8,fontSize:11,padding:"5px 12px",borderRadius:7,border:"1px solid #27ae60",background:"#f4fff8",color:"#1a5c3a",cursor:"pointer",fontWeight:600}}>
+                  📞 Registrar resultado de retención
+                </button>
+              )}
+              {isAdmin&&<button onClick={()=>{if(confirm("¿Eliminar este registro?")&&fb){const{db,doc,deleteDoc}=fb;deleteDoc(doc(db,`chats/${clienteId}/mensajes`,m.id));}}} style={{fontSize:9,color:"#e74c3c",background:"none",border:"none",cursor:"pointer",marginTop:4}}>🗑</button>}
+            </div>
+          );
+        }
+        // Mensaje normal
+        return(<div key={m.id} style={{background:"#fff",borderRadius:10,padding:"8px 12px",borderLeft:`3px solid ${eqColors[m.equipo]||"#ccc"}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><span style={{fontSize:11,fontWeight:600,color:eqColors[m.equipo]||"#1a2340"}}>{m.equipo} — {m.autor}</span><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:10,color:"#9baabf"}}>{m.fecha}</span>{isAdmin&&<button onClick={()=>borrar(m.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#dc3545",padding:"0 2px"}}>🗑</button>}</div></div><p style={{margin:0,fontSize:13,color:"#1a2340"}}>{m.texto}</p></div>);})}  <div ref={bottomRef}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}><div><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:4}}>Equipo</label><select value={equipo} onChange={e=>{setEquipo(e.target.value);setAutor("");}} style={SS}><option value="">Seleccionar...</option>{Object.keys(EQUIPOS_SEG).map(k=><option key={k}>{k}</option>)}</select></div><div><label style={{fontSize:11,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",display:"block",marginBottom:4}}>Quién escribe</label><select value={autor} onChange={e=>setAutor(e.target.value)} style={SS} disabled={!equipo}><option value="">Seleccionar...</option>{equipo&&EQUIPOS_SEG[equipo].map(a=><option key={a}>{a}</option>)}</select></div></div><textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Escribí la actualización..." rows={3} style={{...SS,resize:"none"}} onKeyDown={e=>{if(e.key==="Enter"&&e.ctrlKey)enviar();}}/><button onClick={enviar} disabled={enviando} style={{background:"#1F3864",color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:600,cursor:enviando?"not-allowed":"pointer",opacity:enviando?.7:1}}>{enviando?"Enviando...":"Enviar (Ctrl+Enter)"}</button></div>
+          {/* Botón pedido de baja */}
+          <button onClick={()=>setShowBaja(true)} style={{marginTop:8,width:"100%",padding:"9px",borderRadius:10,border:"1.5px solid #fdddd9",background:"#fff5f5",color:"#c0392b",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            📋 Registrar pedido de baja
+          </button>
+        </div>
+      </div>
+      {/* Modales */}
+      {showBaja&&<ModalBaja clienteId={clienteId} clienteNombre={clienteNombre} abonoActual={0} onClose={()=>setShowBaja(false)} onGuardado={()=>setShowBaja(false)}/>}
+      {showRetencion&&<ModalRetencion bajaDoc={showRetencion.doc} bajaId={showRetencion.id} clienteId={clienteId} onClose={()=>setShowRetencion(null)}/>}
+    </div>);}
 
 // ── Generador de Contratos ────────────────────────────────────────
 function GeneradorContratos(){
