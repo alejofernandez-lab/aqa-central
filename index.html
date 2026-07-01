@@ -1531,7 +1531,7 @@ function DonutChart({data,size=120}){
   );
 }
 
-function Resumen({clientes,cierres,desins,asesorOverride={}}){
+function Resumen({clientes,cierres,desins,asesorOverride={},bajas=[]}){
   const[unidad,setUnidad]=useState("AQA");
   const carteras=unidad==="AQA"?CARTERAS_AQA:unidad==="Hielogic"?CARTERAS_HIELOGIC:CARTERAS_OFFICE;
   const modelosUnidad=unidad==="AQA"?MODELOS_AQA:unidad==="Hielogic"?MODELOS_HIELOGIC:MODELOS_OFFICE;
@@ -1955,7 +1955,64 @@ function Resumen({clientes,cierres,desins,asesorOverride={}}){
         );
       })()}
 
-            {secTitle("Modelos activos en cartera","🖥️")}
+            {/* ── BAJAS Y RETENCIONES ─────────────────────── */}
+      {(()=>{
+        // Filtrar bajas por cartera de la unidad actual
+        const bajasUnidad=bajas.filter(b=>carteras.includes(b.cartera||"Buenos Aires")||(!b.cartera&&unidad==="AQA"));
+        // Solo del mes actual
+        const bajasMes=bajasUnidad.filter(b=>{
+          if(!b.fecha)return false;
+          const p=b.fecha.split("/");
+          return p.length>=3&&parseInt(p[1])===mesActual+1&&parseInt(p[2])===anoActual;
+        });
+        const total=bajasMes.length;
+        if(total===0)return null;
+        const retenidos=bajasMes.filter(b=>b.resultado==="retenido").length;
+        const confirmadas=bajasMes.filter(b=>b.resultado==="baja_confirmada").length;
+        const enProceso=bajasMes.filter(b=>b.resultado==="en_proceso").length;
+        const sinGestionar=bajasMes.filter(b=>!b.resultado).length;
+        // Top motivos
+        const motivoCount={};
+        bajasMes.forEach(b=>{if(b.motivo)motivoCount[b.motivo]=(motivoCount[b.motivo]||0)+1;});
+        const topMotivos=Object.entries(motivoCount).sort((a,b)=>b[1]-a[1]).slice(0,3);
+        return(<>
+          {secTitle(`Bajas y retenciones — ${MESES[mesActual]}`,"🔴")}
+          <div style={{background:"#fff",borderRadius:14,padding:"18px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:4}}>
+            {/* Números principales */}
+            <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:16}}>
+              {[
+                {label:"Pedidos de baja",val:total,color:"#c0392b",bg:"#fff5f5"},
+                {label:"Retenidos",val:retenidos,color:"#27ae60",bg:"#f4fff8"},
+                {label:"Bajas confirmadas",val:confirmadas,color:"#e74c3c",bg:"#fff5f5"},
+                {label:"En proceso",val:enProceso,color:"#d4890a",bg:"#fffbf0"},
+                {label:"Sin gestionar",val:sinGestionar,color:"#9baabf",bg:"#f4f7fb"},
+              ].map(({label,val,color,bg})=>(
+                <div key={label} style={{textAlign:"center",padding:"10px 16px",background:bg,borderRadius:10,border:`1px solid ${color}22`,minWidth:80}}>
+                  <div style={{fontSize:22,fontWeight:700,color}}>{val}</div>
+                  <div style={{fontSize:10,color:"#6b7a99",marginTop:2}}>{label}</div>
+                  {total>0&&val>0&&<div style={{fontSize:10,color,fontWeight:600}}>{Math.round(val/total*100)}%</div>}
+                </div>
+              ))}
+            </div>
+            {/* Top motivos */}
+            {topMotivos.length>0&&(
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:"#6b7a99",textTransform:"uppercase",letterSpacing:".4px",marginBottom:8}}>Top motivos</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  {topMotivos.map(([motivo,count])=>(
+                    <div key={motivo} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:"#f4f7fb",borderRadius:7}}>
+                      <span style={{fontSize:12,color:"#1a2340"}}>{motivo}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:"#c0392b"}}>{count} {count===1?"caso":"casos"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </>);
+      })()}
+
+      {secTitle("Modelos activos en cartera","🖥️")}
       <div style={{background:"#fff",borderRadius:14,padding:"16px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:20}}>
         {modelos.map(([mod,n])=>(
           <MiniBar key={mod} label={mod} value={n} max={maxMod} color="#1F3864"/>
@@ -2112,6 +2169,7 @@ function App(){
   const[clientes,setClientes]=useState([]);const[loading,setLoading]=useState(true);const[lastUpdate,setLastUpdate]=useState("");
   const[cierresApp,setCierresApp]=useState([]);
   const[desinsApp,setDesinsApp]=useState([]);
+  const[bajasApp,setBajasApp]=useState([]);
   const[asesorOverride,setAsesorOverride]=useState({});
   const[tab,setTab]=useState("Atención al Cliente");const[admTab,setAdmTab]=useState("Generador de Contratos");const[scoreTab,setScoreTab]=useState("Buenos Aires");
   const[logHoja,setLogHoja]=useState("Comodato");const[logCartera,setLogCartera]=useState("Todos");const[logData,setLogData]=useState({});const[loadingLog,setLoadingLog]=useState(false);
@@ -2261,6 +2319,9 @@ function App(){
     load();
   },[]);
 
+  // Cargar bajas desde Firebase para el Resumen
+  useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,onSnapshot,query,orderBy}=fb;const qr=query(collection(db,"bajas"),orderBy("ts","desc"));const unsub=onSnapshot(qr,snap=>{setBajasApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
+
   // Cargar cierres desde Firebase para el Resumen
   useEffect(()=>{const fb=window._firebase;if(!fb)return;const{db,collection,query,orderBy,onSnapshot}=fb;const qr=query(collection(db,"cierres"),orderBy("fecha","desc"));const unsub=onSnapshot(qr,snap=>{setCierresApp(snap.docs.map(d=>({id:d.id,...d.data()})));});return()=>unsub();},[]);
 
@@ -2369,7 +2430,7 @@ function App(){
     </div>)}
 
     {tab==="Comercial"&&<Comercial onNuevoCierre={()=>{}}/>}
-    {tab==="Resumen"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride}/>}
+    {tab==="Resumen"&&<Resumen clientes={clientesEfectivos} cierres={cierresApp} desins={desinsApp} asesorOverride={asesorOverride} bajas={bajasApp}/>}
 
     {tab==="Logística"&&<Logistica/>}
 
