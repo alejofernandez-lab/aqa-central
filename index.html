@@ -1894,24 +1894,16 @@ function Resumen({clientes,cierres,desins,asesorOverride={},bajas=[]}){
                     <tr style={{borderBottom:"2px solid #e8eef8",background:"#f9fbff"}}>
                       <td style={{padding:"5px 10px",fontWeight:600,color,fontSize:10}}>Real {tipo}</td>
                       {objArr.map((v,i)=>{
-                        // Calcular real para cada mes del 2026
-                        const realVal=i===0?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===1&&parseInt(p[2])===2026;}).length
-                          :i===1?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===2&&parseInt(p[2])===2026;}).length
-                          :i===2?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===3&&parseInt(p[2])===2026;}).length
-                          :i===3?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===4&&parseInt(p[2])===2026;}).length
-                          :i===4?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===5&&parseInt(p[2])===2026;}).length
-                          :i===mesActual?(tipo==="Altas"?instMes:tipo==="Bajas"?bajasMes:instMes-bajasMes)
-                          :null;
-                        // Para bajas usar desins
-                        const realBajas=i===0?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===1&&parseInt(p[2])===2026;}).length
-                          :i===1?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===2&&parseInt(p[2])===2026;}).length
-                          :i===2?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===3&&parseInt(p[2])===2026;}).length
-                          :i===3?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===4&&parseInt(p[2])===2026;}).length
-                          :i===4?desinsFiltradas.filter(d=>{const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===5&&parseInt(p[2])===2026;}).length
-                          :i===mesActual?bajasMes:null;
-                        const altasR=i<=mesActual?(i<mesActual&&i<5?clientesFiltrados.filter(c=>{const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;}).length:i===mesActual?instMes:null):null;
-                        const bajasR=i<=mesActual?(i<mesActual&&i<5?realBajas:i===mesActual?bajasMes:null):null;
-                        const real=tipo==="Altas"?altasR:tipo==="Bajas"?bajasR:altasR!=null&&bajasR!=null?altasR-bajasR:null;
+                        // Real para cada mes ya transcurrido del 2026 (generalizado; ya no depende de un rango de meses hardcodeado)
+                        const altasR = i<=mesActual ? clientesFiltrados.filter(c=>{
+                          const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");
+                          return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;
+                        }).length : null;
+                        const bajasR = i<=mesActual ? desinsFiltradas.filter(d=>{
+                          const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");
+                          return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;
+                        }).length : null;
+                        const real=tipo==="Altas"?altasR:tipo==="Bajas"?bajasR:(altasR!=null&&bajasR!=null?altasR-bajasR:null);
                         const diff=real!=null?real-v:null;
                         const futuro=i>mesActual;
                         return(
