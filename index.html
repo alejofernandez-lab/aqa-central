@@ -2340,17 +2340,36 @@ function App(){
       });
       return{map,clientes};
     };
+    const normId=s=>String(s||"").replace(/[-\s\.]/g,"").toLowerCase();
     const rOfficeActivos=parseOfficeActivos(rOffActivos,rOffDeuda);
     const rOfficeComodato=parseComodato(rComOff,"AQA Office");
     // Unificar Office: Activos manda para deuda/abono, pero sumamos los clientes de Comodato
     // que todavía no llegaron a la hoja Activos (recién instalados, migración manual pendiente).
-    const idsOfficeActivos=new Set(rOfficeActivos.clientes.map(c=>c.id));
-    const soloComodatoOffice=rOfficeComodato.clientes.filter(c=>!idsOfficeActivos.has(c.id));
-    const officeUnificado=[...rOfficeActivos.clientes,...soloComodatoOffice];
+    // El ID de Comodato puede traer más de un id_maq (clientes con varias máquinas), separados
+    // por espacio/coma, igual que en la hoja Deuda — por eso hay que partirlo antes de comparar.
+    const idsOfficeActivos=new Set(rOfficeActivos.clientes.map(c=>normId(c.id)));
+    const nombresOfficeActivos=new Set(rOfficeActivos.clientes.map(c=>(c.nombre||"").toLowerCase().trim()));
+    // Mapa de Comodato por cada id individual (un cliente puede traer varios id_maq juntos)
+    const comodatoPorId={};
+    rOfficeComodato.clientes.forEach(c=>{
+      (c.id||"").split(/[\s,\n\r]+/).map(x=>normId(x.replace(/"/g,""))).filter(Boolean).forEach(id=>{comodatoPorId[id]=c;});
+    });
+    const soloComodatoOffice=rOfficeComodato.clientes.filter(c=>{
+      const idsCliente=(c.id||"").split(/[\s,\n\r]+/).map(x=>normId(x.replace(/"/g,""))).filter(Boolean);
+      const yaEnActivos=idsCliente.some(id=>idsOfficeActivos.has(id))||nombresOfficeActivos.has((c.nombre||"").toLowerCase().trim());
+      return !yaEnActivos;
+    });
+    // La fecha de instalación real vive en Comodato (columna L, "Inicio de Servicio"). El campo
+    // "Fecha Inst" de Activos suele quedar desactualizado para altas recientes, así que si el
+    // cliente tiene match en Comodato, esa fecha manda por sobre la de Activos.
+    const rOfficeActivosConFecha=rOfficeActivos.clientes.map(c=>{
+      const cc=comodatoPorId[normId(c.id)];
+      return(cc&&cc.fechaInstalacion)?{...c,fechaInstalacion:cc.fechaInstalacion}:c;
+    });
+    const officeUnificado=[...rOfficeActivosConFecha,...soloComodatoOffice];
     const r4={map:{...rOfficeComodato.map,...rOfficeActivos.map},clientes:officeUnificado};
     const ri1=parseComodato(rInstBsAs,"Buenos Aires"),ri2=parseComodato(rInstInt,"Interior"),ri3=parseComodato(rInstHiel,"Hielogic"),ri4=parseComodato(rInstOff,"AQA Office");
     const ajusteMap={...parseAjustes(rAjBA,0,3,10),...parseAjustes(rAjInt,0,2,9),...parseAjustes(rAjHiel,0,3,11)};
-    const normId=s=>String(s||"").replace(/[-\s\.]/g,"").toLowerCase();
     const cmap={};const cmapNorm={};[r1.map,r2.map,r3.map,r4.map,ri1.map,ri2.map,ri3.map,ri4.map].forEach(m=>{Object.entries(m).forEach(([k,v])=>{if(!cmap[k])cmap[k]={...v};else{if(!cmap[k].vendedor&&v.vendedor)cmap[k].vendedor=v.vendedor;if(!cmap[k].asesorAtClte&&v.asesorAtClte)cmap[k].asesorAtClte=v.asesorAtClte;if(!cmap[k].fechaInstalacion&&v.fechaInstalacion)cmap[k].fechaInstalacion=v.fechaInstalacion;}const nk=normId(k);if(!cmapNorm[nk])cmapNorm[nk]={...v};});});
     // Mapa asesor desde desinstalaciones
     const desinsMap={};
@@ -2375,11 +2394,12 @@ function App(){
     const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id)&&c.cartera!=="AQA Office").map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
     const all=[...cobClientes,...soloComodato,...officeUnificado];if(all.length>0)setClientes(all);
     // Procesar desinstalaciones para el Resumen
-    const parsedDesins=(csv)=>{
+    const parsedDesins=(csv,colIndexFijo)=>{
       const d=parseCSVText(csv);
       if(!d||!d.headers||!d.rows)return[];
-      // Buscar columna "Desinstalación" (normalizada)
-      const colDesins=d.headers.find(h=>h.toLowerCase().includes("desinstalaci"));
+      // Buscar columna "Desinstalación" (normalizada); si se pasa un índice fijo (ej. columna N
+      // = índice 13 para Office), se usa ese directamente en vez de adivinar por el texto del header.
+      const colDesins=colIndexFijo!=null?d.headers[colIndexFijo]:d.headers.find(h=>h.toLowerCase().includes("desinstalaci"));
       const colNombre=d.headers.find(h=>h.toLowerCase().includes("nombre"))||d.headers[3];
       if(!colDesins)return[];
       return d.rows.filter(r=>r[colDesins]).map(r=>({fechaDesins:r[colDesins]||"",nombre:r[colNombre]||""}));
@@ -2388,7 +2408,7 @@ function App(){
       ...parsedDesins(rDesinsBa),
       ...parsedDesins(rDesinsInt),
       ...parsedDesins(rDesinsHiel),
-      ...parsedDesins(rDesinsOff)
+      ...parsedDesins(rDesinsOff,13)
     ];
     setDesinsApp(allDesins);
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
