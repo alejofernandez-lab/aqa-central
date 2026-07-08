@@ -2281,10 +2281,10 @@ function App(){
 
   useEffect(()=>{(async()=>{try{
     const sf=u=>safeFetch(u).catch(()=>"");
-    const[rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff,rInstBsAs,rInstInt,rInstHiel,rAjBA,rAjInt,rAjHiel,rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff,rOffActivos,rOffDeuda]=await Promise.all([
+    const[rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff,rInstBsAs,rInstInt,rInstHiel,rInstOff,rAjBA,rAjInt,rAjHiel,rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff,rOffActivos,rOffDeuda]=await Promise.all([
       sf(URLS.cobBsAs),sf(URLS.cobInt),sf(URLS.cobHiel),
       sf(URLS.baComodato),sf(URLS.intComodato),sf(URLS.hielComodato),sf(URLS.offComodato),
-      sf(URLS.baInstPend),sf(URLS.intInstPend),sf(URLS.hielInstPend),
+      sf(URLS.baInstPend),sf(URLS.intInstPend),sf(URLS.hielInstPend),sf(URLS.offInstPend),
       sf(URLS.ajusteBA),sf(URLS.ajusteInt),sf(URLS.ajusteHiel),
       sf(URLS.baDesins),sf(URLS.intDesins),sf(URLS.hielDesins),sf(URLS.offDesins),
       sf(URLS.offActivos),sf(URLS.offDeuda)
@@ -2340,12 +2340,18 @@ function App(){
       });
       return{map,clientes};
     };
-    const rOffice=parseOfficeActivos(rOffActivos,rOffDeuda);
-    const r4=rOffice.clientes.length>0?rOffice:parseComodato(rComOff,"AQA Office");
-    const ri1=parseComodato(rInstBsAs,"Buenos Aires"),ri2=parseComodato(rInstInt,"Interior"),ri3=parseComodato(rInstHiel,"Hielogic");
+    const rOfficeActivos=parseOfficeActivos(rOffActivos,rOffDeuda);
+    const rOfficeComodato=parseComodato(rComOff,"AQA Office");
+    // Unificar Office: Activos manda para deuda/abono, pero sumamos los clientes de Comodato
+    // que todavía no llegaron a la hoja Activos (recién instalados, migración manual pendiente).
+    const idsOfficeActivos=new Set(rOfficeActivos.clientes.map(c=>c.id));
+    const soloComodatoOffice=rOfficeComodato.clientes.filter(c=>!idsOfficeActivos.has(c.id));
+    const officeUnificado=[...rOfficeActivos.clientes,...soloComodatoOffice];
+    const r4={map:{...rOfficeComodato.map,...rOfficeActivos.map},clientes:officeUnificado};
+    const ri1=parseComodato(rInstBsAs,"Buenos Aires"),ri2=parseComodato(rInstInt,"Interior"),ri3=parseComodato(rInstHiel,"Hielogic"),ri4=parseComodato(rInstOff,"AQA Office");
     const ajusteMap={...parseAjustes(rAjBA,0,3,10),...parseAjustes(rAjInt,0,2,9),...parseAjustes(rAjHiel,0,3,11)};
     const normId=s=>String(s||"").replace(/[-\s\.]/g,"").toLowerCase();
-    const cmap={};const cmapNorm={};[r1.map,r2.map,r3.map,r4.map,ri1.map,ri2.map,ri3.map].forEach(m=>{Object.entries(m).forEach(([k,v])=>{if(!cmap[k])cmap[k]={...v};else{if(!cmap[k].vendedor&&v.vendedor)cmap[k].vendedor=v.vendedor;if(!cmap[k].asesorAtClte&&v.asesorAtClte)cmap[k].asesorAtClte=v.asesorAtClte;if(!cmap[k].fechaInstalacion&&v.fechaInstalacion)cmap[k].fechaInstalacion=v.fechaInstalacion;}const nk=normId(k);if(!cmapNorm[nk])cmapNorm[nk]={...v};});});
+    const cmap={};const cmapNorm={};[r1.map,r2.map,r3.map,r4.map,ri1.map,ri2.map,ri3.map,ri4.map].forEach(m=>{Object.entries(m).forEach(([k,v])=>{if(!cmap[k])cmap[k]={...v};else{if(!cmap[k].vendedor&&v.vendedor)cmap[k].vendedor=v.vendedor;if(!cmap[k].asesorAtClte&&v.asesorAtClte)cmap[k].asesorAtClte=v.asesorAtClte;if(!cmap[k].fechaInstalacion&&v.fechaInstalacion)cmap[k].fechaInstalacion=v.fechaInstalacion;}const nk=normId(k);if(!cmapNorm[nk])cmapNorm[nk]={...v};});});
     // Mapa asesor desde desinstalaciones
     const desinsMap={};
     [rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff].forEach(csv=>{
@@ -2367,7 +2373,7 @@ function App(){
     const cobClientes=[...cobVistos.values()];
     const cobIds=new Set(cobClientes.map(c=>c.id));
     const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id)&&c.cartera!=="AQA Office").map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
-    const all=[...cobClientes,...soloComodato,...(rOffice.clientes.length>0?rOffice.clientes:[])];if(all.length>0)setClientes(all);
+    const all=[...cobClientes,...soloComodato,...officeUnificado];if(all.length>0)setClientes(all);
     // Procesar desinstalaciones para el Resumen
     const parsedDesins=(csv)=>{
       const d=parseCSVText(csv);
