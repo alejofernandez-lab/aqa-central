@@ -1667,8 +1667,8 @@ function Resumen({clientes,cierres,desins,asesorOverride={},bajas=[]}){
   // Altas del mes: Inicio de Servicio en el mes corriente (hoja Instalaciones Pendientes = clientes recientes)
   // Usamos fechaInstalacion que viene del comodato (columna "Inicio de Servicio")
   const instMes=useMemo(()=>clientesFiltrados.filter(c=>parseFechaMes(c.fechaInstalacion,mesActual,anoActual)).length,[clientes,mesActual,anoActual]);
-  // Bajas del mes: desde desinstalaciones con fecha del mes corriente
-  const bajasMes=useMemo(()=>(desins||[]).filter(d=>parseFechaMes(d.fechaDesins,mesActual,anoActual)).length,[desins,mesActual,anoActual]);
+  // Bajas del mes: desde desinstalaciones con fecha del mes corriente (ya filtradas por cartera/unidad)
+  const bajasMes=useMemo(()=>desinsFiltradas.filter(d=>parseFechaMes(d.fechaDesins,mesActual,anoActual)).length,[desinsFiltradas,mesActual,anoActual]);
 
   // Cartera general
   const habilitados=useMemo(()=>clientesFiltrados.filter(c=>c.estado==="habilitado").length,[clientesFiltrados]);
