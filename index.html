@@ -2394,7 +2394,7 @@ function App(){
     const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id)&&c.cartera!=="AQA Office").map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
     const all=[...cobClientes,...soloComodato,...officeUnificado];if(all.length>0)setClientes(all);
     // Procesar desinstalaciones para el Resumen
-    const parsedDesins=(csv,colIndexFijo)=>{
+    const parsedDesins=(csv,colIndexFijo,cartera)=>{
       const d=parseCSVText(csv);
       if(!d||!d.headers||!d.rows)return[];
       // Buscar columna "Desinstalación" (normalizada); si se pasa un índice fijo (ej. columna N
@@ -2402,13 +2402,13 @@ function App(){
       const colDesins=colIndexFijo!=null?d.headers[colIndexFijo]:d.headers.find(h=>h.toLowerCase().includes("desinstalaci"));
       const colNombre=d.headers.find(h=>h.toLowerCase().includes("nombre"))||d.headers[3];
       if(!colDesins)return[];
-      return d.rows.filter(r=>r[colDesins]).map(r=>({fechaDesins:r[colDesins]||"",nombre:r[colNombre]||""}));
+      return d.rows.filter(r=>r[colDesins]).map(r=>({fechaDesins:r[colDesins]||"",nombre:r[colNombre]||"",cartera}));
     };
     const allDesins=[
-      ...parsedDesins(rDesinsBa),
-      ...parsedDesins(rDesinsInt),
-      ...parsedDesins(rDesinsHiel),
-      ...parsedDesins(rDesinsOff,13)
+      ...parsedDesins(rDesinsBa,null,"Buenos Aires"),
+      ...parsedDesins(rDesinsInt,null,"Interior"),
+      ...parsedDesins(rDesinsHiel,null,"Hielogic"),
+      ...parsedDesins(rDesinsOff,13,"AQA Office")
     ];
     setDesinsApp(allDesins);
   }catch(e){console.error(e);}setLastUpdate(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));setLoading(false);})();},[]);
