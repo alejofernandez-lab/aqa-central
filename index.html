@@ -2506,13 +2506,19 @@ function App(){
   // Resumen de plaza: clientes únicos, máquinas (filas), facturación (c/IVA y s/IVA) y deuda del recorte filtrado
   const plazaStats=useMemo(()=>{
     const maquinas=filteredAtClte.length;
-    const nombresUnicos=new Set(filteredAtClte.map(c=>(c.nombre||"").toLowerCase().trim()));
+    // Agrupamos por Razón Social (empresa), no por nombre de fantasía/sucursal: un mismo cliente
+    // puede tener varias máquinas en distintas sucursales (ej. "COCOS CAPITAL - 4to Piso - Cocina",
+    // "COCOS CAPITAL - 5to Piso - ..."), y contarlas como clientes separados las infla de más.
+    const claveCliente=c=>(c.razonSocial||c.nombre||"").toLowerCase().trim();
+    const nombresUnicos=new Set(filteredAtClte.map(claveCliente));
     const conAbono=filteredAtClte.filter(c=>(parseFloat(c.abono)||0)>0);
     const facturacionConIVA=conAbono.reduce((s,c)=>s+Math.round(parseFloat(c.abono))*1.21,0);
     const facturacionSinIVA=conAbono.reduce((s,c)=>s+Math.round(parseFloat(c.abono)),0);
-    // Deuda deduplicada por cliente (por si el mismo cliente aparece en más de una fila)
+    // Deuda deduplicada por Razón Social: si la deuda se calcula por empresa (no por máquina),
+    // todas las sucursales de un mismo cliente muestran el mismo monto — sumarlas sin agrupar
+    // multiplicaría la deuda real por la cantidad de máquinas de esa empresa.
     const deudaPorCliente={};
-    filteredAtClte.forEach(c=>{const k=(c.nombre||"").trim().toLowerCase();const d=c.deuda>0?c.deuda:0;if(!deudaPorCliente[k]||d>deudaPorCliente[k])deudaPorCliente[k]=d;});
+    filteredAtClte.forEach(c=>{const k=claveCliente(c);const d=c.deuda>0?c.deuda:0;if(!deudaPorCliente[k]||d>deudaPorCliente[k])deudaPorCliente[k]=d;});
     const deudaTotal=Object.values(deudaPorCliente).reduce((s,d)=>s+d,0);
     return{maquinas,clientesUnicos:nombresUnicos.size,facturacionConIVA,facturacionSinIVA,deudaTotal};
   },[filteredAtClte]);
