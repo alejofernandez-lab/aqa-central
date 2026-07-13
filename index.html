@@ -2402,8 +2402,11 @@ function App(){
     const cobVistos=new Map();
     cobClientesRaw.forEach(c=>{const key=(c.nombre||"").toLowerCase().trim();if(!cobVistos.has(key))cobVistos.set(key,c);});
     const cobClientes=[...cobVistos.values()];
-    const cobIds=new Set(cobClientes.map(c=>c.id));
-    const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(c.id)&&c.cartera!=="AQA Office").map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
+    // Normalizado (sin guiones/espacios/mayúsculas): el mismo cliente puede tener el ID cargado
+    // con formato levemente distinto entre Cobranzas y Comodato (ej. "107-a-2" vs "107-A-2"),
+    // y comparar como texto exacto dejaba pasar duplicados con abono en $0 (Comodato no trae abono).
+    const cobIds=new Set(cobClientes.map(c=>normId(c.id)));
+    const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(normId(c.id))&&c.cartera!=="AQA Office").map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
     const all=[...cobClientes,...soloComodato,...officeUnificado];if(all.length>0)setClientes(all);
     // Procesar desinstalaciones para el Resumen
     const parsedDesins=(csv,colIndexFijo,cartera)=>{
