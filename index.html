@@ -2346,7 +2346,11 @@ function App(){
       });
       return{map,clientes};
     };
-    const normId=s=>String(s||"").replace(/[-\s\.]/g,"").toLowerCase();
+    // Normaliza guiones "raros" (guión medio –, largo —, signo menos −) y espacios invisibles
+    // (espacio duro, ancho cero) además del guión/espacio/punto normales: en Sheets a veces un
+    // guión se autoconvierte en otro carácter que se ve idéntico pero es un byte distinto, y eso
+    // rompía la comparación de IDs entre hojas (Cobranzas vs Comodato) aunque se vieran iguales.
+    const normId=s=>String(s||"").normalize("NFKC").replace(/[-\u2010-\u2015\u2212\s\.\u00A0\u200B\u200C\u200D\uFEFF]/g,"").toLowerCase();
     const rOfficeActivos=parseOfficeActivos(rOffActivos,rOffDeuda);
     const rOfficeComodato=parseComodato(rComOff,"AQA Office");
     // Unificar Office: Activos manda para deuda/abono, pero sumamos los clientes de Comodato
