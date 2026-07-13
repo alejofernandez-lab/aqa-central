@@ -2402,9 +2402,12 @@ function App(){
       });
     });
     const cobClientesRaw=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmapNorm[normId(c.id)]||cmap[c.nombre?.toLowerCase()]||{};const asesorAC=x.asesorAtClte||desinsMap[c.id]||desinsMap[normId(c.id)]||desinsMap["n:"+c.nombre?.toLowerCase()]||"";return{...c,asesorAtClte:asesorAC,vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};});
-    // Deduplicar por nombre — un registro por cliente
+    // Deduplicar por ID (normalizado) — NO por nombre: varios clientes cadena (ej. varias
+    // máquinas de "TEA CONNECTION" en distintas sucursales) pueden compartir el mismo texto
+    // de "Cliente" en la hoja aunque sean máquinas/contratos distintos con ID propio. Deduplicar
+    // por nombre descartaba esas filas como si fueran duplicadas, perdiendo su abono/deuda real.
     const cobVistos=new Map();
-    cobClientesRaw.forEach(c=>{const key=(c.nombre||"").toLowerCase().trim();if(!cobVistos.has(key))cobVistos.set(key,c);});
+    cobClientesRaw.forEach(c=>{const key=normId(c.id)||(c.nombre||"").toLowerCase().trim();if(!cobVistos.has(key))cobVistos.set(key,c);});
     const cobClientes=[...cobVistos.values()];
     // Normalizado (sin guiones/espacios/mayúsculas): el mismo cliente puede tener el ID cargado
     // con formato levemente distinto entre Cobranzas y Comodato (ej. "107-a-2" vs "107-A-2"),
