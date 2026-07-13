@@ -1755,11 +1755,14 @@ function Resumen({clientes,cierres,desins,asesorOverride={},bajas=[]}){
   },[cierres]);
   const maxCierre=rankingCierres[0]?.count||1;
 
-  // Modelos activos — se muestra cada variante tal cual está cargada (sin agrupar
-  // "OFF20 SM", "OFF20 c/ pie", etc. bajo un mismo "OFF20"), solo se limpia formato.
+  // Modelos activos — se muestra cada variante por separado (sin agrupar "OFF20 SM" con "OFF20 c/ pie"
+  // bajo un "OFF20" genérico), pero sacando TODOS los espacios para comparar: la misma hoja Activos ya
+  // le saca los espacios al modelo al procesarlo, mientras que Comodato los deja tal cual venían cargados
+  // — sin esto, "OFF20 C/ PIE" (con espacios) y "OFF20C/PIE" (sin espacios) contaban como dos modelos
+  // distintos siendo el mismo.
   const normModelo=(s)=>{
     if(!s)return null;
-    let m=s.replace(/^B\s*-\s*/,"").replace(/\s+/g," ").trim().toUpperCase();
+    let m=s.replace(/^B\s*-\s*/,"").replace(/\s+/g,"").trim().toUpperCase();
     return m||null;
   };
   const modelos=useMemo(()=>{
@@ -2111,9 +2114,14 @@ function Resumen({clientes,cierres,desins,asesorOverride={},bajas=[]}){
 
       {secTitle("Modelos activos en cartera","🖥️")}
       <div style={{background:"#fff",borderRadius:14,padding:"16px 20px",border:"1px solid #e8eef8",boxShadow:"0 2px 8px rgba(0,0,0,.05)",marginBottom:20}}>
-        {modelos.map(([mod,n])=>(
-          <MiniBar key={mod} label={mod} value={n} max={maxMod} color="#1F3864"/>
-        ))}
+        {(()=>{
+          // Solo cambia cómo se muestra el nombre (no afecta el agrupamiento/conteo, que ya
+          // está unificado por normModelo). Basado en el listado de 11 modelos reales de Office.
+          const MODEL_LABELS={"SM30":"SM 30","BM80":"BM 80","SM30RF":"SM 30 R/F","SM80":"SM 80","ECOFRIENDLY":"Eco Friendly","COMPACT":"Compact","OFF20BM":"OFF 20 BM","OFF20SM":"OFF20 SM","OFF20C/PIE":"OFF20 c/ Pie","WL7S/BASE":"WL7 S/ Base","WL7C/BASE":"WL7 C/ Base"};
+          return modelos.map(([mod,n])=>(
+            <MiniBar key={mod} label={MODEL_LABELS[mod]||mod} value={n} max={maxMod} color="#1F3864"/>
+          ));
+        })()}
         <div style={{borderTop:"1.5px solid #dce6f5",marginTop:8,paddingTop:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontSize:12,fontWeight:700,color:"#1a2340"}}>Total</span>
           <span style={{fontSize:13,fontWeight:700,color:"#1F3864"}}>{modelos.reduce((s,[,n])=>s+n,0)}</span>
@@ -2360,9 +2368,15 @@ function App(){
     // La fecha de instalación real vive en Comodato (columna L, "Inicio de Servicio"). El campo
     // "Fecha Inst" de Activos suele quedar desactualizado para altas recientes, así que si el
     // cliente tiene match en Comodato, esa fecha manda por sobre la de Activos.
+    // El modelo (columna C de Comodato) también es la fuente autoritativa: el "modelo_maq" de
+    // Activos a veces viene sin la variante exacta (SM/Pie/Base), así que también se prioriza.
     const rOfficeActivosConFecha=rOfficeActivos.clientes.map(c=>{
       const cc=comodatoPorId[normId(c.id)];
-      return(cc&&cc.fechaInstalacion)?{...c,fechaInstalacion:cc.fechaInstalacion}:c;
+      if(!cc)return c;
+      return{...c,
+        fechaInstalacion:cc.fechaInstalacion||c.fechaInstalacion,
+        modelo:cc.modelo||c.modelo
+      };
     });
     const officeUnificado=[...rOfficeActivosConFecha,...soloComodatoOffice];
     const r4={map:{...rOfficeComodato.map,...rOfficeActivos.map},clientes:officeUnificado};
