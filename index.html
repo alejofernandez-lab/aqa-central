@@ -1910,17 +1910,21 @@ function Resumen({clientes,cierres,desins,asesorOverride={},bajas=[]}){
                       {objArr.map((v,i)=>{
                         const real=realArr[i];
                         const diff=real!=null?real-v:null;
+                        // Para Bajas menos es mejor: verde si real <= objetivo, rojo si lo supera.
+                        // Para Altas/Netos es al revés: verde si real >= objetivo.
+                        const bien=diff!=null?(tipo==="Bajas"?diff<=0:diff>=0):null;
                         const futuro=i>mesActual;
                         return(
                           <td key={i} style={{padding:"5px 5px",textAlign:"center",background:i===mesActual?"#fff8f0":"transparent",fontWeight:i===mesActual?700:400,fontSize:11}}>
                             {futuro?<span style={{color:"#dce6f5"}}>—</span>:real!=null?(
-                              <span style={{color:diff>=0?"#27ae60":"#e74c3c",fontWeight:700}}>{tipo==="Netos"&&real>0?"+":""}{real}</span>
+                              <span style={{color:bien?"#27ae60":"#e74c3c",fontWeight:700}}>{tipo==="Netos"&&real>0?"+":""}{real}</span>
                             ):<span style={{color:"#c0cce0"}}>—</span>}
                           </td>
                         );
                       })}
                       <td style={{padding:"5px 8px",textAlign:"center",fontWeight:700,color:"#1a2340",fontSize:11}}>{tipo==="Netos"&&totalReal>0?"+":""}{totalReal}</td>
                     </tr>
+                    {ti<2&&<tr><td colSpan={14} style={{padding:"4px 0",border:"none"}}></td></tr>}
                   </React.Fragment>);
                 })}
               </tbody>
