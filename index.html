@@ -2414,7 +2414,25 @@ function App(){
     // y comparar como texto exacto dejaba pasar duplicados con abono en $0 (Comodato no trae abono).
     const cobIds=new Set(cobClientes.map(c=>normId(c.id)));
     const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(normId(c.id))&&c.cartera!=="AQA Office").map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
-    const all=[...cobClientes,...soloComodato,...officeUnificado];if(all.length>0)setClientes(all);
+    // Reconciliar Office contra la hoja general de Cobranzas/Inhabilitaciones: el mismo ID de
+    // Persat puede aparecer ahí también (mal etiquetado con otra cartera, ej. "Buenos Aires")
+    // aunque el cliente real sea de Office. La cartera/modelo de Office manda (es el maestro),
+    // pero se completa abono/deuda/asesor de cobranzas desde ese registro cuando Office no lo trae.
+    const cobPorId={};cobClientes.forEach(c=>{cobPorId[normId(c.id)]=c;});
+    const officeIdsNorm=new Set(officeUnificado.map(c=>normId(c.id)));
+    const officeConDatosCob=officeUnificado.map(c=>{
+      const cc=cobPorId[normId(c.id)];
+      if(!cc)return c;
+      return{...c,
+        abono:(parseFloat(c.abono)||0)>0?c.abono:cc.abono,
+        deuda:(c.deuda||0)>0?c.deuda:cc.deuda,
+        asesorCob:c.asesorCob&&c.asesorCob!=="—"?c.asesorCob:cc.asesorCob,
+        fc:c.fc||cc.fc,
+        mens:c.mens||cc.mens,
+      };
+    });
+    const cobClientesSinOffice=cobClientes.filter(c=>!officeIdsNorm.has(normId(c.id)));
+    const all=[...cobClientesSinOffice,...soloComodato,...officeConDatosCob];if(all.length>0)setClientes(all);
     // Procesar desinstalaciones para el Resumen
     const parsedDesins=(csv,colIndexFijo,cartera)=>{
       const d=parseCSVText(csv);
