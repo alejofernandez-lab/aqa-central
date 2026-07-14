@@ -1883,27 +1883,32 @@ function Resumen({clientes,cierres,desins,asesorOverride={},bajas=[]}){
                 {[["Altas","#1F3864",instMes],["Bajas","#e74c3c",bajasMes],["Netos","#27ae60",instMes-bajasMes]].map(([tipo,color,realMes],ti)=>{
                   const objArr=OBJETIVOS_2026[tipo];
                   const totalObj=objArr.reduce((a,b)=>a+b,0);
+                  // Real de cada mes, calculado una sola vez (se reutiliza para las celdas y el total)
+                  const realArr=objArr.map((v,i)=>{
+                    if(i>mesActual)return null;
+                    const altasR=clientesFiltrados.filter(c=>{
+                      const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");
+                      return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;
+                    }).length;
+                    const bajasR=desinsFiltradas.filter(d=>{
+                      const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");
+                      return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;
+                    }).length;
+                    return tipo==="Altas"?altasR:tipo==="Bajas"?bajasR:altasR-bajasR;
+                  });
+                  const totalReal=realArr.reduce((s,v)=>s+(v!=null?v:0),0);
                   return(<React.Fragment key={tipo}>
                     <tr style={{borderBottom:"1px solid #e8eef8",background:"#fff"}}>
-                      <td style={{padding:"5px 10px",fontWeight:700,color,fontSize:10}}>Obj. {tipo}</td>
+                      <td style={{padding:"5px 10px",fontWeight:700,color:"#1a2340",fontSize:10}}>Obj. {tipo}</td>
                       {objArr.map((v,i)=>(
-                        <td key={i} style={{padding:"5px 5px",textAlign:"center",background:i===mesActual?"#fff8f0":"transparent",fontWeight:i===mesActual?700:400,color:"#6b7a99",fontSize:11}}>{v}</td>
+                        <td key={i} style={{padding:"5px 5px",textAlign:"center",background:i===mesActual?"#fff8f0":"transparent",fontWeight:i===mesActual?700:400,color:"#1a2340",fontSize:11}}>{v}</td>
                       ))}
-                      <td style={{padding:"5px 8px",textAlign:"center",fontWeight:700,color}}>{totalObj}</td>
+                      <td style={{padding:"5px 8px",textAlign:"center",fontWeight:700,color:"#1a2340"}}>{totalObj}</td>
                     </tr>
                     <tr style={{borderBottom:"2px solid #e8eef8",background:"#f9fbff"}}>
-                      <td style={{padding:"5px 10px",fontWeight:600,color,fontSize:10}}>Real {tipo}</td>
+                      <td style={{padding:"5px 10px",fontWeight:600,color:"#1a2340",fontSize:10}}>Real {tipo}</td>
                       {objArr.map((v,i)=>{
-                        // Real para cada mes ya transcurrido del 2026 (generalizado; ya no depende de un rango de meses hardcodeado)
-                        const altasR = i<=mesActual ? clientesFiltrados.filter(c=>{
-                          const p=(c.fechaInstalacion||"").replace(/-/g,"/").split("/");
-                          return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;
-                        }).length : null;
-                        const bajasR = i<=mesActual ? desinsFiltradas.filter(d=>{
-                          const p=(d.fechaDesins||"").replace(/-/g,"/").split("/");
-                          return p.length>=3&&parseInt(p[1])===i+1&&parseInt(p[2])===2026;
-                        }).length : null;
-                        const real=tipo==="Altas"?altasR:tipo==="Bajas"?bajasR:(altasR!=null&&bajasR!=null?altasR-bajasR:null);
+                        const real=realArr[i];
                         const diff=real!=null?real-v:null;
                         const futuro=i>mesActual;
                         return(
@@ -1914,7 +1919,7 @@ function Resumen({clientes,cierres,desins,asesorOverride={},bajas=[]}){
                           </td>
                         );
                       })}
-                      <td style={{padding:"5px 8px",textAlign:"center",color:"#9baabf",fontSize:11}}>—</td>
+                      <td style={{padding:"5px 8px",textAlign:"center",fontWeight:700,color:"#1a2340",fontSize:11}}>{tipo==="Netos"&&totalReal>0?"+":""}{totalReal}</td>
                     </tr>
                   </React.Fragment>);
                 })}
