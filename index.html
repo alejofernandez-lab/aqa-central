@@ -2668,29 +2668,19 @@ function App(){
   // Resumen de plaza: clientes únicos, máquinas (filas), facturación (c/IVA y s/IVA) y deuda del recorte filtrado
   const plazaStats=useMemo(()=>{
     const maquinas=filteredAtClte.length;
-    // Agrupamos dos filas como "el mismo cliente" si coincide el NOMBRE exacto, O si coincide
-    // la RAZÓN SOCIAL (lo que alcance primero). Esto cubre tanto el caso de máquinas repetidas
-    // con el mismo nombre exacto (ej. "VERITRAN SAU" x2, misma empresa, 2 máquinas) como el caso
-    // de sucursales con nombre distinto pero misma empresa (ej. "COCOS CAPITAL - 4to Piso" /
-    // "- 5to Piso" en Office). Se usa un union-find simple para juntar ambos criterios.
-    const parent={};
-    const find=k=>{if(!(k in parent)){parent[k]=k;return k;}if(parent[k]!==k)parent[k]=find(parent[k]);return parent[k];};
-    const union=(a,b)=>{const ra=find(a),rb=find(b);if(ra!==rb)parent[ra]=rb;};
-    const keyN=c=>"n:"+(c.nombre||"").toLowerCase().trim();
-    const keyR=c=>(c.razonSocial||"").trim()?"r:"+(c.razonSocial||"").toLowerCase().trim():null;
-    filteredAtClte.forEach(c=>{
-      const kn=keyN(c),kr=keyR(c);
-      find(kn);
-      if(kr){find(kr);union(kn,kr);}
-    });
-    const grupoDe=c=>find(keyN(c));
+    // Agrupar "el mismo cliente": para Office, la deuda se calcula por empresa/id fiscal y se
+    // repite en cada sucursal/piso (mismo Razón Social, distinto nombre) — ahí agrupa por
+    // grupoId/Razón Social. Para el resto (AQA/Interior/Hielogic), cada nombre exacto es un
+    // cliente/local propio con su propia deuda (ej. una cadena de hoteles: mismo dueño/Razón
+    // Social, pero cada hotel tiene su deuda separada) — ahí agrupa solo por nombre exacto.
+    const grupoDe=c=>c.cartera==="AQA Office"
+      ?"r:"+(c.grupoId||c.razonSocial||c.nombre||"").toLowerCase().trim()
+      :"n:"+(c.nombre||"").toLowerCase().trim();
     const nombresUnicos=new Set(filteredAtClte.map(grupoDe));
     const conAbono=filteredAtClte.filter(c=>(parseFloat(c.abono)||0)>0);
     const facturacionConIVA=conAbono.reduce((s,c)=>s+Math.round(parseFloat(c.abono))*1.21,0);
     const facturacionSinIVA=conAbono.reduce((s,c)=>s+Math.round(parseFloat(c.abono)),0);
-    // Deuda deduplicada por el mismo grupo: si la deuda se calcula por empresa (no por máquina),
-    // todas las máquinas/sucursales de un mismo cliente muestran el mismo monto — sumarlas sin
-    // agrupar multiplicaría la deuda real por la cantidad de máquinas de esa empresa.
+    // Deuda deduplicada por el mismo grupo (ver criterio arriba).
     const deudaPorCliente={};
     filteredAtClte.forEach(c=>{const k=grupoDe(c);const d=c.deuda>0?c.deuda:0;if(!deudaPorCliente[k]||d>deudaPorCliente[k])deudaPorCliente[k]=d;});
     const deudaTotal=Object.values(deudaPorCliente).reduce((s,d)=>s+d,0);
@@ -2698,15 +2688,12 @@ function App(){
   },[filteredAtClte]);
   const filteredCob=useMemo(()=>{const filtered=clientesEfectivos.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorCob||"").toLowerCase().includes(sq)||(c.vendedor||"").toLowerCase().includes(sq)||(c.razonSocial||"").toLowerCase().includes(sq))&&(fEstado==="todos"||c.estado===fEstado)&&(fCobrador==="Todos"||c.asesorCob===fCobrador)&&(fPlaza==="Todas"||c.cartera===fPlaza)&&(fVendedorCob==="Todos"||(c.vendedor||"")===fVendedorCob);});return sortClientes(filtered,sortCob);},[clientesEfectivos,q,fEstado,fCobrador,fPlaza,fVendedorCob,sortCob]);
   const resumen=useMemo(()=>{
-    // Mismo criterio que arriba: agrupar por nombre O razón social para no sumar la deuda
-    // dos veces cuando un mismo cliente tiene varias máquinas bajo el mismo asesor.
-    const parentR={};
-    const findR=k=>{if(!(k in parentR)){parentR[k]=k;return k;}if(parentR[k]!==k)parentR[k]=findR(parentR[k]);return parentR[k];};
-    const unionR=(a,b)=>{const ra=findR(a),rb=findR(b);if(ra!==rb)parentR[ra]=rb;};
-    const keyNR=c=>"n:"+(c.nombre||"").toLowerCase().trim();
-    const keyRR=c=>(c.razonSocial||"").trim()?"r:"+(c.razonSocial||"").toLowerCase().trim():null;
-    clientes.forEach(c=>{const kn=keyNR(c),kr=keyRR(c);findR(kn);if(kr){findR(kr);unionR(kn,kr);}});
-    const grupoDeR=c=>findR(keyNR(c));
+    // Mismo criterio que arriba: Office agrupa por grupoId/Razón Social (deuda por empresa/id
+    // fiscal, se repite por sucursal); el resto agrupa solo por nombre exacto (cada local/hotel
+    // de una cadena tiene su propia deuda, aunque compartan Razón Social corporativa).
+    const grupoDeR=c=>c.cartera==="AQA Office"
+      ?"r:"+(c.grupoId||c.razonSocial||c.nombre||"").toLowerCase().trim()
+      :"n:"+(c.nombre||"").toLowerCase().trim();
     const r={};const deudaVista=new Set();
     clientes.forEach(c=>{
       const k=c.asesorCob||"Sin asignar";
@@ -2764,16 +2751,12 @@ function App(){
     {tab==="Cobranzas"&&(<div>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap",alignItems:"flex-end"}}><input placeholder="Buscar nombre, ID, cobrador, razón social..." value={q} onChange={e=>setQ(e.target.value)} style={{...SS,flex:1,minWidth:160}}/><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Plaza</label><select value={fPlaza} onChange={e=>setFPlaza(e.target.value)} style={SS}><option value="Todas">Todas</option><option value="Buenos Aires">Buenos Aires</option><option value="Interior">Interior</option><option value="Hielogic">Hielogic</option></select></div><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Estado</label><select value={fEstado} onChange={e=>setFEstado(e.target.value)} style={SS}><option value="todos">Todos</option><option value="habilitado">Habilitado</option><option value="pendiente">Fc. Pendientes</option><option value="inhabilitado">Inhabilitado</option></select></div><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Asesor</label><select value={fCobrador} onChange={e=>setFCobrador(e.target.value)} style={SS}><option value="Todos">Todos</option>{cobradores.filter(c=>c!=="Todos").map(c=><option key={c}>{c}</option>)}</select></div><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Ordenar por</label><select value={sortCob} onChange={e=>setSortCob(e.target.value)} style={SS}><option value="deuda_desc">Deuda mayor→menor</option><option value="deuda_asc">Deuda menor→mayor</option><option value="nombre_az">Nombre A→Z</option><option value="nombre_za">Nombre Z→A</option><option value="estado_desc">Estado (Inhab. primero)</option><option value="estado_asc">Estado (Hab. primero)</option><option value="abono_desc">Abono mayor→menor</option><option value="abono_asc">Abono menor→mayor</option><option value="fecha_desc">Instalación más reciente</option><option value="fecha_asc">Instalación más antigua</option></select></div></div>
       {(()=>{const clientesConAbono=filteredCob.filter(c=>(parseFloat(c.abono)||0)>0);
-        // Mismo criterio que en Atención al Cliente: dos filas son "el mismo cliente" si
-        // coincide el nombre exacto O la razón social (lo que alcance), para no duplicar
-        // la deuda cuando un cliente tiene varias máquinas repitiendo el mismo monto.
-        const parentCob={};
-        const findCob=k=>{if(!(k in parentCob)){parentCob[k]=k;return k;}if(parentCob[k]!==k)parentCob[k]=findCob(parentCob[k]);return parentCob[k];};
-        const unionCob=(a,b)=>{const ra=findCob(a),rb=findCob(b);if(ra!==rb)parentCob[ra]=rb;};
-        const keyNCob=c=>"n:"+(c.nombre||"").toLowerCase().trim();
-        const keyRCob=c=>(c.razonSocial||"").trim()?"r:"+(c.razonSocial||"").toLowerCase().trim():null;
-        filteredCob.forEach(c=>{const kn=keyNCob(c),kr=keyRCob(c);findCob(kn);if(kr){findCob(kr);unionCob(kn,kr);}});
-        const grupoDeCob=c=>findCob(keyNCob(c));
+        // Mismo criterio que en Atención al Cliente: Office agrupa por grupoId/Razón Social
+        // (la deuda ahí es por empresa/id fiscal, se repite por sucursal); el resto agrupa
+        // solo por nombre exacto (cada local/hotel de una cadena tiene su propia deuda).
+        const grupoDeCob=c=>c.cartera==="AQA Office"
+          ?"r:"+(c.grupoId||c.razonSocial||c.nombre||"").toLowerCase().trim()
+          :"n:"+(c.nombre||"").toLowerCase().trim();
         const deudaPorCliente={};filteredCob.forEach(c=>{const k=grupoDeCob(c);const d=c.deuda>0?c.deuda:0;if(!deudaPorCliente[k]||d>deudaPorCliente[k])deudaPorCliente[k]=d;});const deudaFiltrada=Object.values(deudaPorCliente).reduce((s,d)=>s+d,0);const facturacionFiltrada=clientesConAbono.reduce((s,c)=>s+Math.round(parseFloat(c.abono))*1.21,0);const promedio=clientesConAbono.length>0?clientesConAbono.reduce((s,c)=>s+(parseFloat(c.abono)||0),0)/clientesConAbono.length:0;const hayFiltro=fPlaza!=="Todas"||fEstado!=="todos"||fCobrador!=="Todos";return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}><div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}><p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Deuda total{hayFiltro?" (filtrada)":""}</p><p style={{margin:0,fontSize:22,fontWeight:600,color:"#791F1F"}}>{fmt(deudaFiltrada)}</p><p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>mostrando {filteredCob.length} de {clientesEfectivos.length} clientes</p></div><div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}><p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Facturación del mes c/IVA{hayFiltro?" (filtrada)":""}</p><p style={{margin:0,fontSize:22,fontWeight:600,color:"#1F3864"}}>{fmt(facturacionFiltrada)}</p><p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>{clientesConAbono.length} clientes con abono</p></div><div style={{background:"#f4f7fb",borderRadius:12,padding:"1rem",border:"1px solid #dce6f5"}}><p style={{margin:"0 0 4px",fontSize:12,color:"#6b7a99"}}>Abono promedio s/IVA{hayFiltro?" (filtrado)":""}</p><p style={{margin:0,fontSize:22,fontWeight:600,color:"#1a5c3a"}}>{promedio>0?fmt(promedio):"—"}</p><p style={{margin:"4px 0 0",fontSize:11,color:"#6b7a99"}}>sobre {clientesConAbono.length} clientes activos</p></div></div>);})()}
       <p style={{fontSize:12,fontWeight:600,color:"#6b7a99",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Detalle por cliente</p>
       <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:20}}>{filteredCob.map((c,i)=><ClienteCard key={c.id+i} c={c}/>)}</div>
