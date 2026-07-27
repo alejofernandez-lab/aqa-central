@@ -524,7 +524,20 @@ const iUlt=headers.findIndex(h=>h.includes("lt")&&h.includes("ajus"));
 const iProx=headers.findIndex(h=>h.includes("rox")&&h.includes("ajus"));
 const iTipo=headers.findIndex(h=>h.includes("tipo")&&h.includes("ajus"));
 return lines.slice(1).map(line=>{const c=splitLine(line);const[asesorCob,id,modelo,abono,nombre,colF,colG,deudaRaw,fcRaw,mensRaw]=c;if(!id?.trim()||!nombre?.trim())return null;return{id:id.trim(),nombre:nombre.trim(),modelo:modelo||"",asesorCob:asesorCob||"",abono:parseNum(abono),estado:parseEstado(colF,colG),deuda:parseNum(deudaRaw),fc:parseInt(fcRaw)||0,mens:parseInt(mensRaw)||0,ultAjuste:iUlt>=0?(c[iUlt]||"").replace(/"/g,"").trim():"",proxAjuste:iProx>=0?(c[iProx]||"").replace(/"/g,"").trim():"",tipoAjuste:iTipo>=0?(c[iTipo]||"").replace(/"/g,"").trim():"",cartera,asesorAtClte:"",fechaInstalacion:"",localidad:"",provincia:""};}).filter(Boolean);}
-function parseComodato(text,cartera){const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");if(lines.length<2)return{map:{},clientes:[]};const map={},clientes=[];const cfg={"Buenos Aires":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:8,localidad:-1,provincia:-1,proxAjuste:10},"Interior":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:6,provincia:7,proxAjuste:9},"Hielogic":{asesor:0,vendedor:2,modelo:3,nombre:4,id:5,razonSocial:6,fecha:9,localidad:-1,provincia:-1,proxAjuste:11},"AQA Office":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:-1,provincia:-1,proxAjuste:-1}};const idx=cfg[cartera]||cfg["Buenos Aires"];lines.slice(1).forEach(line=>{const cols=splitLine(line);const asesorAtClte=(cols[0]||"").trim();const vendedor=(cols[1]||"").trim();const modelo=(cols[idx.modelo]||"").trim();const nombre=(cols[idx.nombre]||"").replace(/"/g,"").trim();const idPersat=(cols[idx.id]||"").trim();const razonSocial=idx.razonSocial>=0?(cols[idx.razonSocial]||"").replace(/"/g,"").trim():"";const fechaInstalacion=(cols[idx.fecha]||"").trim();const localidad=idx.localidad>=0?(cols[idx.localidad]||"").trim():"";const provincia=idx.provincia>=0?(cols[idx.provincia]||"").trim():"";const proxAjuste=idx.proxAjuste>=0?(cols[idx.proxAjuste]||"").trim():"";if(!nombre&&!idPersat)return;const entry={asesorAtClte,vendedor,razonSocial,fechaInstalacion,localidad,provincia,proxAjuste};if(idPersat){map[idPersat]=entry;map[String(parseInt(idPersat)||0)]=entry;}if(nombre)map[nombre.toLowerCase()]=entry;if(nombre)clientes.push({id:idPersat||nombre,nombre,modelo,razonSocial,asesorCob:"—",asesorAtClte,vendedor,abono:0,estado:"habilitado",deuda:0,fc:0,mens:0,cartera,fechaInstalacion,localidad,provincia,proxAjuste,_soloComodato:true});});return{map,clientes};}
+function parseComodato(text,cartera){const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");if(lines.length<2)return{map:{},clientes:[]};const map={},clientes=[];const cfg={"Buenos Aires":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:8,localidad:-1,provincia:-1,proxAjuste:10},"Interior":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:6,provincia:7,proxAjuste:9},"Hielogic":{asesor:0,vendedor:2,modelo:3,nombre:4,id:5,razonSocial:6,fecha:9,localidad:-1,provincia:-1,proxAjuste:11},"AQA Office":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:-1,provincia:-1,proxAjuste:-1}};const idx=cfg[cartera]||cfg["Buenos Aires"];lines.slice(1).forEach(line=>{const cols=splitLine(line);const asesorAtClte=(cols[0]||"").trim();const vendedor=(cols[1]||"").trim();const modelo=(cols[idx.modelo]||"").trim();const nombre=(cols[idx.nombre]||"").replace(/"/g,"").trim();const idPersat=(cols[idx.id]||"").trim();const razonSocial=idx.razonSocial>=0?(cols[idx.razonSocial]||"").replace(/"/g,"").trim():"";const fechaInstalacion=(cols[idx.fecha]||"").trim();const localidad=idx.localidad>=0?(cols[idx.localidad]||"").trim():"";const provincia=idx.provincia>=0?(cols[idx.provincia]||"").trim():"";const proxAjuste=idx.proxAjuste>=0?(cols[idx.proxAjuste]||"").trim():"";if(!nombre&&!idPersat)return;
+  // Se guarda "nombre" en el entry para poder desambiguar más adelante cuándo un mismo ID
+  // se reutiliza (con el tiempo) para más de un cliente distinto en la misma hoja.
+  const entry={asesorAtClte,vendedor,razonSocial,fechaInstalacion,localidad,provincia,proxAjuste,nombre};
+  // Por ID se guarda un ARRAY de candidatos (no se sobrescribe): un ID puede repetirse a lo
+  // largo del tiempo para clientes distintos, y quedarnos con "el último que vimos" mezclaba
+  // los datos de un cliente viejo con los de uno nuevo que reusa el mismo número.
+  if(idPersat){
+    const k1=idPersat,k2=String(parseInt(idPersat)||0);
+    if(!map[k1])map[k1]=[];map[k1].push(entry);
+    if(k2!==k1){if(!map[k2])map[k2]=[];map[k2].push(entry);}
+  }
+  if(nombre){const kn=nombre.toLowerCase();if(!map[kn])map[kn]=[];map[kn].push(entry);}
+  if(nombre)clientes.push({id:idPersat||nombre,nombre,modelo,razonSocial,asesorCob:"—",asesorAtClte,vendedor,abono:0,estado:"habilitado",deuda:0,fc:0,mens:0,cartera,fechaInstalacion,localidad,provincia,proxAjuste,_soloComodato:true});});return{map,clientes};}
 
 
 function parseAjuste(text, proxCol){
@@ -2571,10 +2584,40 @@ function App(){
       };
     });
     const officeUnificado=[...rOfficeActivosConFecha,...soloComodatoOffice];
-    const r4={map:{...rOfficeComodato.map,...rOfficeActivos.map},clientes:officeUnificado};
+    // rOfficeActivos.map viene con un solo candidato por clave (no array, formato propio de
+    // parseOfficeActivos); se normaliza acá para que todo quede en formato array de candidatos.
+    const r4Map={};
+    Object.entries(rOfficeComodato.map).forEach(([k,v])=>{r4Map[k]=[...(r4Map[k]||[]),...v];});
+    Object.entries(rOfficeActivos.map).forEach(([k,v])=>{r4Map[k]=[...(r4Map[k]||[]),v];});
+    const r4={map:r4Map,clientes:officeUnificado};
     const ri1=parseComodato(rInstBsAs,"Buenos Aires"),ri2=parseComodato(rInstInt,"Interior"),ri3=parseComodato(rInstHiel,"Hielogic"),ri4=parseComodato(rInstOff,"AQA Office");
     const ajusteMap={...parseAjustes(rAjBA,0,3,10),...parseAjustes(rAjInt,0,2,9),...parseAjustes(rAjHiel,0,3,11)};
-    const cmap={};const cmapNorm={};[r1.map,r2.map,r3.map,r4.map,ri1.map,ri2.map,ri3.map,ri4.map].forEach(m=>{Object.entries(m).forEach(([k,v])=>{if(!cmap[k])cmap[k]={...v};else{if(!cmap[k].vendedor&&v.vendedor)cmap[k].vendedor=v.vendedor;if(!cmap[k].asesorAtClte&&v.asesorAtClte)cmap[k].asesorAtClte=v.asesorAtClte;if(!cmap[k].fechaInstalacion&&v.fechaInstalacion)cmap[k].fechaInstalacion=v.fechaInstalacion;}const nk=normId(k);if(!cmapNorm[nk])cmapNorm[nk]={...v};});});
+    // cmap/cmapNorm guardan un ARRAY de candidatos por ID (no se sobrescribe): un mismo número
+    // de ID puede haberse reutilizado con el tiempo para más de un cliente distinto en la hoja,
+    // y quedarnos con uno solo (el último visto) mezclaba los datos de dos clientes diferentes.
+    const cmap={};const cmapNorm={};
+    [r1.map,r2.map,r3.map,r4.map,ri1.map,ri2.map,ri3.map,ri4.map].forEach(m=>{
+      Object.entries(m).forEach(([k,vRaw])=>{
+        const arr=Array.isArray(vRaw)?vRaw:[vRaw];
+        if(!cmap[k])cmap[k]=[];
+        cmap[k].push(...arr);
+        const nk=normId(k);
+        if(!cmapNorm[nk])cmapNorm[nk]=[];
+        cmapNorm[nk].push(...arr);
+      });
+    });
+    // Cuando hay más de un candidato para el mismo ID (número reutilizado), se elige el que
+    // mejor matchea con el nombre real del cliente en cuestión, en vez de uno cualquiera.
+    const elegirCandidato=(candidatos,nombreRef)=>{
+      if(!candidatos||candidatos.length===0)return{};
+      if(candidatos.length===1)return candidatos[0];
+      const nr=(nombreRef||"").toLowerCase().trim();
+      let match=candidatos.find(c=>(c.nombre||"").toLowerCase().trim()===nr);
+      if(match)return match;
+      match=candidatos.find(c=>{const cn=(c.nombre||"").toLowerCase().trim();return cn&&nr&&(nr.includes(cn)||cn.includes(nr));});
+      if(match)return match;
+      return candidatos[candidatos.length-1];
+    };
     // Mapa asesor desde desinstalaciones
     const desinsMap={};
     [rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff].forEach(csv=>{
@@ -2589,7 +2632,7 @@ function App(){
         if(nombre&&asesor)desinsMap["n:"+nombre]=asesor;
       });
     });
-    const cobClientesRaw=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const x=cmap[c.id]||cmapNorm[normId(c.id)]||cmap[c.nombre?.toLowerCase()]||{};const asesorAC=x.asesorAtClte||desinsMap[c.id]||desinsMap[normId(c.id)]||desinsMap["n:"+c.nombre?.toLowerCase()]||"";return{...c,asesorAtClte:asesorAC,vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};});
+    const cobClientesRaw=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const candidatos=cmap[c.id]||cmapNorm[normId(c.id)]||cmap[c.nombre?.toLowerCase()]||[];const x=elegirCandidato(candidatos,c.nombre);const asesorAC=x.asesorAtClte||desinsMap[c.id]||desinsMap[normId(c.id)]||desinsMap["n:"+c.nombre?.toLowerCase()]||"";return{...c,asesorAtClte:asesorAC,vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};});
     // Deduplicar por ID (normalizado) — NO por nombre: varios clientes cadena (ej. varias
     // máquinas de "TEA CONNECTION" en distintas sucursales) pueden compartir el mismo texto
     // de "Cliente" en la hoja aunque sean máquinas/contratos distintos con ID propio. Deduplicar
