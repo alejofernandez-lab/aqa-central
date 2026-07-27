@@ -2608,13 +2608,17 @@ function App(){
     });
     // Cuando hay más de un candidato para el mismo ID (número reutilizado), se elige el que
     // mejor matchea con el nombre real del cliente en cuestión, en vez de uno cualquiera.
+    // Normaliza para comparar nombres entre hojas: saca tildes, símbolos y espacios de más,
+    // para que "BAR DU MARCHÉ" matchee con "BAR DU MARCHÉ - Nika" sin que un acento o un guión
+    // de más rompa la comparación.
+    const normNombreComp=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
     const elegirCandidato=(candidatos,nombreRef)=>{
       if(!candidatos||candidatos.length===0)return{};
       if(candidatos.length===1)return candidatos[0];
-      const nr=(nombreRef||"").toLowerCase().trim();
-      let match=candidatos.find(c=>(c.nombre||"").toLowerCase().trim()===nr);
+      const nr=normNombreComp(nombreRef);
+      let match=candidatos.find(c=>normNombreComp(c.nombre)===nr);
       if(match)return match;
-      match=candidatos.find(c=>{const cn=(c.nombre||"").toLowerCase().trim();return cn&&nr&&(nr.includes(cn)||cn.includes(nr));});
+      match=candidatos.find(c=>{const cn=normNombreComp(c.nombre);return cn&&nr&&(nr.includes(cn)||cn.includes(nr));});
       if(match)return match;
       return candidatos[candidatos.length-1];
     };
