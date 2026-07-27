@@ -1678,6 +1678,74 @@ function SinAsignarModal({clientes,asesores,onClose,fmt}){
   );
 }
 
+// ── OVERRIDES DE ASESOR AC DESACTUALIZADOS ──────────────────────
+function ModalOverridesDesactualizados({items,onClose}){
+  const fb=useFirebase();
+  const[eliminando,setEliminando]=useState({});
+  const[eliminados,setEliminados]=useState({});
+
+  const eliminarOverride=async(id)=>{
+    if(!fb)return;
+    setEliminando(p=>({...p,[id]:true}));
+    const{db,doc,deleteDoc}=fb;
+    try{
+      await deleteDoc(doc(db,"asesorAtClteOverride",id));
+      setEliminados(p=>({...p,[id]:true}));
+    }catch(e){console.error("Error eliminando override:",e);}
+    setEliminando(p=>({...p,[id]:false}));
+  };
+
+  const pendientes=items.filter(x=>!eliminados[x.id]);
+
+  return(
+    <div className="overlay" onClick={e=>{if(e.target.className==="overlay")onClose();}}>
+      <div className="modal" style={{maxWidth:680}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div>
+            <p style={{margin:0,fontSize:15,fontWeight:700}}>⚠️ Asignaciones manuales desactualizadas</p>
+            <p style={{margin:0,fontSize:11,color:"#6b7a99"}}>
+              La hoja ya tiene un asesor cargado, pero una asignación manual vieja lo está pisando. {pendientes.length} caso{pendientes.length!==1?"s":""}.
+            </p>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#6b7a99"}}>✕</button>
+        </div>
+
+        <div style={{maxHeight:500,overflowY:"auto"}}>
+          {pendientes.length===0&&(
+            <div style={{textAlign:"center",padding:"2rem",color:"#27ae60",fontSize:14,fontWeight:600}}>
+              ✅ No hay asignaciones manuales desactualizadas
+            </div>
+          )}
+          {pendientes.map((x,i)=>(
+            <div key={x.id+i} style={{display:"grid",gridTemplateColumns:"90px 1fr 130px 130px 90px",gap:8,alignItems:"center",padding:"8px 4px",borderBottom:"1px solid #f0f3f8",background:i%2===0?"#fff":"#fafbff"}}>
+              <div style={{fontSize:10,color:"#9baabf",fontFamily:"monospace"}}>{x.id}</div>
+              <div>
+                <div style={{fontSize:12,fontWeight:600}}>{x.nombre}</div>
+                <div style={{fontSize:10,color:"#9baabf"}}>{x.cartera}</div>
+              </div>
+              <div>
+                <div style={{fontSize:9,color:"#9baabf",textTransform:"uppercase"}}>Hoja dice</div>
+                <div style={{fontSize:12,fontWeight:600,color:"#1a5c3a"}}>{x.deHoja}</div>
+              </div>
+              <div>
+                <div style={{fontSize:9,color:"#9baabf",textTransform:"uppercase"}}>Asignado a mano</div>
+                <div style={{fontSize:12,fontWeight:600,color:"#c0392b"}}>{x.overrideActual}</div>
+              </div>
+              <button
+                onClick={()=>eliminarOverride(x.id)}
+                disabled={eliminando[x.id]}
+                style={{background:"#fff5f5",color:"#c0392b",border:"1px solid #fdddd9",borderRadius:7,padding:"6px 8px",fontSize:11,cursor:"pointer",fontWeight:600}}
+              >
+                {eliminando[x.id]?"...":"Quitar"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── RESUMEN / ANALYTICS ─────────────────────────────────────────
 
 const OBJETIVOS_2026={
@@ -2403,7 +2471,7 @@ function App(){
   const[q,setQ]=useState("");const[fEstado,setFEstado]=useState("todos");const[fCobrador,setFCobrador]=useState("Todos");const[fPlaza,setFPlaza]=useState("Todas");const[fAtClte,setFAtClte]=useState("Todos");const[fVendedor,setFVendedor]=useState("Todos");const[fVendedorCob,setFVendedorCob]=useState("Todos");
   const[sortAtClte,setSortAtClte]=useState("nombre_az");
   const[sortCob,setSortCob]=useState("deuda_desc");
-  const[expanded,setExpanded]=useState(null);const[chatCliente,setChatCliente]=useState(null);
+  const[expanded,setExpanded]=useState(null);const[chatCliente,setChatCliente]=useState(null);const[showOverridesModal,setShowOverridesModal]=useState(false);
 
   useEffect(()=>{(async()=>{try{
     const sf=u=>safeFetch(u).catch(()=>"");
@@ -2662,6 +2730,21 @@ function App(){
     });
   },[clientes,asesorOverride]);
 
+  // Overrides manuales de asesor AC que quedaron desactualizados: la hoja YA tiene un asesor
+  // cargado, pero el override viejo (de cuando estaba vacío) lo sigue pisando en silencio.
+  const overridesDesactualizados=useMemo(()=>{
+    const out=[];
+    clientes.forEach((c,i)=>{
+      const eff=clientesEfectivos[i];
+      const raw=(c.asesorAtClte||"").trim();
+      const efectivo=(eff?.asesorAtClte||"").trim();
+      if(raw&&efectivo&&raw!==efectivo){
+        out.push({id:c.id,nombre:c.nombre,cartera:c.cartera,deHoja:raw,overrideActual:efectivo});
+      }
+    });
+    return out;
+  },[clientes,clientesEfectivos]);
+
   const provinciasInterior=useMemo(()=>{const s=new Set();clientesEfectivos.filter(c=>c.cartera==="Interior").forEach(c=>{if(c.provincia)s.add(c.provincia);});return Array.from(s).sort((a,b)=>a.localeCompare(b,"es"));},[clientesEfectivos]);
   const localidadesInterior=useMemo(()=>{const s=new Set();clientesEfectivos.filter(c=>c.cartera==="Interior"&&(fProvinciaPlaza==="Todas"||c.provincia===fProvinciaPlaza)).forEach(c=>{if(c.localidad)s.add(c.localidad);});return Array.from(s).sort((a,b)=>a.localeCompare(b,"es"));},[clientesEfectivos,fProvinciaPlaza]);
   const filteredAtClte=useMemo(()=>{const filtered=clientesEfectivos.filter(c=>{const sq=q.toLowerCase();return(c.nombre.toLowerCase().includes(sq)||c.id.includes(sq)||(c.asesorAtClte||"").toLowerCase().includes(sq)||(c.vendedor||"").toLowerCase().includes(sq)||(c.razonSocial||"").toLowerCase().includes(sq))&&(fAtClte==="Todos"||c.asesorAtClte===fAtClte)&&(fVendedor==="Todos"||(c.vendedor||"")===fVendedor)&&(logCartera==="Todos"||c.cartera===logCartera)&&(fProvinciaPlaza==="Todas"||c.provincia===fProvinciaPlaza)&&(fLocalidadPlaza==="Todas"||c.localidad===fLocalidadPlaza);});return sortClientes(filtered,sortAtClte);},[clientesEfectivos,q,fAtClte,fVendedor,logCartera,sortAtClte,fProvinciaPlaza,fLocalidadPlaza]);
@@ -2743,7 +2826,8 @@ function App(){
   if(loading)return <div style={{padding:"3rem",textAlign:"center",color:"#6b7a99",fontSize:14}}>Cargando AQA Central...</div>;
   return(<div style={{color:"#1a2340"}}>
     {chatCliente&&<ClienteChat clienteId={chatCliente.id} clienteNombre={chatCliente.nombre} abonoActual={chatCliente.abono||0} onClose={()=>setChatCliente(null)}/>}
-    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"1rem",flexWrap:"wrap",gap:8}}><div><p style={{fontSize:20,fontWeight:600,margin:0}}>AQA · HIELOGIC CENTRAL</p><p style={{fontSize:12,color:"#6b7a99",margin:"2px 0 0"}}>{stats.total} clientes · actualizado {lastUpdate}</p></div><div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}><span style={{background:"#FCEBEB",color:"#791F1F",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}}>{stats.inhab} inhabilitados</span><span style={{background:"#FAEEDA",color:"#633806",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}}>{stats.pend} fc. pendientes</span><span style={{background:"#EAF3DE",color:"#27500A",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}}>{stats.hab} habilitados</span><button onClick={logout} title={authUser?.email} style={{background:"#f4f7fb",color:"#6b7a99",border:"1px solid #dce6f5",borderRadius:8,padding:"4px 10px",fontSize:11,cursor:"pointer"}}>↩ {authUser?.email?.split("@")[0]}</button></div></div>
+    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"1rem",flexWrap:"wrap",gap:8}}><div><p style={{fontSize:20,fontWeight:600,margin:0}}>AQA · HIELOGIC CENTRAL</p><p style={{fontSize:12,color:"#6b7a99",margin:"2px 0 0"}}>{stats.total} clientes · actualizado {lastUpdate}</p></div><div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}><span style={{background:"#FCEBEB",color:"#791F1F",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}}>{stats.inhab} inhabilitados</span><span style={{background:"#FAEEDA",color:"#633806",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}}>{stats.pend} fc. pendientes</span><span style={{background:"#EAF3DE",color:"#27500A",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:500}}>{stats.hab} habilitados</span>{overridesDesactualizados.length>0&&<button onClick={()=>setShowOverridesModal(true)} style={{background:"#FFE8CC",color:"#8a3a00",border:"1px solid #ffcf94",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>⚠️ {overridesDesactualizados.length} asignación{overridesDesactualizados.length!==1?"es":""} desactualizada{overridesDesactualizados.length!==1?"s":""}</button>}<button onClick={logout} title={authUser?.email} style={{background:"#f4f7fb",color:"#6b7a99",border:"1px solid #dce6f5",borderRadius:8,padding:"4px 10px",fontSize:11,cursor:"pointer"}}>↩ {authUser?.email?.split("@")[0]}</button></div></div>
+    {showOverridesModal&&<ModalOverridesDesactualizados items={overridesDesactualizados} onClose={()=>setShowOverridesModal(false)}/>}
     <TabBar tabs={MAIN_TABS} active={tab} onChange={t=>{setTab(t);setQ("");}}/>
 
     {tab==="Atención al Cliente"&&(<div><div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap",alignItems:"flex-end"}}><input placeholder="Buscar nombre, ID, asesor, razón social..." value={q} onChange={e=>setQ(e.target.value)} style={{...SS,flex:1,minWidth:160}}/><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Tipo</label><select value={logHoja} onChange={e=>setLogHoja(e.target.value)} style={SS}>{LOG_HOJAS.map(o=><option key={o}>{o}</option>)}</select></div><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Clasificación</label><select value={logCartera} onChange={e=>{setLogCartera(e.target.value);setFProvinciaPlaza("Todas");setFLocalidadPlaza("Todas");}} style={SS}><option value="Todos">Todos</option>{["Buenos Aires","Interior","Hielogic","AQA Office"].map(o=><option key={o}>{o}</option>)}</select></div>{logCartera==="Interior"&&<div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Provincia</label><select value={fProvinciaPlaza} onChange={e=>{setFProvinciaPlaza(e.target.value);setFLocalidadPlaza("Todas");}} style={SS}><option value="Todas">Todas</option>{provinciasInterior.map(p=><option key={p}>{p}</option>)}</select></div>}{logCartera==="Interior"&&<div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Localidad</label><select value={fLocalidadPlaza} onChange={e=>setFLocalidadPlaza(e.target.value)} style={SS}><option value="Todas">Todas</option>{localidadesInterior.map(l=><option key={l}>{l}</option>)}</select></div>}<div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Asesor</label><select value={fAtClte} onChange={e=>setFAtClte(e.target.value)} style={SS}><option value="Todos">Todos</option>{ASESORES_ATCLTE.map(o=><option key={o}>{o}</option>)}</select></div><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:10,fontWeight:600,color:"#6b7a99",textTransform:"uppercase",letterSpacing:"0.4px",paddingLeft:2}}>Ordenar por</label><select value={sortAtClte} onChange={e=>setSortAtClte(e.target.value)} style={SS}><option value="nombre_az">Nombre A→Z</option><option value="nombre_za">Nombre Z→A</option><option value="estado_asc">Estado (Hab. primero)</option><option value="estado_desc">Estado (Inhab. primero)</option><option value="deuda_desc">Deuda mayor→menor</option><option value="deuda_asc">Deuda menor→mayor</option><option value="abono_desc">Abono mayor→menor</option><option value="abono_asc">Abono menor→mayor</option><option value="fecha_desc">Instalación más reciente</option><option value="fecha_asc">Instalación más antigua</option></select></div></div>{logHoja!=="Comodato"?loadingLog?<div style={{padding:"2rem",textAlign:"center",fontSize:13,color:"#6b7a99"}}>Cargando...</div>:<div><p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{currentLogData.rows.length} registros · {logCartera==="Todos"?"Todas las carteras":logCartera} · {logHoja}</p><GenericTable data={currentLogData} headerBg="#1F3864"/></div>:<div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:12}}><div style={{background:"#f4f7fb",borderRadius:12,padding:"0.85rem 1rem",border:"1px solid #dce6f5"}}><p style={{margin:"0 0 4px",fontSize:11,color:"#6b7a99"}}>Clientes {logCartera==="Interior"&&(fProvinciaPlaza!=="Todas"||fLocalidadPlaza!=="Todas")?"en la plaza":logCartera==="Todos"?"(todas las carteras)":`(${logCartera})`}</p><p style={{margin:0,fontSize:20,fontWeight:600,color:"#1F3864"}}>{plazaStats.clientesUnicos}</p></div><div style={{background:"#f4f7fb",borderRadius:12,padding:"0.85rem 1rem",border:"1px solid #dce6f5"}}><p style={{margin:"0 0 4px",fontSize:11,color:"#6b7a99"}}>Máquinas</p><p style={{margin:0,fontSize:20,fontWeight:600,color:"#1a5c3a"}}>{plazaStats.maquinas}</p></div><div style={{background:"#f4f7fb",borderRadius:12,padding:"0.85rem 1rem",border:"1px solid #dce6f5"}}><p style={{margin:"0 0 4px",fontSize:11,color:"#6b7a99"}}>Facturación c/IVA</p><p style={{margin:0,fontSize:20,fontWeight:600,color:"#8a3a00"}}>{fmt(plazaStats.facturacionConIVA)}</p></div><div style={{background:"#f4f7fb",borderRadius:12,padding:"0.85rem 1rem",border:"1px solid #dce6f5"}}><p style={{margin:"0 0 4px",fontSize:11,color:"#6b7a99"}}>Facturación s/IVA</p><p style={{margin:0,fontSize:20,fontWeight:600,color:"#c05a00"}}>{fmt(plazaStats.facturacionSinIVA)}</p></div><div style={{background:"#f4f7fb",borderRadius:12,padding:"0.85rem 1rem",border:"1px solid #dce6f5"}}><p style={{margin:"0 0 4px",fontSize:11,color:"#6b7a99"}}>Deuda total</p><p style={{margin:0,fontSize:20,fontWeight:600,color:"#791F1F"}}>{fmt(plazaStats.deudaTotal)}</p></div></div><p style={{fontSize:11,color:"#6b7a99",margin:"0 0 8px"}}>{filteredAtClte.length} de {clientes.length}</p><div style={{display:"flex",flexDirection:"column",gap:5}}>{filteredAtClte.map((c,i)=><ClienteCard key={c.id+i} c={c}/>)}</div></div>}</div>)}
