@@ -2584,59 +2584,65 @@ function App(){
       };
     });
     const officeUnificado=[...rOfficeActivosConFecha,...soloComodatoOffice];
-    // rOfficeActivos.map viene con un solo candidato por clave (no array, formato propio de
-    // parseOfficeActivos); se normaliza acá para que todo quede en formato array de candidatos.
-    const r4Map={};
-    Object.entries(rOfficeComodato.map).forEach(([k,v])=>{r4Map[k]=[...(r4Map[k]||[]),...v];});
-    Object.entries(rOfficeActivos.map).forEach(([k,v])=>{r4Map[k]=[...(r4Map[k]||[]),v];});
-    const r4={map:r4Map,clientes:officeUnificado};
     const ri1=parseComodato(rInstBsAs,"Buenos Aires"),ri2=parseComodato(rInstInt,"Interior"),ri3=parseComodato(rInstHiel,"Hielogic"),ri4=parseComodato(rInstOff,"AQA Office");
     const ajusteMap={...parseAjustes(rAjBA,0,3,10),...parseAjustes(rAjInt,0,2,9),...parseAjustes(rAjHiel,0,3,11)};
+    // Normaliza para comparar nombres entre hojas: saca tildes, símbolos y espacios de más,
+    // para que "BAR DU MARCHÉ" matchee con "BAR DU MARCHÉ - PB" sin que un acento o un guión
+    // de más rompa la comparación.
+    const normNombreComp=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
     // cmap/cmapNorm guardan un ARRAY de candidatos por ID (no se sobrescribe): un mismo número
     // de ID puede haberse reutilizado con el tiempo para más de un cliente distinto en la hoja,
     // y quedarnos con uno solo (el último visto) mezclaba los datos de dos clientes diferentes.
-    const cmap={};const cmapNorm={};
-    [r1.map,r2.map,r3.map,r4.map,ri1.map,ri2.map,ri3.map,ri4.map].forEach(m=>{
-      Object.entries(m).forEach(([k,vRaw])=>{
-        const arr=Array.isArray(vRaw)?vRaw:[vRaw];
-        if(!cmap[k])cmap[k]=[];
-        cmap[k].push(...arr);
-        const nk=normId(k);
-        if(!cmapNorm[nk])cmapNorm[nk]=[];
-        cmapNorm[nk].push(...arr);
+    // IMPORTANTE: se arma UN CMAP POR CARTERA (no uno global) — los números de ID no son únicos
+    // entre Buenos Aires/Interior/Hielogic, y mezclarlos en un solo mapa podía traer el candidato
+    // de un cliente de OTRA cartera que casualmente reusa el mismo número.
+    const buildCmap=(...mapas)=>{
+      const cmap={};const cmapNorm={};
+      mapas.forEach(m=>{
+        Object.entries(m).forEach(([k,vRaw])=>{
+          const arr=Array.isArray(vRaw)?vRaw:[vRaw];
+          if(!cmap[k])cmap[k]=[];
+          cmap[k].push(...arr);
+          const nk=normId(k);
+          if(!cmapNorm[nk])cmapNorm[nk]=[];
+          cmapNorm[nk].push(...arr);
+        });
       });
-    });
-    // Cuando hay más de un candidato para el mismo ID (número reutilizado), se elige el que
-    // mejor matchea con el nombre real del cliente en cuestión, en vez de uno cualquiera.
-    // Normaliza para comparar nombres entre hojas: saca tildes, símbolos y espacios de más,
-    // para que "BAR DU MARCHÉ" matchee con "BAR DU MARCHÉ - Nika" sin que un acento o un guión
-    // de más rompa la comparación.
-    const normNombreComp=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+      return{cmap,cmapNorm};
+    };
+    const cmapPorCartera={
+      "Buenos Aires":buildCmap(r1.map,ri1.map),
+      "Interior":buildCmap(r2.map,ri2.map),
+      "Hielogic":buildCmap(r3.map,ri3.map),
+    };
+    // Cuando hay más de un candidato para el mismo ID (número reutilizado dentro de la MISMA
+    // cartera), se elige el que mejor matchea por nombre — comparando palabra por palabra
+    // completa (no solo "contiene el texto"), para no dar falsos positivos con nombres cortos.
     const elegirCandidato=(candidatos,nombreRef)=>{
       if(!candidatos||candidatos.length===0)return{};
       if(candidatos.length===1)return candidatos[0];
       const nr=normNombreComp(nombreRef);
+      const nrPalabras=new Set(nr.split(" ").filter(Boolean));
       let match=candidatos.find(c=>normNombreComp(c.nombre)===nr);
       if(match)return match;
-      match=candidatos.find(c=>{const cn=normNombreComp(c.nombre);return cn&&nr&&(nr.includes(cn)||cn.includes(nr));});
-      if(match)return match;
-      return candidatos[candidatos.length-1];
-    };
-    // Mapa asesor desde desinstalaciones
-    const desinsMap={};
-    [rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff].forEach(csv=>{
-      const d=parseCSVText(csv);if(!d||!d.rows)return;
-      const hAsesor=d.headers[0];
-      const hId=d.headers.find(h=>h.toLowerCase().includes("persat"));
-      const hNombre=d.headers.find(h=>h.toLowerCase().includes("nombre")||h.toLowerCase().includes("fantas"));
-      if(!hId||!hNombre)return;
-      d.rows.forEach(r=>{
-        const id=(r[hId]||"").trim();const asesor=(r[hAsesor]||"").trim();const nombre=(r[hNombre]||"").trim().toLowerCase();
-        if(id&&asesor){desinsMap[id]=asesor;desinsMap[normId(id)]=asesor;}
-        if(nombre&&asesor)desinsMap["n:"+nombre]=asesor;
+      // Todas las palabras del nombre más corto deben aparecer como palabra completa en el otro
+      match=candidatos.find(c=>{
+        const cn=normNombreComp(c.nombre);
+        if(!cn)return false;
+        const cnPalabras=cn.split(" ").filter(Boolean);
+        const[cortas,largas]=nrPalabras.size<=cnPalabras.length?[nrPalabras,new Set(cnPalabras)]:[new Set(cnPalabras),nrPalabras];
+        return cortas.size>0&&[...cortas].every(p=>largas.has(p));
       });
+      if(match)return match;
+      return candidatos[0];
+    };
+    const cobClientesRaw=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{
+      const{cmap,cmapNorm}=cmapPorCartera[c.cartera]||{cmap:{},cmapNorm:{}};
+      const candidatos=cmap[c.id]||cmapNorm[normId(c.id)]||cmap[c.nombre?.toLowerCase()]||[];
+      const x=elegirCandidato(candidatos,c.nombre);
+      const asesorAC=x.asesorAtClte||"";
+      return{...c,asesorAtClte:asesorAC,vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};
     });
-    const cobClientesRaw=[...parseCob(rCobBsAs,"Buenos Aires"),...parseCob(rCobInt,"Interior"),...parseCob(rCobHiel,"Hielogic")].map(c=>{const candidatos=cmap[c.id]||cmapNorm[normId(c.id)]||cmap[c.nombre?.toLowerCase()]||[];const x=elegirCandidato(candidatos,c.nombre);const asesorAC=x.asesorAtClte||desinsMap[c.id]||desinsMap[normId(c.id)]||desinsMap["n:"+c.nombre?.toLowerCase()]||"";return{...c,asesorAtClte:asesorAC,vendedor:x.vendedor||"",razonSocial:x.razonSocial||"",fechaInstalacion:x.fechaInstalacion||"",localidad:x.localidad||"",provincia:x.provincia||"",proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||""};});
     // Deduplicar por ID (normalizado) — NO por nombre: varios clientes cadena (ej. varias
     // máquinas de "TEA CONNECTION" en distintas sucursales) pueden compartir el mismo texto
     // de "Cliente" en la hoja aunque sean máquinas/contratos distintos con ID propio. Deduplicar
@@ -2648,7 +2654,7 @@ function App(){
     // con formato levemente distinto entre Cobranzas y Comodato (ej. "107-a-2" vs "107-A-2"),
     // y comparar como texto exacto dejaba pasar duplicados con abono en $0 (Comodato no trae abono).
     const cobIds=new Set(cobClientes.map(c=>normId(c.id)));
-    const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes,...r4.clientes].filter(c=>!cobIds.has(normId(c.id))&&c.cartera!=="AQA Office").map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
+    const soloComodato=[...r1.clientes,...r2.clientes,...r3.clientes].filter(c=>!cobIds.has(normId(c.id))&&c.cartera!=="AQA Office").map(c=>({...c,proxAjuste:ajusteMap[c.id]||ajusteMap[String(parseInt(c.id)||0)]||ajusteMap[c.nombre?.toLowerCase()]||c.proxAjuste||""}));
     // Reconciliar Office contra la hoja general de Cobranzas/Inhabilitaciones: el mismo ID de
     // Persat puede aparecer ahí también (mal etiquetado con otra cartera, ej. "Buenos Aires")
     // aunque el cliente real sea de Office. La cartera/modelo de Office manda (es el maestro),
