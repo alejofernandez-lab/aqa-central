@@ -81,6 +81,7 @@ const URLS = {
   offVenta:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1080444203&single=true&output=csv",
   offDesins:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRp-_in4-RwIVxqDqmh9Mwbc12JvRvsc8BE7uEQIyQealJgjU5l17bUtMZlM8tGAYmJcN9EqGwFNhT_/pub?gid=1428472954&single=true&output=csv",
   offAjustes:"https://docs.google.com/spreadsheets/d/e/2PACX-1vTXfUDtCfbrBjlkY8_dvkxsP6n8RyjRQgNXs0XGM8lU5K8VHkatQwxBUOSBSuMW7oYKi91RRqDDLl9p/pub?gid=8192251&single=true&output=csv",
+  offInhabilitaciones:"https://docs.google.com/spreadsheets/d/e/2PACX-1vS2FAtkJdICjxdhNEbABZl61_6F59g3BXX9aMEsDoXyI0_Aqdl8tDxVQ07gejVfFJlIa0XV6Bdq8kXP/pub?gid=1795728121&single=true&output=csv",
   intimaciones:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=354176531&single=true&output=csv",
   cartasDoc:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=0&single=true&output=csv",
   veraz:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQqWaxlNOvVuPCMvWVyXMMElMxvCBjG8dzLhw1PEhjQLmdlbue0jbtkhMWFFXKQj2Wo7Jl-_zZTxICm/pub?gid=2086198383&single=true&output=csv",
@@ -524,6 +525,29 @@ const iUlt=headers.findIndex(h=>h.includes("lt")&&h.includes("ajus"));
 const iProx=headers.findIndex(h=>h.includes("rox")&&h.includes("ajus"));
 const iTipo=headers.findIndex(h=>h.includes("tipo")&&h.includes("ajus"));
 return lines.slice(1).map(line=>{const c=splitLine(line);const[asesorCob,id,modelo,abono,nombre,colF,colG,deudaRaw,fcRaw,mensRaw]=c;if(!id?.trim()||!nombre?.trim())return null;return{id:id.trim(),nombre:nombre.trim(),modelo:modelo||"",asesorCob:asesorCob||"",abono:parseNum(abono),estado:parseEstado(colF,colG),deuda:parseNum(deudaRaw),fc:parseInt(fcRaw)||0,mens:parseInt(mensRaw)||0,ultAjuste:iUlt>=0?(c[iUlt]||"").replace(/"/g,"").trim():"",proxAjuste:iProx>=0?(c[iProx]||"").replace(/"/g,"").trim():"",tipoAjuste:iTipo>=0?(c[iTipo]||"").replace(/"/g,"").trim():"",cartera,asesorAtClte:"",fechaInstalacion:"",localidad:"",provincia:""};}).filter(Boolean);}
+// Hoja de Inhabilitaciones/Cobranza específica de Office: Asesor, ID Persat, Razón Social,
+// Adicionales, Mantenimiento, Deuda, FC Pendientes — sin columna de Modelo ni de Abono (esos
+// datos para Office ya vienen de la hoja Activos). "FC Pendientes" se usa también como
+// mensualidades pendientes, ya que no hay una columna separada para eso.
+function parseCobOffice(text){
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");
+  if(lines.length<2)return[];
+  return lines.slice(1).map(line=>{
+    const c=splitLine(line);
+    const[asesorCob,id,razonSocial,colAdic,colMant,deudaRaw,fcRaw]=c;
+    if(!id?.trim())return null;
+    const fc=parseInt(fcRaw)||0;
+    return{
+      id:id.trim(),
+      nombre:(razonSocial||"").trim(),
+      asesorCob:(asesorCob||"").trim(),
+      estado:parseEstado(colAdic,colMant),
+      deuda:parseNum(deudaRaw),
+      fc,
+      mens:fc,
+    };
+  }).filter(Boolean);
+}
 function parseComodato(text,cartera){const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").trim().split("\n");if(lines.length<2)return{map:{},clientes:[]};const map={},clientes=[];const cfg={"Buenos Aires":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:8,localidad:-1,provincia:-1,proxAjuste:10},"Interior":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:6,provincia:7,proxAjuste:9},"Hielogic":{asesor:0,vendedor:2,modelo:3,nombre:4,id:5,razonSocial:6,fecha:9,localidad:-1,provincia:-1,proxAjuste:11},"AQA Office":{asesor:0,vendedor:1,modelo:2,nombre:3,id:4,razonSocial:5,fecha:11,localidad:-1,provincia:-1,proxAjuste:-1}};const idx=cfg[cartera]||cfg["Buenos Aires"];lines.slice(1).forEach(line=>{const cols=splitLine(line);const asesorAtClte=(cols[0]||"").trim();const vendedor=(cols[1]||"").trim();const modelo=(cols[idx.modelo]||"").trim();const nombre=(cols[idx.nombre]||"").replace(/"/g,"").trim();const idPersat=(cols[idx.id]||"").trim();const razonSocial=idx.razonSocial>=0?(cols[idx.razonSocial]||"").replace(/"/g,"").trim():"";const fechaInstalacion=(cols[idx.fecha]||"").trim();const localidad=idx.localidad>=0?(cols[idx.localidad]||"").trim():"";const provincia=idx.provincia>=0?(cols[idx.provincia]||"").trim():"";const proxAjuste=idx.proxAjuste>=0?(cols[idx.proxAjuste]||"").trim():"";if(!nombre&&!idPersat)return;
   // Se guarda "nombre" en el entry para poder desambiguar más adelante cuándo un mismo ID
   // se reutiliza (con el tiempo) para más de un cliente distinto en la misma hoja.
@@ -2488,13 +2512,13 @@ function App(){
 
   useEffect(()=>{(async()=>{try{
     const sf=u=>safeFetch(u).catch(()=>"");
-    const[rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff,rInstBsAs,rInstInt,rInstHiel,rInstOff,rAjBA,rAjInt,rAjHiel,rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff,rOffActivos,rOffDeuda]=await Promise.all([
+    const[rCobBsAs,rCobInt,rCobHiel,rComBsAs,rComInt,rComHiel,rComOff,rInstBsAs,rInstInt,rInstHiel,rInstOff,rAjBA,rAjInt,rAjHiel,rDesinsBa,rDesinsInt,rDesinsHiel,rDesinsOff,rOffActivos,rOffDeuda,rOffInhab]=await Promise.all([
       sf(URLS.cobBsAs),sf(URLS.cobInt),sf(URLS.cobHiel),
       sf(URLS.baComodato),sf(URLS.intComodato),sf(URLS.hielComodato),sf(URLS.offComodato),
       sf(URLS.baInstPend),sf(URLS.intInstPend),sf(URLS.hielInstPend),sf(URLS.offInstPend),
       sf(URLS.ajusteBA),sf(URLS.ajusteInt),sf(URLS.ajusteHiel),
       sf(URLS.baDesins),sf(URLS.intDesins),sf(URLS.hielDesins),sf(URLS.offDesins),
-      sf(URLS.offActivos),sf(URLS.offDeuda)
+      sf(URLS.offActivos),sf(URLS.offDeuda),sf(URLS.offInhabilitaciones)
     ]);
     const r1=parseComodato(rComBsAs,"Buenos Aires"),r2=parseComodato(rComInt,"Interior"),r3=parseComodato(rComHiel,"Hielogic");
     const parseOfficeActivos=(csvActivos,csvDeuda)=>{
@@ -2661,15 +2685,22 @@ function App(){
     // pero se completa abono/deuda/asesor de cobranzas desde ese registro cuando Office no lo trae.
     const cobPorId={};cobClientes.forEach(c=>{cobPorId[normId(c.id)]=c;});
     const officeIdsNorm=new Set(officeUnificado.map(c=>normId(c.id)));
+    // Hoja dedicada de Inhabilitaciones/Cobranza de Office: deuda, estado (habilitado/
+    // inhabilitado), asesor de cobranzas y FC/mensualidades pendientes. Cuando el cliente está
+    // acá, esta es la fuente que manda para esos campos (por sobre el cruce genérico anterior).
+    const offInhabPorId={};
+    parseCobOffice(rOffInhab).forEach(c=>{offInhabPorId[normId(c.id)]=c;});
     const officeConDatosCob=officeUnificado.map(c=>{
+      const oi=offInhabPorId[normId(c.id)];
       const cc=cobPorId[normId(c.id)];
-      if(!cc)return c;
+      if(!oi&&!cc)return c;
       return{...c,
-        abono:(parseFloat(c.abono)||0)>0?c.abono:cc.abono,
-        deuda:(c.deuda||0)>0?c.deuda:cc.deuda,
-        asesorCob:c.asesorCob&&c.asesorCob!=="—"?c.asesorCob:cc.asesorCob,
-        fc:c.fc||cc.fc,
-        mens:c.mens||cc.mens,
+        abono:(parseFloat(c.abono)||0)>0?c.abono:(cc?.abono||0),
+        deuda:oi?oi.deuda:((c.deuda||0)>0?c.deuda:(cc?.deuda||0)),
+        estado:oi?oi.estado:c.estado,
+        asesorCob:oi?(oi.asesorCob||"—"):(c.asesorCob&&c.asesorCob!=="—"?c.asesorCob:(cc?.asesorCob||"")),
+        fc:oi?oi.fc:(c.fc||cc?.fc||0),
+        mens:oi?oi.mens:(c.mens||cc?.mens||0),
       };
     });
     const cobClientesSinOffice=cobClientes.filter(c=>!officeIdsNorm.has(normId(c.id)));
